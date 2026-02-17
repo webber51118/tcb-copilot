@@ -1,0 +1,77 @@
+/**
+ * INPUT: 無
+ * OUTPUT: 對話狀態、貸款類型等列舉定義
+ * POS: 資料模型層，定義全系統共用的列舉常數
+ */
+
+/** 對話狀態機 — 所有可能的對話階段 */
+export enum ConversationState {
+  /** 閒置，等待使用者開始 */
+  IDLE = 'IDLE',
+  /** 選擇貸款類型（房貸/信貸） */
+  CHOOSE_LOAN_TYPE = 'CHOOSE_LOAN_TYPE',
+  /** 收集年齡 */
+  COLLECT_AGE = 'COLLECT_AGE',
+  /** 收集職業 */
+  COLLECT_OCCUPATION = 'COLLECT_OCCUPATION',
+  /** 收集月收入 */
+  COLLECT_INCOME = 'COLLECT_INCOME',
+  /** 收集貸款用途 */
+  COLLECT_PURPOSE = 'COLLECT_PURPOSE',
+  /** 收集貸款年限 */
+  COLLECT_TERM = 'COLLECT_TERM',
+  /** 收集貸款金額 */
+  COLLECT_AMOUNT = 'COLLECT_AMOUNT',
+  /** 收集屋齡（房貸專用） */
+  COLLECT_PROPERTY_AGE = 'COLLECT_PROPERTY_AGE',
+  /** 收集坪數（房貸專用） */
+  COLLECT_AREA = 'COLLECT_AREA',
+  /** 收集是否有車位（房貸專用） */
+  COLLECT_PARKING = 'COLLECT_PARKING',
+  /** 收集格局（房貸專用） */
+  COLLECT_LAYOUT = 'COLLECT_LAYOUT',
+  /** 收集樓層（房貸專用） */
+  COLLECT_FLOOR = 'COLLECT_FLOOR',
+  /** 收集建物類型（房貸專用） */
+  COLLECT_BUILDING_TYPE = 'COLLECT_BUILDING_TYPE',
+  /** 產品推薦結果 */
+  RECOMMEND = 'RECOMMEND',
+}
+
+/** 貸款類型 */
+export enum LoanType {
+  /** 房屋貸款 */
+  MORTGAGE = 'mortgage',
+  /** 信用貸款 */
+  PERSONAL = 'personal',
+}
+
+/** 建物類型 */
+export enum BuildingType {
+  /** 大樓 */
+  APARTMENT = '大樓',
+  /** 華廈 */
+  MANSION = '華廈',
+  /** 公寓 */
+  WALK_UP = '公寓',
+  /** 透天 */
+  TOWNHOUSE = '透天',
+  /** 套房 */
+  STUDIO = '套房',
+}
+
+/** 職業類別 */
+export enum OccupationType {
+  /** 軍人 */
+  MILITARY = '軍人',
+  /** 公務員 */
+  CIVIL_SERVANT = '公務員',
+  /** 教師 */
+  TEACHER = '教師',
+  /** 上班族 */
+  OFFICE_WORKER = '上班族',
+  /** 自營商 */
+  SELF_EMPLOYED = '自營商',
+  /** 其他 */
+  OTHER = '其他',
+}
