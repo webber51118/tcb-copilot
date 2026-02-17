@@ -8,7 +8,13 @@
 
 This file provides essential guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## CRITICAL RULES - READ FIRST
+## 語言風格規範 (tcb-language-style)
+
+- 所有技術文件、程式碼註解說明、以及對話回覆，必須使用**繁體中文**。
+- 專用術語需符合**台灣金融業習慣**（例：徵信、授信、鑑價、負債比、寬限期、成數等）。
+- 提交訊息（commit message）的描述部分使用繁體中文，類型前綴維持英文（feat/fix/docs 等）。
+
+## 重要規則 - 請先閱讀
 
 ### ABSOLUTE PROHIBITIONS
 - **NEVER** create new files in root directory → use proper module structure
