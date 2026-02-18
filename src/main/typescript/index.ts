@@ -11,6 +11,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { lineMiddleware } from './core/lineClient';
 import webhookRouter from './api/webhook';
 import { promotionAdminRouter } from './api/promotionAdmin';
+import { recommendRouter } from './api/recommend';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +36,16 @@ function adminAuth(req: Request, res: Response, next: NextFunction): void {
 
 // 活動後台管理 API
 app.use('/api/admin', adminAuth, promotionAdminRouter);
+
+// LIFF 公開 API（推薦引擎 + 活動查詢，允許 CORS 供前端呼叫）
+app.use('/api', (_req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  next();
+});
+app.options('/api/*', (_req, res) => res.sendStatus(200));
+app.use('/api', recommendRouter);
 
 // 健康檢查
 app.get('/health', (_req, res) => {

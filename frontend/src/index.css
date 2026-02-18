@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    @apply font-sans bg-gray-50 text-gray-800;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-tcb-blue text-white font-bold py-3 px-6 rounded-xl
+           active:opacity-80 transition-opacity w-full text-center;
+  }
+  .btn-secondary {
+    @apply bg-white text-tcb-blue font-bold py-3 px-6 rounded-xl
+           border-2 border-tcb-blue active:opacity-80 transition-opacity w-full text-center;
+  }
+  .card {
+    @apply bg-white rounded-2xl shadow-sm p-4;
+  }
+}
