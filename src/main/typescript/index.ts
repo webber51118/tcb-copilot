@@ -18,7 +18,8 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
 
 // LINE webhook 路由（必須在 express.json() 之前，LINE SDK 需要原始 body）
-app.post('/api/webhook', lineMiddleware, webhookRouter);
+// 使用 app.use 讓 Express strip prefix，使 router.post('/') 能正確匹配
+app.use('/api/webhook', lineMiddleware, webhookRouter);
 
 // 其他路由使用 JSON 解析
 app.use(express.json());
