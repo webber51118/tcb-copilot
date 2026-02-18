@@ -8,8 +8,9 @@ import { WebhookEvent } from '@line/bot-sdk';
 import { lineClient } from '../core/lineClient';
 import { getSession, updateSession, resetSession } from '../core/sessionStore';
 import { transition } from '../core/conversationStateMachine';
-import { ConversationState } from '../models/enums';
-import { LineReplyMessage } from '../models/types';
+import { ConversationState, LoanType } from '../models/enums';
+import { LineReplyMessage, RecommendedProduct } from '../models/types';
+import { recommendProducts } from './recommendationEngine';
 
 /** 處理單一 webhook 事件 */
 export async function handleEvent(event: WebhookEvent): Promise<void> {
@@ -39,20 +40,104 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
   session.state = result.nextState;
   updateSession(session);
 
-  // 如果進入 RECOMMEND 狀態，由此處產生推薦結果
+  // 如果進入 RECOMMEND 狀態，呼叫推薦引擎並產生 Flex 卡片
   if (session.state === ConversationState.RECOMMEND) {
-    // 先回覆「資料收集完成」的訊息
-    if (result.messages.length > 0) {
-      await replyMessages(event.replyToken, result.messages);
+    const recommendation = recommendProducts(session);
+    const messages: LineReplyMessage[] = [
+      buildRecommendFlexMessage(recommendation.primary, session.loanType),
+    ];
+    if (recommendation.alternatives.length > 0) {
+      messages.push({
+        type: 'text',
+        text: `另也為您推薦以下方案供參考：\n${recommendation.alternatives.map((p) => `• ${p.name}（${p.rateRange}）`).join('\n')}`,
+      });
     }
-
-    // TODO: 階段 3 實作推薦引擎 + Flex 卡片 + 海報
-    // 完成推薦後重置 Session
+    await replyMessages(event.replyToken, messages);
     resetSession(userId);
     return;
   }
 
   return replyMessages(event.replyToken, result.messages);
+}
+
+/** 建構推薦產品 Flex Message 卡片 */
+function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanType | null): LineReplyMessage {
+  const isReverseAnnuity = loanType === LoanType.REVERSE_ANNUITY;
+  const monthlyLabel = isReverseAnnuity ? '每月撥付' : '預估月付';
+  const monthlyValue = product.monthlyPayment
+    ? `NT$ ${product.monthlyPayment.toLocaleString()}`
+    : '依實際核貸金額計算';
+
+  const bubbleContents: Record<string, unknown> = {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '為您推薦最適方案', size: 'sm', color: '#aaaaaa' },
+        { type: 'text', text: product.name, weight: 'bold', size: 'md', wrap: true },
+      ],
+      backgroundColor: '#1B4F8A',
+      paddingAll: '20px',
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'md',
+      contents: [
+        {
+          type: 'box', layout: 'horizontal',
+          contents: [
+            { type: 'text', text: '利率', size: 'sm', color: '#555555', flex: 2 },
+            { type: 'text', text: product.rateRange, size: 'sm', weight: 'bold', flex: 3 },
+          ],
+        },
+        {
+          type: 'box', layout: 'horizontal',
+          contents: [
+            { type: 'text', text: monthlyLabel, size: 'sm', color: '#555555', flex: 2 },
+            { type: 'text', text: monthlyValue, size: 'sm', weight: 'bold', color: '#1B4F8A', flex: 3 },
+          ],
+        },
+        { type: 'separator' },
+        {
+          type: 'box', layout: 'vertical', spacing: 'xs',
+          contents: product.features.slice(0, 4).map((f) => ({
+            type: 'text', text: `• ${f}`, size: 'xs', color: '#555555', wrap: true,
+          })),
+        },
+        { type: 'separator' },
+        {
+          type: 'text', text: product.savingsHighlight,
+          size: 'xs', color: '#1B4F8A', wrap: true,
+        },
+      ],
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#1B4F8A',
+          action: { type: 'message', label: '立即洽詢分行', text: '我想洽詢' },
+        },
+        {
+          type: 'button',
+          style: 'secondary',
+          action: { type: 'message', label: '重新試算', text: '重新開始' },
+        },
+      ],
+    },
+  };
+
+  return {
+    type: 'flex',
+    altText: `推薦您：${product.name}（${product.rateRange}）`,
+    contents: bubbleContents,
+  };
 }
 
 /** 將 LineReplyMessage 陣列轉為 LINE SDK 格式並回覆 */

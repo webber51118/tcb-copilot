@@ -44,13 +44,20 @@ export function parseLoanType(text: string): LoanType | null {
   const t = text.trim();
   if (t === '房貸' || t === '房屋貸款') return LoanType.MORTGAGE;
   if (t === '信貸' || t === '信用貸款') return LoanType.PERSONAL;
+  if (t === '以房養老') return LoanType.REVERSE_ANNUITY;
   return null;
 }
 
-/** 驗證年齡（20~75） */
-export function parseAge(text: string): number | null {
+/**
+ * 驗證年齡
+ * - 一般：20~75 歲
+ * - 以房養老：60~75 歲
+ */
+export function parseAge(text: string, loanType?: LoanType): number | null {
   const n = parseIntNormalized(text);
-  if (isNaN(n) || n < 20 || n > 75) return null;
+  if (isNaN(n) || n > 75) return null;
+  const minAge = loanType === LoanType.REVERSE_ANNUITY ? 60 : 20;
+  if (n < minAge) return null;
   return n;
 }
 

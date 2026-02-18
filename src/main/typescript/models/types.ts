@@ -91,6 +91,26 @@ export interface ProductCatalog {
   personal: ProductDefinition[];
 }
 
+/** 產品資格條件 */
+export interface ProductEligibility {
+  /** 最低年齡（以房養老=60） */
+  minAge?: number;
+  /** 最高年齡 */
+  maxAge?: number;
+  /** 最低年收入（Next貸=800000） */
+  minAnnualIncome?: number;
+  /** 限定職業 */
+  occupations?: OccupationType[];
+  /** 限定房貸用途（Next貸=['資金週轉']） */
+  mortgagePurposes?: string[];
+  /** 首購限定（青安=true） */
+  isFirstHomeBuyer?: boolean;
+  /** 以房養老模式 */
+  isReverseAnnuity?: boolean;
+  /** 需薪轉帳戶 */
+  hasSalaryAccount?: boolean;
+}
+
 /** 產品定義 */
 export interface ProductDefinition {
   id: string;
@@ -101,16 +121,18 @@ export interface ProductDefinition {
   maxAmount: number;
   maxTermYears: number;
   gracePeriodYears?: number;
-  eligibility: {
-    maxAge?: number;
-    firstTimeBuyer?: boolean;
-    occupations?: OccupationType[];
-    hasSalaryAccount?: boolean;
-  };
+  eligibility: ProductEligibility;
   features: string[];
   savingsHighlight: string;
   crossSell?: {
     insurance?: { name: string; price: string };
     creditCard?: { name: string; cashback: string; fee: string };
   };
+}
+
+/** 推薦結果 */
+export interface RecommendationResult {
+  primary: RecommendedProduct;
+  alternatives: RecommendedProduct[];
+  activePromotionIds: string[];
 }

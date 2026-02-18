@@ -15,6 +15,7 @@ import {
   loanTypeQuickReply, occupationQuickReply,
   mortgagePurposeQuickReply, personalPurposeQuickReply,
   mortgageTermQuickReply, personalTermQuickReply,
+  reverseAnnuityTermQuickReply,
   parkingQuickReply, buildingTypeQuickReply, layoutQuickReply,
 } from '../utils/quickReplyHelper';
 
@@ -41,14 +42,35 @@ const handleIdle: StateHandler = (_session, _input) => ({
 
 /** 選擇貸款類型 */
 const handleChooseLoanType: StateHandler = (session, input) => {
+  // 查詢當期活動
+  if (input.trim() === '當期活動') {
+    return {
+      nextState: ConversationState.CHOOSE_LOAN_TYPE,
+      messages: [textMsg(
+        '目前進行中的活動請洽詢合庫各分行，或繼續選擇貸款類型開始諮詢！',
+        loanTypeQuickReply(),
+      )],
+    };
+  }
+
   const loanType = parseLoanType(input);
   if (!loanType) {
     return {
       nextState: ConversationState.CHOOSE_LOAN_TYPE,
-      messages: [textMsg('請選擇「房屋貸款」或「信用貸款」', loanTypeQuickReply())],
+      messages: [textMsg('請選擇貸款類型', loanTypeQuickReply())],
     };
   }
   session.loanType = loanType;
+
+  if (loanType === LoanType.REVERSE_ANNUITY) {
+    return {
+      nextState: ConversationState.COLLECT_AGE,
+      messages: [textMsg(
+        '歡迎了解「以房養老-幸福滿袋」！\n\n此方案專為60歲以上的長輩設計，將自有房屋轉換為每月穩定養老金。\n\n請問您的年齡是？（60~75 歲）',
+      )],
+    };
+  }
+
   const label = loanType === LoanType.MORTGAGE ? '房屋貸款' : '信用貸款';
   return {
     nextState: ConversationState.COLLECT_AGE,
@@ -58,14 +80,26 @@ const handleChooseLoanType: StateHandler = (session, input) => {
 
 /** 收集年齡 */
 const handleCollectAge: StateHandler = (session, input) => {
-  const age = parseAge(input);
+  const age = parseAge(input, session.loanType ?? undefined);
   if (age === null) {
+    const hint = session.loanType === LoanType.REVERSE_ANNUITY
+      ? '以房養老方案需年滿60歲，請輸入有效的年齡（60~75 歲）'
+      : '請輸入有效的年齡（20~75 歲）';
     return {
       nextState: ConversationState.COLLECT_AGE,
-      messages: [textMsg('請輸入有效的年齡（20~75 歲）')],
+      messages: [textMsg(hint)],
     };
   }
   session.basicInfo.age = age;
+
+  // 以房養老：跳過職業直接收集月收入
+  if (session.loanType === LoanType.REVERSE_ANNUITY) {
+    return {
+      nextState: ConversationState.COLLECT_INCOME,
+      messages: [textMsg('請問您目前每月大約有多少退休金或其他收入？\n（可輸入如：3萬、25000）')],
+    };
+  }
+
   return {
     nextState: ConversationState.COLLECT_OCCUPATION,
     messages: [textMsg('請問您的職業是？', occupationQuickReply())],
@@ -98,6 +132,16 @@ const handleCollectIncome: StateHandler = (session, input) => {
     };
   }
   session.basicInfo.income = income;
+
+  // 以房養老：固定用途，跳過 COLLECT_PURPOSE，直接收集年限
+  if (session.loanType === LoanType.REVERSE_ANNUITY) {
+    session.basicInfo.purpose = '以房養老';
+    return {
+      nextState: ConversationState.COLLECT_TERM,
+      messages: [textMsg('請問您希望的撥付年限？', reverseAnnuityTermQuickReply())],
+    };
+  }
+
   const qr = session.loanType === LoanType.MORTGAGE
     ? mortgagePurposeQuickReply()
     : personalPurposeQuickReply();

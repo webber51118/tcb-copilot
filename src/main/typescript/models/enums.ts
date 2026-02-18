@@ -44,6 +44,24 @@ export enum LoanType {
   MORTGAGE = 'mortgage',
   /** 信用貸款 */
   PERSONAL = 'personal',
+  /** 以房養老（反向年金房貸） */
+  REVERSE_ANNUITY = 'reverse_annuity',
+}
+
+/** 常設產品 ID */
+export enum ProductId {
+  /** 青年安心成家購屋貸款 */
+  YOUNG_SAFE_HOME  = 'young-safe-home',
+  /** 國軍輔導理財購屋貸款 */
+  MILITARY_HOUSING = 'military-housing',
+  /** Next貸．幸福週轉金 */
+  NEXT_LOAN        = 'next-loan',
+  /** 以房養老-幸福滿袋 */
+  REVERSE_MORTGAGE = 'reverse-mortgage',
+  /** 軍公教人員優惠信貸 */
+  MILITARY_CIVIL   = 'military-civil-loan',
+  /** 優職優利信用貸款 */
+  ELITE_LOAN       = 'elite-loan',
 }
 
 /** 建物類型 */

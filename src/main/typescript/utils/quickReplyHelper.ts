@@ -15,12 +15,14 @@ function item(label: string, text?: string): QuickReplyItem {
   };
 }
 
-/** 貸款類型選擇 */
+/** 貸款類型選擇（含以房養老與當期活動） */
 export function loanTypeQuickReply(): { items: QuickReplyItem[] } {
   return {
     items: [
       item('房屋貸款', '房貸'),
       item('信用貸款', '信貸'),
+      item('以房養老', '以房養老'),
+      item('當期活動', '當期活動'),
     ],
   };
 }
@@ -38,9 +40,21 @@ export function mortgagePurposeQuickReply(): { items: QuickReplyItem[] } {
     items: [
       item('首購自住'),
       item('自住（已有房無貸款）', '自住'),
+      item('資金週轉'),
       item('投資理財'),
-      item('消費性'),
       item('其他'),
+    ],
+  };
+}
+
+/** 貸款年限（以房養老） */
+export function reverseAnnuityTermQuickReply(): { items: QuickReplyItem[] } {
+  return {
+    items: [
+      item('10年', '10'),
+      item('20年', '20'),
+      item('30年', '30'),
+      item('35年', '35'),
     ],
   };
 }
