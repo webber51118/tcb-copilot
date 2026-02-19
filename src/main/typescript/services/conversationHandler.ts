@@ -25,6 +25,14 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
   const userText = event.message.text.trim();
   const session = getSession(userId);
 
+  // 洽詢指令：點擊 Flex Card「立即洽詢分行」按鈕
+  if (userText === '我想洽詢') {
+    return replyMessages(event.replyToken, [{
+      type: 'text',
+      text: '感謝您的洽詢！\n\n請攜帶相關資料親臨合庫各分行，服務人員將為您詳細說明貸款方案。\n\n如需重新試算，請輸入「重新開始」。',
+    }]);
+  }
+
   // 重置指令：使用者輸入「重新開始」可重置對話
   if (userText === '重新開始' || userText === '重來') {
     resetSession(userId);

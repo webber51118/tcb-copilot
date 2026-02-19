@@ -155,9 +155,12 @@ const handleCollectIncome: StateHandler = (session, input) => {
 const handleCollectPurpose: StateHandler = (session, input) => {
   const purpose = parsePurpose(input);
   if (purpose === null) {
+    const qr = session.loanType === LoanType.MORTGAGE
+      ? mortgagePurposeQuickReply()
+      : personalPurposeQuickReply();
     return {
       nextState: ConversationState.COLLECT_PURPOSE,
-      messages: [textMsg('請輸入貸款用途')],
+      messages: [textMsg('請選擇或輸入貸款用途', qr)],
     };
   }
   session.basicInfo.purpose = purpose;
@@ -174,9 +177,14 @@ const handleCollectPurpose: StateHandler = (session, input) => {
 const handleCollectTerm: StateHandler = (session, input) => {
   const term = parseTerm(input);
   if (term === null) {
+    const qr = session.loanType === LoanType.REVERSE_ANNUITY
+      ? reverseAnnuityTermQuickReply()
+      : session.loanType === LoanType.MORTGAGE
+        ? mortgageTermQuickReply()
+        : personalTermQuickReply();
     return {
       nextState: ConversationState.COLLECT_TERM,
-      messages: [textMsg('請輸入有效的貸款年限（1~40 年）')],
+      messages: [textMsg('請選擇有效的貸款年限', qr)],
     };
   }
   session.basicInfo.termYears = term;
