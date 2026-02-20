@@ -13,6 +13,8 @@ import webhookRouter from './api/webhook';
 import { promotionAdminRouter } from './api/promotionAdmin';
 import { applicationAdminRouter } from './api/applicationAdmin';
 import { recommendRouter } from './api/recommend';
+import { parseDocumentRouter } from './api/parseDocument';
+import { submitApplicationRouter } from './api/submitApplication';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,6 +51,8 @@ app.use('/api', (_req, res, next) => {
 });
 app.options('/api/*', (_req, res) => res.sendStatus(200));
 app.use('/api', recommendRouter);
+app.use('/api', parseDocumentRouter);
+app.use('/api', submitApplicationRouter);
 
 // 健康檢查
 app.get('/health', (_req, res) => {

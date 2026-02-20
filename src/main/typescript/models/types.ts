@@ -26,6 +26,29 @@ export interface PropertyInfo {
   buildingType: BuildingType | null;
 }
 
+/** AI 文件解析結果（MyData + 土地建物謄本） */
+export interface DocumentParseResult {
+  /** MYDATA 解析結果 */
+  mydata?: {
+    name?: string;
+    idNumber?: string;
+    annualIncome?: number;
+    employer?: string;
+    phone?: string;
+  };
+  /** 土地建物謄本解析結果 */
+  landRegistry?: {
+    buildingType?: string;
+    floor?: number;
+    areaPing?: number;
+    propertyAge?: number;
+  };
+  /** 解析是否成功 */
+  success: boolean;
+  /** 失敗原因（如解析失敗） */
+  error?: string;
+}
+
 /** 使用者對話 Session */
 export interface UserSession {
   userId: string;
@@ -38,6 +61,16 @@ export interface UserSession {
   recommendedProductId: string | null;
   mydataReady: boolean | null;
   landRegistryReady: boolean | null;
+  /** 身分證字號（從 MyData 解析） */
+  idNumber: string | null;
+  /** 雇主/就業單位（從 MyData 解析） */
+  employer: string | null;
+  /** 年所得總額（從 MyData 解析，單位：元） */
+  annualIncome: number | null;
+  /** 是否已透過文件解析預填資料 */
+  parsedFromDoc: boolean;
+  /** 文件解析摘要是否已確認 */
+  docReviewConfirmed: boolean;
   createdAt: number;
   updatedAt: number;
 }

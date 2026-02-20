@@ -1,30 +1,46 @@
 /**
- * INPUT: LINE 文字訊息事件
+ * INPUT: LINE 文字訊息 / 圖片訊息事件
  * OUTPUT: 透過 LINE API 回覆訊息
- * POS: 服務層，訊息處理主流程，串接狀態機與推薦引擎、申請存檔
+ * POS: 服務層，訊息處理主流程，串接狀態機、文件解析、推薦引擎
  */
 
-import { WebhookEvent } from '@line/bot-sdk';
+import { WebhookEvent, messagingApi } from '@line/bot-sdk';
 import { lineClient } from '../core/lineClient';
 import { getSession, updateSession, resetSession } from '../core/sessionStore';
 import { transition } from '../core/conversationStateMachine';
-import { ConversationState, LoanType } from '../models/enums';
-import { LineReplyMessage, RecommendedProduct, UserSession, LoanApplication } from '../models/types';
+import { ConversationState, LoanType, BuildingType } from '../models/enums';
+import { LineReplyMessage, RecommendedProduct, UserSession, DocumentParseResult } from '../models/types';
 import { recommendProducts } from './recommendationEngine';
-import { createApplication } from '../config/applicationStore';
-import { confirmApplyQuickReply } from '../utils/quickReplyHelper';
+import { parseImageBuffer } from './documentParser';
+
+/** LINE Blob 客戶端（用於下載圖片內容） */
+const blobClient = new messagingApi.MessagingApiBlobClient({
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
+});
 
 /** 處理單一 webhook 事件 */
 export async function handleEvent(event: WebhookEvent): Promise<void> {
-  if (event.type !== 'message' || event.message.type !== 'text') return;
+  if (event.type !== 'message') return;
+  if (event.message.type !== 'text' && event.message.type !== 'image') return;
 
   const userId = event.source.userId;
   if (!userId) return;
 
-  const userText = event.message.text.trim();
   const session = getSession(userId);
 
-  // 返回主選單：重置 session 並重新顯示歡迎 Carousel
+  // ── 圖片訊息處理（UPLOAD_DOCS 狀態下解析文件）──
+  if (event.message.type === 'image') {
+    if (session.state === ConversationState.UPLOAD_DOCS) {
+      await handleImageUpload(event.replyToken, userId, event.message.id, session);
+      return;
+    }
+    // 其他狀態下收到圖片，忽略
+    return;
+  }
+
+  const userText = event.message.text.trim();
+
+  // 返回主選單
   if (userText === '返回主選單') {
     resetSession(userId);
     const freshSession = getSession(userId);
@@ -57,7 +73,7 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
   session.state = result.nextState;
   updateSession(session);
 
-  // 進入 RECOMMEND 狀態：呼叫推薦引擎，顯示推薦卡片後轉 CONFIRM_APPLY
+  // 進入 RECOMMEND 狀態：呼叫推薦引擎，顯示豐富推薦海報 → 轉 CONFIRM_APPLY
   if (session.state === ConversationState.RECOMMEND) {
     const recommendation = recommendProducts(session);
     session.recommendedProductId = recommendation.primary.id;
@@ -66,6 +82,7 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
       buildRecommendFlexMessage(recommendation.primary, session.loanType),
     ];
 
+    // 備選方案
     if (recommendation.alternatives.length > 0) {
       messages.push({
         type: 'text',
@@ -73,129 +90,232 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
       });
     }
 
-    // 文件備妥狀態摘要 + 確認按鈕
+    // 交叉銷售小卡（若有）
+    const crossSell = recommendation.primary.crossSell;
+    if (crossSell) {
+      messages.push(buildCrossSellFlex(crossSell, session.loanType));
+    }
+
+    // 說明下一步
     messages.push({
       type: 'text',
-      text: buildDocsSummary(session) + '\n\n請確認上方推薦方案，確認後點選「確認送出申請」繼續。',
-      quickReply: confirmApplyQuickReply(),
+      text: '✅ 推薦方案已產生！\n\n請點選下方「填寫申請書」按鈕完成電子申請書並進行簽名。',
     });
 
     await replyMessages(event.replyToken, messages);
 
+    // 轉入 CONFIRM_APPLY，由狀態機產生 LIFF 連結 Flex
     session.state = ConversationState.CONFIRM_APPLY;
     updateSession(session);
-    return;
-  }
 
-  // 進入 APPLY_DONE 狀態：建立申請案件，顯示案件編號，重置 session
-  if (session.state === ConversationState.APPLY_DONE) {
-    const app = createApplicationFromSession(session);
-    await replyMessages(event.replyToken, [buildApplyDoneMessage(app)]);
-    resetSession(userId);
+    // 用 push 送出申請書 LIFF 連結（reply token 已用完）
+    const applyResult = transition(session, '');
+    if (applyResult.messages.length > 0) {
+      await pushMessages(userId, applyResult.messages);
+    }
     return;
   }
 
   return replyMessages(event.replyToken, result.messages);
 }
 
-/** 從 session 建立申請案件 */
-function createApplicationFromSession(session: UserSession): LoanApplication {
-  return createApplication(
-    session.userId,
-    session.applicantName ?? '',
-    session.applicantPhone ?? '',
-    session.loanType ?? LoanType.PERSONAL,
-    session.basicInfo,
-    session.propertyInfo,
-    session.recommendedProductId ?? '',
-    session.mydataReady ?? false,
-    session.landRegistryReady,
-  );
+// ─────────────────────────────────────────────────────────────
+// 圖片上傳 & 文件解析
+// ─────────────────────────────────────────────────────────────
+
+/** 處理 UPLOAD_DOCS 狀態下的圖片訊息 */
+async function handleImageUpload(
+  replyToken: string,
+  userId: string,
+  messageId: string,
+  session: UserSession,
+): Promise<void> {
+  // 先回應「解析中」
+  await replyMessages(replyToken, [{
+    type: 'text',
+    text: '📷 已收到您的圖片，AI 正在辨識文件...\n\n（通常需要 3~5 秒）',
+  }]);
+
+  try {
+    // 下載圖片內容
+    const stream = await blobClient.getMessageContent(messageId);
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream as AsyncIterable<Buffer>) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+
+    // 判斷文件類型（MYDATA 優先，若已有 MyData 且是房貸則解析謄本）
+    const hasMydata = session.mydataReady === true;
+    const docType = hasMydata && session.loanType !== LoanType.PERSONAL
+      ? 'landRegistry'
+      : 'mydata';
+
+    const parseResult = await parseImageBuffer(buffer, docType);
+
+    if (!parseResult.success) {
+      // 解析失敗 → 引導手動填寫
+      session.parsedFromDoc = false;
+      updateSession(session);
+      await pushMessages(userId, [{
+        type: 'text',
+        text: `⚠️ 文件辨識失敗：${parseResult.error || '無法識別文件內容'}\n\n請重新上傳清晰圖片，或選擇手動填寫。`,
+        quickReply: {
+          items: [
+            { type: 'action', action: { type: 'message', label: '手動填寫', text: '手動填寫' } },
+          ],
+        },
+      }]);
+      return;
+    }
+
+    // 解析成功：更新 session
+    if (docType === 'mydata' && parseResult.mydata) {
+      const { name, idNumber, annualIncome, employer, phone } = parseResult.mydata;
+      if (name) session.applicantName = name;
+      if (idNumber) session.idNumber = idNumber;
+      if (annualIncome) {
+        session.annualIncome = annualIncome;
+        session.basicInfo.income = Math.round(annualIncome / 12);
+      }
+      if (employer) session.employer = employer;
+      if (phone) session.applicantPhone = phone;
+      session.mydataReady = true;
+      session.parsedFromDoc = true;
+    } else if (docType === 'landRegistry' && parseResult.landRegistry) {
+      const { buildingType, floor, areaPing, propertyAge } = parseResult.landRegistry;
+      const btMap: Record<string, BuildingType> = {
+        '大樓': BuildingType.APARTMENT,
+        '華廈': BuildingType.MANSION,
+        '公寓': BuildingType.WALK_UP,
+        '透天': BuildingType.TOWNHOUSE,
+        '套房': BuildingType.STUDIO,
+      };
+      if (buildingType) {
+        const normalized = Object.keys(btMap).find((k) => buildingType.includes(k));
+        if (normalized) session.propertyInfo.buildingType = btMap[normalized];
+      }
+      if (floor) session.propertyInfo.floor = floor;
+      if (areaPing) session.propertyInfo.areaPing = areaPing;
+      if (propertyAge) session.propertyInfo.propertyAge = propertyAge;
+      session.landRegistryReady = true;
+      session.parsedFromDoc = true;
+    }
+
+    session.state = ConversationState.DOC_REVIEW;
+    updateSession(session);
+
+    // Push DOC_REVIEW Flex 摘要卡片
+    await pushMessages(userId, [
+      buildDocReviewFlex(session, docType, parseResult),
+    ]);
+  } catch (err) {
+    console.error('[conversationHandler] 圖片處理失敗:', err);
+    await pushMessages(userId, [{
+      type: 'text',
+      text: '⚠️ 圖片處理發生錯誤，請重新上傳或選擇手動填寫。',
+      quickReply: {
+        items: [
+          { type: 'action', action: { type: 'message', label: '手動填寫', text: '手動填寫' } },
+        ],
+      },
+    }]);
+  }
 }
 
-/** 文件備妥狀態摘要文字 */
-function buildDocsSummary(session: UserSession): string {
-  const lines: string[] = ['📄 文件備妥狀態'];
-  const mydataLabel = session.mydataReady === true
-    ? '已備妥 ✅'
-    : session.mydataReady === false
-      ? '尚未備妥 ⚠️（可後續補件）'
-      : '未確認';
-  lines.push(`• MYDATA 所得資料：${mydataLabel}`);
+/** 建構文件解析摘要 Flex 卡片 */
+function buildDocReviewFlex(
+  session: UserSession,
+  docType: 'mydata' | 'landRegistry',
+  result: DocumentParseResult,
+): LineReplyMessage {
+  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
+  const ACCENT = '#69F0AE';
 
-  if (session.loanType !== LoanType.PERSONAL) {
-    const landLabel = session.landRegistryReady === true
-      ? '已備妥 ✅'
-      : session.landRegistryReady === false
-        ? '尚未備妥 ⚠️（可後續補件）'
-        : '未確認';
-    lines.push(`• 土地建物謄本：${landLabel}`);
+  const rows: Array<{ label: string; value: string }> = [];
+
+  if (docType === 'mydata' && result.mydata) {
+    const { name, idNumber, annualIncome, employer } = result.mydata;
+    if (name) rows.push({ label: '姓名', value: name });
+    if (idNumber) rows.push({ label: '身分證字號', value: idNumber });
+    if (annualIncome) rows.push({ label: '年所得', value: `NT$ ${annualIncome.toLocaleString()}` });
+    if (employer) rows.push({ label: '就業單位', value: employer });
+    // 換算月收入
+    if (annualIncome) rows.push({ label: '換算月收入', value: `NT$ ${Math.round(annualIncome / 12).toLocaleString()}` });
+  } else if (docType === 'landRegistry' && result.landRegistry) {
+    const { buildingType, floor, areaPing, propertyAge } = result.landRegistry;
+    if (buildingType) rows.push({ label: '建物種類', value: buildingType });
+    if (floor) rows.push({ label: '所在樓層', value: `${floor} 樓` });
+    if (areaPing) rows.push({ label: '建築面積', value: `${areaPing} 坪` });
+    if (propertyAge) rows.push({ label: '屋齡', value: `${propertyAge} 年` });
   }
 
-  return lines.join('\n');
-}
+  const hasMydata = session.mydataReady && docType === 'mydata';
+  const isMortgage = session.loanType !== LoanType.PERSONAL;
+  const needsLandReg = isMortgage && !session.landRegistryReady;
 
-/** 申請完成 Flex Message — 顯示案件編號 */
-function buildApplyDoneMessage(app: LoanApplication): LineReplyMessage {
-  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
-  const ACCENT = '#69F0AE'; const BTN = '#1B5E20';
+  let nextHint = '';
+  if (hasMydata && needsLandReg) {
+    nextHint = '\n\n📋 請繼續上傳土地建物謄本';
+  }
 
   return {
     type: 'flex',
-    altText: `✅ 申請完成！案件編號：${app.id}`,
+    altText: `✅ 文件解析完成，請確認資料`,
     contents: {
       type: 'bubble', size: 'mega',
       body: {
         type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
         contents: [
           {
-            type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '12px', spacing: 'sm',
+            type: 'box', layout: 'vertical', paddingAll: '16px', paddingBottom: '12px', spacing: 'xs',
             contents: [
-              { type: 'text', text: '✅', size: '3xl', align: 'center' },
-              { type: 'text', text: '線上申請已完成！', weight: 'bold', size: 'lg', color: '#FFFFFF', align: 'center', margin: 'sm' },
+              { type: 'text', text: '🤖 AI 文件解析完成', weight: 'bold', size: 'md', color: '#FFFFFF' },
+              { type: 'text', text: `${docType === 'mydata' ? 'MYDATA 所得資料' : '土地建物謄本'}`, size: 'xs', color: '#78909C' },
             ],
           },
-          { type: 'box', layout: 'vertical', height: '3px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
+          { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
           {
-            type: 'box', layout: 'vertical', backgroundColor: M, paddingAll: '16px', spacing: 'md',
-            contents: [
-              { type: 'box', layout: 'horizontal', contents: [
-                { type: 'text', text: '案件編號', size: 'sm', color: '#90A4AE', flex: 4 },
-                { type: 'text', text: app.id, size: 'sm', weight: 'bold', color: ACCENT, flex: 6, wrap: true },
-              ]},
-              { type: 'box', layout: 'horizontal', contents: [
-                { type: 'text', text: '申請人', size: 'sm', color: '#90A4AE', flex: 4 },
-                { type: 'text', text: app.applicantName, size: 'sm', color: '#FFFFFF', flex: 6 },
-              ]},
-              { type: 'box', layout: 'horizontal', contents: [
-                { type: 'text', text: '聯絡電話', size: 'sm', color: '#90A4AE', flex: 4 },
-                { type: 'text', text: app.applicantPhone, size: 'sm', color: '#FFFFFF', flex: 6 },
-              ]},
-              { type: 'box', layout: 'horizontal', contents: [
-                { type: 'text', text: '審核狀態', size: 'sm', color: '#90A4AE', flex: 4 },
-                { type: 'text', text: '待審核', size: 'sm', color: '#FFD54F', weight: 'bold', flex: 6 },
-              ]},
-            ],
+            type: 'box', layout: 'vertical', backgroundColor: M, paddingAll: '16px', spacing: 'sm',
+            contents: rows.map((r) => ({
+              type: 'box', layout: 'horizontal',
+              contents: [
+                { type: 'text', text: r.label, size: 'sm', color: '#90A4AE', flex: 4 },
+                { type: 'text', text: r.value, size: 'sm', color: '#FFFFFF', weight: 'bold', flex: 6, wrap: true },
+              ],
+            })),
           },
           {
-            type: 'box', layout: 'vertical', paddingAll: '16px',
+            type: 'box', layout: 'vertical', paddingAll: '12px',
             contents: [
-              { type: 'text', text: '合庫將於 3~5 個工作天內與您聯繫，請保持電話暢通。感謝您的申請！', size: 'xs', color: '#90A4AE', wrap: true },
+              { type: 'text', text: `請確認以上資料是否正確${nextHint}`, size: 'xs', color: '#78909C', wrap: true },
             ],
           },
         ],
       },
       footer: {
-        type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: B,
-        contents: [{ type: 'button', style: 'primary', color: BTN,
-          action: { type: 'message', label: '回到主選單', text: '返回主選單' },
-        }],
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
+        contents: [
+          { type: 'button', style: 'primary', color: '#1B5E20', height: 'sm',
+            action: { type: 'message', label: '✅ 確認資料正確', text: '確認文件資料' },
+          },
+          { type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '🔄 重新上傳', text: '重新上傳' },
+          },
+          { type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '✏️ 手動填寫', text: '手動填寫' },
+          },
+        ],
       },
     } as unknown as Record<string, unknown>,
   };
 }
 
-/** 建構推薦產品 Flex Message 卡片 — 深色科技風格（footer 改為確認送出申請） */
+// ─────────────────────────────────────────────────────────────
+// 推薦海報
+// ─────────────────────────────────────────────────────────────
+
+/** 建構豐富推薦產品 Flex Message（含適用資格說明） */
 function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanType | null): LineReplyMessage {
   const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
   const isReverseAnnuity = loanType === LoanType.REVERSE_ANNUITY;
@@ -207,6 +327,13 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
     ? `NT$ ${product.monthlyPayment.toLocaleString()}`
     : '依核貸金額計算';
 
+  // 適用資格說明
+  const eligibilityLines: string[] = [];
+  if (isReverseAnnuity) eligibilityLines.push('年滿 60 歲以上屋主');
+  else if (isMortgage) eligibilityLines.push('具合法不動產所有權');
+  if (loanType === LoanType.PERSONAL) eligibilityLines.push('年收入 20 萬元以上');
+  eligibilityLines.push('無不良信用紀錄');
+
   return {
     type: 'flex',
     altText: `🎯 AI 推薦：${product.name}（${product.rateRange}）`,
@@ -215,6 +342,7 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
       body: {
         type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
         contents: [
+          // 標題列
           {
             type: 'box', layout: 'horizontal', paddingAll: '16px', paddingBottom: '8px',
             alignItems: 'center', spacing: 'sm',
@@ -224,11 +352,13 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
               { type: 'text', text: '最適合您的方案', size: 'xxs', color: '#546E7A', align: 'end' },
             ],
           },
+          // 產品名稱
           {
             type: 'box', layout: 'vertical', paddingStart: '16px', paddingEnd: '16px', paddingBottom: '12px',
             contents: [{ type: 'text', text: product.name, weight: 'bold', size: 'lg', color: '#FFFFFF', wrap: true }],
           },
           { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
+          // 利率 + 月付金
           {
             type: 'box', layout: 'horizontal', backgroundColor: M, paddingAll: '16px',
             contents: [
@@ -236,7 +366,7 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
                 type: 'box', layout: 'vertical', flex: 1, alignItems: 'center',
                 contents: [
                   { type: 'text', text: product.rateRange, weight: 'bold', size: 'md', color: ACCENT, wrap: true, align: 'center' },
-                  { type: 'text', text: '利率', size: 'xxs', color: '#78909C', align: 'center' },
+                  { type: 'text', text: '利率範圍', size: 'xxs', color: '#78909C', align: 'center' },
                 ],
               },
               { type: 'box', layout: 'vertical', width: '1px', backgroundColor: '#1E3A5F', contents: [{ type: 'filler' }] },
@@ -249,18 +379,29 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
               },
             ],
           },
+          // 方案特色
           {
             type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm',
             contents: [
               { type: 'text', text: '方案特色', size: 'xs', color: '#78909C', weight: 'bold' },
-              ...product.features.slice(0, 4).map((f) => ({
+              ...product.features.slice(0, 3).map((f) => ({
                 type: 'box', layout: 'horizontal', spacing: 'sm',
                 contents: [
                   { type: 'text', text: '◆', size: 'xs', color: ACCENT, flex: 0 },
                   { type: 'text', text: f, size: 'xs', color: '#B0BEC5', flex: 1, wrap: true },
                 ],
               })),
-              { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#1E3A5F', margin: 'md', contents: [{ type: 'filler' }] },
+              { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#1E3A5F', margin: 'sm', contents: [{ type: 'filler' }] },
+              // 適用資格
+              { type: 'text', text: '適用資格', size: 'xs', color: '#78909C', weight: 'bold', margin: 'sm' },
+              ...eligibilityLines.map((e) => ({
+                type: 'box', layout: 'horizontal', spacing: 'sm',
+                contents: [
+                  { type: 'text', text: '✓', size: 'xs', color: '#69F0AE', flex: 0 },
+                  { type: 'text', text: e, size: 'xs', color: '#B0BEC5', flex: 1, wrap: true },
+                ],
+              })),
+              { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#1E3A5F', margin: 'sm', contents: [{ type: 'filler' }] },
               { type: 'text', text: `💡 ${product.savingsHighlight}`, size: 'xs', color: '#69F0AE', wrap: true },
             ],
           },
@@ -269,9 +410,6 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
       footer: {
         type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
         contents: [
-          { type: 'button', style: 'primary', color: BTN,
-            action: { type: 'message', label: '確認送出申請 →', text: '確認送出' },
-          },
           { type: 'button', style: 'secondary',
             action: { type: 'message', label: '重新試算', text: '重新開始' },
           },
@@ -281,14 +419,109 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
   };
 }
 
-/** 將 LineReplyMessage 陣列轉為 LINE SDK 格式並回覆 */
+/** 建構交叉銷售小卡 Flex Message */
+function buildCrossSellFlex(
+  crossSell: NonNullable<RecommendedProduct['crossSell']>,
+  loanType: LoanType | null,
+): LineReplyMessage {
+  const D = '#0D1B2A'; const B = '#0A1628';
+  const isMortgage = loanType === LoanType.MORTGAGE || loanType === LoanType.REVERSE_ANNUITY;
+
+  const bubbles: unknown[] = [];
+
+  if (crossSell.insurance) {
+    bubbles.push({
+      type: 'bubble', size: 'kilo',
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: D, spacing: 'sm',
+        contents: [
+          { type: 'text', text: '🛡️ 搭配保險', size: 'xs', color: '#CE93D8', weight: 'bold' },
+          { type: 'text', text: crossSell.insurance.name, size: 'sm', color: '#FFFFFF', weight: 'bold', wrap: true },
+          { type: 'text', text: `月繳 ${crossSell.insurance.price}`, size: 'sm', color: '#FFD54F' },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '8px', backgroundColor: B,
+        contents: [{ type: 'button', style: 'secondary', height: 'sm',
+          action: { type: 'message', label: '了解更多', text: '我想洽詢' },
+        }],
+      },
+    });
+  }
+
+  if (crossSell.creditCard) {
+    bubbles.push({
+      type: 'bubble', size: 'kilo',
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: D, spacing: 'sm',
+        contents: [
+          { type: 'text', text: '💳 搭配信用卡', size: 'xs', color: isMortgage ? '#4FC3F7' : '#69F0AE', weight: 'bold' },
+          { type: 'text', text: crossSell.creditCard.name, size: 'sm', color: '#FFFFFF', weight: 'bold', wrap: true },
+          { type: 'text', text: `回饋 ${crossSell.creditCard.cashback}`, size: 'sm', color: '#FFD54F' },
+          { type: 'text', text: `年費 ${crossSell.creditCard.fee}`, size: 'xs', color: '#78909C' },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '8px', backgroundColor: B,
+        contents: [{ type: 'button', style: 'secondary', height: 'sm',
+          action: { type: 'message', label: '了解更多', text: '我想洽詢' },
+        }],
+      },
+    });
+  }
+
+  if (bubbles.length === 0) {
+    return { type: 'text', text: '' }; // 無交叉銷售
+  }
+
+  return {
+    type: 'flex',
+    altText: '🎁 搭配方案推薦',
+    contents: bubbles.length === 1
+      ? bubbles[0] as Record<string, unknown>
+      : { type: 'carousel', contents: bubbles } as Record<string, unknown>,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 訊息發送 helpers
+// ─────────────────────────────────────────────────────────────
+
+/** 將 LineReplyMessage 陣列轉為 LINE SDK 格式並 Reply */
 async function replyMessages(
   replyToken: string,
   messages: LineReplyMessage[],
 ): Promise<void> {
   if (messages.length === 0) return;
+  const valid = messages.filter((m) => m.type !== 'text' || (m.text && m.text.length > 0));
+  if (valid.length === 0) return;
 
-  const lineMessages = messages.map((msg) => {
+  const lineMessages = toLineMessages(valid);
+  await lineClient.replyMessage({
+    replyToken,
+    messages: lineMessages as Parameters<typeof lineClient.replyMessage>[0]['messages'],
+  });
+}
+
+/** 使用 Push 推送訊息（reply token 已用完時） */
+async function pushMessages(
+  userId: string,
+  messages: LineReplyMessage[],
+): Promise<void> {
+  if (messages.length === 0) return;
+  const valid = messages.filter((m) => m.type !== 'text' || (m.text && m.text.length > 0));
+  if (valid.length === 0) return;
+
+  const lineMessages = toLineMessages(valid);
+  await lineClient.pushMessage({
+    to: userId,
+    messages: lineMessages as Parameters<typeof lineClient.pushMessage>[0]['messages'],
+  });
+}
+
+/** 轉換 LineReplyMessage 為 LINE SDK 格式 */
+function toLineMessages(messages: LineReplyMessage[]): Record<string, unknown>[] {
+  return messages.map((msg) => {
     if (msg.type === 'text') {
       const m: Record<string, unknown> = { type: 'text', text: msg.text };
       if (msg.quickReply) m.quickReply = msg.quickReply;
@@ -305,10 +538,5 @@ async function replyMessages(
       };
     }
     return { type: 'text', text: '（系統錯誤）' };
-  });
-
-  await lineClient.replyMessage({
-    replyToken,
-    messages: lineMessages as any[],
   });
 }

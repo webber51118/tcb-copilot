@@ -56,6 +56,10 @@ export enum ConversationState {
   COLLECT_PHONE = 'COLLECT_PHONE',
   /** 申請完成（顯示案件編號） */
   APPLY_DONE = 'APPLY_DONE',
+  /** 等待使用者上傳文件（MYDATA / 謄本圖片）*/
+  UPLOAD_DOCS = 'UPLOAD_DOCS',
+  /** 文件解析完成，等待使用者確認資料正確性 */
+  DOC_REVIEW = 'DOC_REVIEW',
 }
 
 /** 貸款類型 */

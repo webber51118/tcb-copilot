@@ -41,6 +41,11 @@ function createEmptySession(userId: string): UserSession {
     recommendedProductId: null,
     mydataReady: null,
     landRegistryReady: null,
+    idNumber: null,
+    employer: null,
+    annualIncome: null,
+    parsedFromDoc: false,
+    docReviewConfirmed: false,
     createdAt: now,
     updatedAt: now,
   };

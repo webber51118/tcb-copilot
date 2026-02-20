@@ -20,7 +20,9 @@ import {
   parkingQuickReply, buildingTypeQuickReply, layoutQuickReply,
   prepareDocsQuickReply, mydataQuickReply, landRegQuickReply,
   aiSuggestQ1QuickReply, aiSuggestQ2QuickReply, confirmApplyQuickReply,
+  uploadDocsQuickReply, docReviewQuickReply,
 } from '../utils/quickReplyHelper';
+import { createSessionToken } from '../config/sessionTokenStore';
 
 /** 產生文字回覆（含可選 Quick Reply） */
 function textMsg(text: string, quickReply?: { items: import('../models/types').QuickReplyItem[] }): LineReplyMessage {
@@ -573,29 +575,98 @@ function buildProductIntroResult(session: UserSession): TransitionResult {
   };
 }
 
-/** 建構「備妥文件」說明 TransitionResult */
+/** 建構文件上傳 LIFF Flex 卡片 */
+function buildUploadDocsFlex(session: UserSession, token: string): LineReplyMessage {
+  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
+  const isMortgage = session.loanType === LoanType.MORTGAGE
+    || session.loanType === LoanType.REVERSE_ANNUITY;
+  const ACCENT = isMortgage ? '#4FC3F7' : '#69F0AE';
+  const BTN = isMortgage ? '#1565C0' : '#1B5E20';
+
+  const liffUploadId = process.env.LIFF_ID_UPLOAD || 'YOUR_LIFF_ID_UPLOAD';
+  const uploadUrl = `https://liff.line.me/${liffUploadId}?token=${token}&loanType=${session.loanType ?? ''}`;
+
+  const docItems = isMortgage
+    ? [
+        { icon: '📊', label: 'MYDATA 所得資料', desc: '最近一年所得證明' },
+        { icon: '🏡', label: '土地建物謄本', desc: '最新謄本（3個月內）' },
+      ]
+    : [
+        { icon: '📊', label: 'MYDATA 所得資料', desc: '最近一年所得證明' },
+      ];
+
+  return {
+    type: 'flex',
+    altText: '📤 請上傳申請文件，AI 將自動辨識資料',
+    contents: {
+      type: 'bubble', size: 'mega',
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+        contents: [
+          {
+            type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '12px', spacing: 'sm',
+            contents: [
+              { type: 'text', text: '📤 AI 文件辨識', weight: 'bold', size: 'lg', color: '#FFFFFF' },
+              { type: 'text', text: '上傳文件，AI 自動填入申請資料', size: 'xs', color: '#78909C' },
+            ],
+          },
+          { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
+          {
+            type: 'box', layout: 'vertical', backgroundColor: M, paddingAll: '16px', spacing: 'md',
+            contents: docItems.map((d) => ({
+              type: 'box', layout: 'horizontal', spacing: 'md', alignItems: 'center',
+              contents: [
+                { type: 'text', text: d.icon, size: 'lg', flex: 0 },
+                {
+                  type: 'box', layout: 'vertical', flex: 1,
+                  contents: [
+                    { type: 'text', text: d.label, size: 'sm', weight: 'bold', color: '#FFFFFF' },
+                    { type: 'text', text: d.desc, size: 'xxs', color: '#90A4AE' },
+                  ],
+                },
+              ],
+            })),
+          },
+          {
+            type: 'box', layout: 'vertical', paddingAll: '12px',
+            contents: [
+              { type: 'text', text: '✦ AI 自動辨識，節省填寫時間', size: 'xs', color: ACCENT },
+              { type: 'text', text: '✦ 亦可選擇手動填寫', size: 'xs', color: '#78909C' },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
+        contents: [
+          { type: 'button', style: 'primary', color: BTN,
+            action: { type: 'uri', label: '📤 上傳文件（建議）', uri: uploadUrl },
+          },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
+
+/** 建構「備妥文件」說明 TransitionResult（重設計：Flex + LIFF 上傳按鈕） */
 function buildPrepareDocsResult(session: UserSession): TransitionResult {
   const isMortgageType = session.loanType === LoanType.MORTGAGE
     || session.loanType === LoanType.REVERSE_ANNUITY;
 
-  let docsText: string;
-  if (isMortgageType) {
-    docsText = '📋 申請前請備妥以下文件：\n\n'
-      + '① MYDATA 所得資料\n'
-      + '請至「MyData 臺灣通用」平台（mydata.nat.gov.tw）下載最近一年所得資料，申辦時請備妥電子檔。\n\n'
-      + '② 土地建物謄本\n'
-      + '請至「e-謄本」平台（https://eland.nat.gov.tw）或地政事務所申請，可取得電子謄本存檔備用。\n\n'
-      + '備妥後即可開始線上申請！';
-  } else {
-    docsText = '📋 申請前請備妥以下文件：\n\n'
-      + '① MYDATA 所得資料\n'
-      + '請至「MyData 臺灣通用」平台（mydata.nat.gov.tw）下載最近一年所得資料，申辦時請備妥電子檔。\n\n'
-      + '備妥後即可開始線上申請！';
-  }
+  // 產生 session token 供 LIFF 使用
+  const token = createSessionToken(session.userId);
+
+  const docsIntro = isMortgageType
+    ? '📋 申請前請準備以下文件：\n\n① MYDATA 所得資料（mydata.nat.gov.tw）\n② 土地建物謄本（eland.nat.gov.tw）\n\n💡 建議使用 AI 上傳辨識，自動填入資料省時省力！'
+    : '📋 申請前請準備以下文件：\n\n① MYDATA 所得資料（mydata.nat.gov.tw）\n\n💡 建議使用 AI 上傳辨識，自動填入資料省時省力！';
 
   return {
-    nextState: ConversationState.PREPARE_DOCS,
-    messages: [textMsg(docsText, prepareDocsQuickReply())],
+    nextState: ConversationState.UPLOAD_DOCS,
+    messages: [
+      textMsg(docsIntro),
+      buildUploadDocsFlex(session, token),
+      textMsg('請上傳文件，或選擇手動填寫：', uploadDocsQuickReply()),
+    ],
   };
 }
 
@@ -728,25 +799,76 @@ const handleAiSuggestQ2: StateHandler = (session, input) => {
 
 // ─── 文件確認 ───
 
-/** PREPARE_DOCS：說明需備文件 */
-const handlePrepareDocs: StateHandler = (session, input) => {
+/** PREPARE_DOCS：已重設計為 buildPrepareDocsResult 直接轉入 UPLOAD_DOCS */
+const handlePrepareDocs: StateHandler = (session, _input) => {
+  return buildPrepareDocsResult(session);
+};
+
+/** UPLOAD_DOCS：等待使用者上傳文件或手動跳過 */
+const handleUploadDocs: StateHandler = (session, input) => {
   const t = input.trim();
 
-  if (t === '了解，開始填寫') {
+  // 手動跳過 → 進入原始問答流程（MYDATA/謄本手動確認）
+  if (t === '手動填寫') {
     const hint = session.loanType === LoanType.REVERSE_ANNUITY
       ? '請問您的年齡是？（60~75 歲）'
       : '請問您的年齡是？（20~75 歲）';
     return { nextState: ConversationState.COLLECT_AGE, messages: [textMsg(hint)] };
   }
 
-  if (t === '稍後再說') {
+  // 圖片訊息由 conversationHandler 攔截，此處只處理文字回應
+  // 若收到文件解析完成通知（由 conversationHandler push DOC_REVIEW 後改 state）
+  if (t === '文件解析完成') {
     return {
-      nextState: ConversationState.CHOOSE_LOAN_TYPE,
-      messages: [textMsg('好的，您可以隨時回來繼續申請。如需重新開始，請點選主選單。', loanTypeQuickReply())],
+      nextState: ConversationState.DOC_REVIEW,
+      messages: [textMsg('系統正在整理解析結果，請稍候...')],
     };
   }
 
-  return buildPrepareDocsResult(session);
+  return {
+    nextState: ConversationState.UPLOAD_DOCS,
+    messages: [textMsg('請透過上方連結上傳文件，或選擇手動填寫：', uploadDocsQuickReply())],
+  };
+};
+
+/** DOC_REVIEW：顯示文件解析摘要，等待使用者確認 */
+const handleDocReview: StateHandler = (session, input) => {
+  const t = input.trim();
+
+  if (t === '確認文件資料') {
+    session.docReviewConfirmed = true;
+    // 已從文件預填 → 跳過已知欄位，直接進入年齡收集
+    const hint = session.loanType === LoanType.REVERSE_ANNUITY
+      ? '請問您的年齡是？（60~75 歲）'
+      : '請問您的年齡是？（20~75 歲）';
+    return {
+      nextState: ConversationState.COLLECT_AGE,
+      messages: [textMsg(`✅ 已確認文件資料！\n\n${hint}`)],
+    };
+  }
+
+  if (t === '重新上傳') {
+    return buildPrepareDocsResult(session);
+  }
+
+  if (t === '手動填寫') {
+    // 清除文件解析資料，進入原始問答流程
+    session.parsedFromDoc = false;
+    session.basicInfo.income = null;
+    session.propertyInfo.buildingType = null;
+    session.propertyInfo.floor = null;
+    session.propertyInfo.areaPing = null;
+    session.propertyInfo.propertyAge = null;
+    const hint = session.loanType === LoanType.REVERSE_ANNUITY
+      ? '請問您的年齡是？（60~75 歲）'
+      : '請問您的年齡是？（20~75 歲）';
+    return { nextState: ConversationState.COLLECT_AGE, messages: [textMsg(hint)] };
+  }
+
+  return {
+    nextState: ConversationState.DOC_REVIEW,
+    messages: [textMsg('請確認解析出的資料是否正確：', docReviewQuickReply())],
+  };
 };
 
 // ─── 基本資料收集 ───
@@ -793,6 +915,25 @@ const handleCollectOccupation: StateHandler = (session, input) => {
 
 /** 收集月收入 */
 const handleCollectIncome: StateHandler = (session, input) => {
+  // 若已從文件預填月收入，自動跳過
+  if (session.parsedFromDoc && session.basicInfo.income !== null) {
+    const incomeDisplay = `${Math.round((session.basicInfo.income) / 10000)}萬`;
+    if (session.loanType === LoanType.REVERSE_ANNUITY) {
+      session.basicInfo.purpose = '以房養老';
+      return {
+        nextState: ConversationState.COLLECT_TERM,
+        messages: [textMsg(`📊 已從 MyData 取得月收入：${incomeDisplay}\n\n請問您希望的撥付年限？`, reverseAnnuityTermQuickReply())],
+      };
+    }
+    const qr = session.loanType === LoanType.MORTGAGE
+      ? mortgagePurposeQuickReply()
+      : personalPurposeQuickReply();
+    return {
+      nextState: ConversationState.COLLECT_PURPOSE,
+      messages: [textMsg(`📊 已從 MyData 取得月收入：${incomeDisplay}\n\n請問您的貸款用途是？`, qr)],
+    };
+  }
+
   const income = parseIncome(input);
   if (income === null) {
     return {
@@ -876,11 +1017,28 @@ const handleCollectAmount: StateHandler = (session, input) => {
   }
   session.basicInfo.amount = amount;
 
-  // 信貸：確認 MYDATA
+  // 信貸：已上傳文件 → 直接推薦；否則確認 MYDATA
   if (session.loanType === LoanType.PERSONAL) {
+    if (session.parsedFromDoc) {
+      return {
+        nextState: ConversationState.RECOMMEND,
+        messages: [textMsg('資料收集完成！正在為您分析最適合的貸款方案...')],
+      };
+    }
     return {
       nextState: ConversationState.CONFIRM_MYDATA,
       messages: [textMsg('請問您是否已透過 MyData 取得所得資料？', mydataQuickReply())],
+    };
+  }
+
+  // 房貸：已上傳謄本且有坪數/屋齡 → 跳過部分標的物問題
+  if (session.parsedFromDoc && session.propertyInfo.propertyAge !== null) {
+    return {
+      nextState: ConversationState.COLLECT_PARKING,
+      messages: [textMsg(
+        `🏡 已從謄本取得屋齡：${session.propertyInfo.propertyAge}年、坪數：${session.propertyInfo.areaPing ?? '?'}坪\n\n請問是否有車位？`,
+        parkingQuickReply(),
+      )],
     };
   }
 
@@ -941,13 +1099,31 @@ const handleCollectFloor: StateHandler = (session, input) => {
   return { nextState: ConversationState.COLLECT_BUILDING_TYPE, messages: [textMsg('請問建物類型？', buildingTypeQuickReply())] };
 };
 
-/** 收集建物類型 → 轉入 MYDATA 確認 */
+/** 收集建物類型 → 轉入 MYDATA 確認（或若文件已解析則直接 RECOMMEND） */
 const handleCollectBuildingType: StateHandler = (session, input) => {
+  // 若已從謄本預填建物類型，自動跳過並前往 RECOMMEND（文件路徑）
+  if (session.parsedFromDoc && session.propertyInfo.buildingType !== null) {
+    return {
+      nextState: ConversationState.RECOMMEND,
+      messages: [textMsg('資料收集完成！正在為您分析最適合的貸款方案...')],
+    };
+  }
+
   const buildingType = parseBuildingType(input);
   if (buildingType === null) {
     return { nextState: ConversationState.COLLECT_BUILDING_TYPE, messages: [textMsg('請選擇建物類型', buildingTypeQuickReply())] };
   }
   session.propertyInfo.buildingType = buildingType;
+
+  // 文件路徑（已上傳文件）→ 直接推薦
+  if (session.parsedFromDoc) {
+    return {
+      nextState: ConversationState.RECOMMEND,
+      messages: [textMsg('資料收集完成！正在為您分析最適合的貸款方案...')],
+    };
+  }
+
+  // 手動路徑 → CONFIRM_MYDATA
   return {
     nextState: ConversationState.CONFIRM_MYDATA,
     messages: [textMsg('請問您是否已透過 MyData 取得所得資料？', mydataQuickReply())],
@@ -1024,20 +1200,67 @@ const handleRecommend: StateHandler = (_session, _input) => ({
   messages: [textMsg('系統正在處理中，請稍候...')],
 });
 
-/** CONFIRM_APPLY：確認送出申請 */
-const handleConfirmApply: StateHandler = (_session, input) => {
-  const t = input.trim();
+/** 建構 LIFF 申請書連結 Flex 卡片 */
+function buildApplicationFormFlex(session: UserSession): LineReplyMessage {
+  const D = '#0D1B2A'; const B = '#0A1628';
+  const isMortgage = session.loanType === LoanType.MORTGAGE
+    || session.loanType === LoanType.REVERSE_ANNUITY;
+  const ACCENT = isMortgage ? '#4FC3F7' : '#69F0AE';
+  const BTN = isMortgage ? '#1565C0' : '#1B5E20';
 
-  if (t === '確認送出') {
-    return {
-      nextState: ConversationState.COLLECT_NAME,
-      messages: [textMsg('請輸入您的姓名（1~10 字，限中英文）')],
-    };
-  }
+  const token = createSessionToken(session.userId);
+  const liffAppId = process.env.LIFF_ID_APPLICATION || 'YOUR_LIFF_ID_APPLICATION';
+  const formUrl = `https://liff.line.me/${liffAppId}?token=${token}`;
 
   return {
+    type: 'flex',
+    altText: '📝 請填寫消費者貸款申請書並完成電子簽名',
+    contents: {
+      type: 'bubble', size: 'mega',
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+        contents: [
+          {
+            type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '12px', spacing: 'sm',
+            contents: [
+              { type: 'text', text: '📝 填寫申請書', weight: 'bold', size: 'lg', color: '#FFFFFF' },
+              { type: 'text', text: '最後一步：完成電子申請書與簽名', size: 'xs', color: '#78909C' },
+            ],
+          },
+          { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
+          {
+            type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm',
+            contents: [
+              { type: 'text', text: '申請書包含以下步驟：', size: 'xs', color: '#78909C' },
+              { type: 'text', text: '① 確認申貸資訊', size: 'sm', color: '#B0BEC5' },
+              { type: 'text', text: '② 補充個人資料', size: 'sm', color: '#B0BEC5' },
+              { type: 'text', text: '③ 閱讀並同意條款', size: 'sm', color: '#B0BEC5' },
+              { type: 'text', text: '④ 手寫電子簽名', size: 'sm', color: '#B0BEC5' },
+              { type: 'text', text: '⏱ 預計 2~3 分鐘完成', size: 'xs', color: ACCENT, margin: 'md' },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
+        contents: [
+          { type: 'button', style: 'primary', color: BTN,
+            action: { type: 'uri', label: '填寫申請書 →', uri: formUrl },
+          },
+          { type: 'button', style: 'secondary',
+            action: { type: 'message', label: '重新試算', text: '重新開始' },
+          },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
+
+/** CONFIRM_APPLY：顯示 LIFF 申請書連結（由 conversationHandler 攔截產生） */
+const handleConfirmApply: StateHandler = (session, _input) => {
+  return {
     nextState: ConversationState.CONFIRM_APPLY,
-    messages: [textMsg('請確認是否送出申請？', confirmApplyQuickReply())],
+    messages: [buildApplicationFormFlex(session)],
   };
 };
 
@@ -1089,6 +1312,8 @@ const stateHandlers: Record<ConversationState, StateHandler> = {
   [ConversationState.AI_SUGGEST_Q1]: handleAiSuggestQ1,
   [ConversationState.AI_SUGGEST_Q2]: handleAiSuggestQ2,
   [ConversationState.PREPARE_DOCS]: handlePrepareDocs,
+  [ConversationState.UPLOAD_DOCS]: handleUploadDocs,
+  [ConversationState.DOC_REVIEW]: handleDocReview,
   [ConversationState.COLLECT_AGE]: handleCollectAge,
   [ConversationState.COLLECT_OCCUPATION]: handleCollectOccupation,
   [ConversationState.COLLECT_INCOME]: handleCollectIncome,

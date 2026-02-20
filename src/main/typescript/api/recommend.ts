@@ -73,6 +73,11 @@ recommendRouter.post('/recommend', (req: Request, res: Response) => {
     recommendedProductId: null,
     mydataReady: null,
     landRegistryReady: null,
+    idNumber: null,
+    employer: null,
+    annualIncome: null,
+    parsedFromDoc: false,
+    docReviewConfirmed: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

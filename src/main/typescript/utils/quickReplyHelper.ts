@@ -184,3 +184,23 @@ export function confirmApplyQuickReply(): { items: QuickReplyItem[] } {
     ],
   };
 }
+
+/** 文件上傳等待中（手動填寫跳過選項） */
+export function uploadDocsQuickReply(): { items: QuickReplyItem[] } {
+  return {
+    items: [
+      item('手動填寫（跳過上傳）', '手動填寫'),
+    ],
+  };
+}
+
+/** 文件解析結果確認 */
+export function docReviewQuickReply(): { items: QuickReplyItem[] } {
+  return {
+    items: [
+      item('✅ 確認資料正確', '確認文件資料'),
+      item('🔄 重新上傳', '重新上傳'),
+      item('✏️ 手動填寫', '手動填寫'),
+    ],
+  };
+}
