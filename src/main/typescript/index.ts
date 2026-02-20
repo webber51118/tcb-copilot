@@ -11,6 +11,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { lineMiddleware } from './core/lineClient';
 import webhookRouter from './api/webhook';
 import { promotionAdminRouter } from './api/promotionAdmin';
+import { applicationAdminRouter } from './api/applicationAdmin';
 import { recommendRouter } from './api/recommend';
 
 const app = express();
@@ -35,8 +36,9 @@ function adminAuth(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-// 活動後台管理 API
+// 後台管理 API（活動 + 申請案件）
 app.use('/api/admin', adminAuth, promotionAdminRouter);
+app.use('/api/admin', adminAuth, applicationAdminRouter);
 
 // LIFF 公開 API（推薦引擎 + 活動查詢，允許 CORS 供前端呼叫）
 app.use('/api', (_req, res, next) => {

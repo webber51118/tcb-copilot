@@ -33,8 +33,33 @@ export interface UserSession {
   loanType: LoanType | null;
   basicInfo: BasicInfo;
   propertyInfo: PropertyInfo;
+  applicantName: string | null;
+  applicantPhone: string | null;
+  recommendedProductId: string | null;
+  mydataReady: boolean | null;
+  landRegistryReady: boolean | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/** 貸款申請案件 */
+export interface LoanApplication {
+  /** 案件編號 TCB-YYYYMMDD-0001 */
+  id: string;
+  lineUserId: string;
+  applicantName: string;
+  applicantPhone: string;
+  loanType: LoanType;
+  basicInfo: BasicInfo;
+  /** 信貸欄位皆為 null */
+  propertyInfo: PropertyInfo;
+  recommendedProductId: string;
+  /** MYDATA 所得資料是否已備妥 */
+  mydataReady: boolean;
+  /** 土地建物謄本（信貸為 null） */
+  landRegistryReady: boolean | null;
+  status: 'pending' | 'reviewing' | 'approved' | 'rejected';
+  appliedAt: string;
 }
 
 /** 狀態轉移結果 */

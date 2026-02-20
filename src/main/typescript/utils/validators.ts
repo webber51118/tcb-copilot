@@ -144,3 +144,18 @@ export function parseBuildingType(text: string): BuildingType | null {
   if (values.includes(t)) return t as BuildingType;
   return null;
 }
+
+/** 驗證申請人姓名（1~10 字，限中英文與空白） */
+export function parseName(text: string): string | null {
+  const t = text.trim();
+  if (t.length === 0 || t.length > 10) return null;
+  if (!/^[\u4e00-\u9fa5a-zA-Z\s]+$/.test(t)) return null;
+  return t;
+}
+
+/** 驗證手機號碼（09XXXXXXXX，共10碼） */
+export function parsePhone(text: string): string | null {
+  const cleaned = normalizeFullWidth(text).trim().replace(/[-\s]/g, '');
+  if (!/^09\d{8}$/.test(cleaned)) return null;
+  return cleaned;
+}

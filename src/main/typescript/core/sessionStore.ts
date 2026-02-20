@@ -36,6 +36,11 @@ function createEmptySession(userId: string): UserSession {
       floor: null,
       buildingType: null,
     },
+    applicantName: null,
+    applicantPhone: null,
+    recommendedProductId: null,
+    mydataReady: null,
+    landRegistryReady: null,
     createdAt: now,
     updatedAt: now,
   };

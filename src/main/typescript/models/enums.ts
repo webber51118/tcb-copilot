@@ -10,6 +10,8 @@ export enum ConversationState {
   IDLE = 'IDLE',
   /** 選擇貸款類型（房貸/信貸） */
   CHOOSE_LOAN_TYPE = 'CHOOSE_LOAN_TYPE',
+  /** 展示產品介紹、試算表、申辦流程 */
+  SHOW_PRODUCT_INTRO = 'SHOW_PRODUCT_INTRO',
   /** 收集年齡 */
   COLLECT_AGE = 'COLLECT_AGE',
   /** 收集職業 */
@@ -36,6 +38,24 @@ export enum ConversationState {
   COLLECT_BUILDING_TYPE = 'COLLECT_BUILDING_TYPE',
   /** 產品推薦結果 */
   RECOMMEND = 'RECOMMEND',
+  /** AI 推薦第一題：主要需求 */
+  AI_SUGGEST_Q1 = 'AI_SUGGEST_Q1',
+  /** AI 推薦第二題：有無房屋（週轉情境） */
+  AI_SUGGEST_Q2 = 'AI_SUGGEST_Q2',
+  /** 文件說明 + 確認（申請前置步驟） */
+  PREPARE_DOCS = 'PREPARE_DOCS',
+  /** 確認 MYDATA 所得資料是否備妥 */
+  CONFIRM_MYDATA = 'CONFIRM_MYDATA',
+  /** 確認土地建物謄本是否備妥（房貸/以房養老專用） */
+  CONFIRM_LAND_REG = 'CONFIRM_LAND_REG',
+  /** 顯示推薦摘要 + 確認申請 */
+  CONFIRM_APPLY = 'CONFIRM_APPLY',
+  /** 收集申請人姓名 */
+  COLLECT_NAME = 'COLLECT_NAME',
+  /** 收集聯絡電話 */
+  COLLECT_PHONE = 'COLLECT_PHONE',
+  /** 申請完成（顯示案件編號） */
+  APPLY_DONE = 'APPLY_DONE',
 }
 
 /** 貸款類型 */

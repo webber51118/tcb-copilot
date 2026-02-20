@@ -68,6 +68,11 @@ recommendRouter.post('/recommend', (req: Request, res: Response) => {
     loanType: body.loanType as LoanType,
     basicInfo,
     propertyInfo,
+    applicantName: null,
+    applicantPhone: null,
+    recommendedProductId: null,
+    mydataReady: null,
+    landRegistryReady: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
