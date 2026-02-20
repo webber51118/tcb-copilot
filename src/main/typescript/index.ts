@@ -7,7 +7,15 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import * as fs from 'fs';
+import * as path from 'path';
 import express, { Request, Response, NextFunction } from 'express';
+
+// 確保資料目錄存在
+['data', 'data/applications'].forEach((dir) => {
+  const p = path.join(process.cwd(), dir);
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+});
 import { lineMiddleware } from './core/lineClient';
 import webhookRouter from './api/webhook';
 import { promotionAdminRouter } from './api/promotionAdmin';

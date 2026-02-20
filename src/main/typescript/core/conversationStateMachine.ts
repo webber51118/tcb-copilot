@@ -885,6 +885,15 @@ const handleCollectAge: StateHandler = (session, input) => {
   session.basicInfo.age = age;
 
   if (session.loanType === LoanType.REVERSE_ANNUITY) {
+    // 若已從 MyData 預填月收入 → 直接跳 COLLECT_TERM
+    if (session.parsedFromDoc && session.basicInfo.income !== null) {
+      const incomeDisplay = `${Math.round(session.basicInfo.income / 10000)}萬`;
+      session.basicInfo.purpose = '以房養老';
+      return {
+        nextState: ConversationState.COLLECT_TERM,
+        messages: [textMsg(`📊 已從 MyData 取得月收入：${incomeDisplay}\n\n請問您希望的撥付年限？`, reverseAnnuityTermQuickReply())],
+      };
+    }
     return {
       nextState: ConversationState.COLLECT_INCOME,
       messages: [textMsg('請問您目前每月大約有多少退休金或其他收入？\n（可輸入如：3萬、25000）')],
@@ -907,6 +916,19 @@ const handleCollectOccupation: StateHandler = (session, input) => {
     };
   }
   session.basicInfo.occupation = occupation;
+
+  // 若已從 MyData 預填月收入 → 直接跳 COLLECT_PURPOSE
+  if (session.parsedFromDoc && session.basicInfo.income !== null) {
+    const incomeDisplay = `${Math.round(session.basicInfo.income / 10000)}萬`;
+    const qr = session.loanType === LoanType.MORTGAGE
+      ? mortgagePurposeQuickReply()
+      : personalPurposeQuickReply();
+    return {
+      nextState: ConversationState.COLLECT_PURPOSE,
+      messages: [textMsg(`📊 已從 MyData 取得月收入：${incomeDisplay}\n\n請問您的貸款用途是？`, qr)],
+    };
+  }
+
   return {
     nextState: ConversationState.COLLECT_INCOME,
     messages: [textMsg('請問您的月收入大約多少？\n（可輸入如：5萬、3.5萬、50000）')],
@@ -1086,6 +1108,24 @@ const handleCollectLayout: StateHandler = (session, input) => {
     return { nextState: ConversationState.COLLECT_LAYOUT, messages: [textMsg('請輸入房屋格局（如：3房2廳2衛）', layoutQuickReply())] };
   }
   session.propertyInfo.layout = layout;
+
+  // 若已從謄本預填樓層與建物類型 → 全部已知，直接 RECOMMEND（文件路徑）
+  if (session.parsedFromDoc) {
+    if (session.propertyInfo.floor !== null && session.propertyInfo.buildingType !== null) {
+      return {
+        nextState: ConversationState.RECOMMEND,
+        messages: [textMsg('資料收集完成！正在為您分析最適合的貸款方案...')],
+      };
+    }
+    // 只有樓層已知
+    if (session.propertyInfo.floor !== null) {
+      return {
+        nextState: ConversationState.COLLECT_BUILDING_TYPE,
+        messages: [textMsg(`🏡 已從謄本取得樓層：${session.propertyInfo.floor}樓\n\n請問建物類型？`, buildingTypeQuickReply())],
+      };
+    }
+  }
+
   return { nextState: ConversationState.COLLECT_FLOOR, messages: [textMsg('請問所在樓層？（1~99 樓）')] };
 };
 
@@ -1096,6 +1136,15 @@ const handleCollectFloor: StateHandler = (session, input) => {
     return { nextState: ConversationState.COLLECT_FLOOR, messages: [textMsg('請輸入有效的樓層數（1~99）')] };
   }
   session.propertyInfo.floor = floor;
+
+  // 若已從謄本預填建物類型 → 直接 RECOMMEND（文件路徑）
+  if (session.parsedFromDoc && session.propertyInfo.buildingType !== null) {
+    return {
+      nextState: ConversationState.RECOMMEND,
+      messages: [textMsg('資料收集完成！正在為您分析最適合的貸款方案...')],
+    };
+  }
+
   return { nextState: ConversationState.COLLECT_BUILDING_TYPE, messages: [textMsg('請問建物類型？', buildingTypeQuickReply())] };
 };
 
