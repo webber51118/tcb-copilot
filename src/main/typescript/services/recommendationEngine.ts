@@ -17,7 +17,7 @@ import { PRODUCT_CATALOG } from '../config/productCatalog';
  * 等額攤還月付計算（一般房貸 / 信貸）
  * P = 本金, r = 月利率, n = 期數（月）
  */
-function calcMonthlyPayment(principal: number, annualRate: number, termYears: number): number {
+export function calcMonthlyPayment(principal: number, annualRate: number, termYears: number): number {
   const r = annualRate / 100 / 12;
   const n = termYears * 12;
   if (r === 0) return Math.round(principal / n);

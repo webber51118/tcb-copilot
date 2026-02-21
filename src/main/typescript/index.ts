@@ -12,7 +12,7 @@ import * as path from 'path';
 import express, { Request, Response, NextFunction } from 'express';
 
 // 確保資料目錄存在
-['data', 'data/applications'].forEach((dir) => {
+['data', 'data/applications', 'data/credit-reviews'].forEach((dir) => {
   const p = path.join(process.cwd(), dir);
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
 });
@@ -24,6 +24,7 @@ import { recommendRouter } from './api/recommend';
 import { parseDocumentRouter } from './api/parseDocument';
 import { submitApplicationRouter } from './api/submitApplication';
 import { valuateRouter } from './api/valuate';
+import { creditReviewRouter } from './api/creditReview';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,6 +64,7 @@ app.use('/api', recommendRouter);
 app.use('/api', parseDocumentRouter);
 app.use('/api', submitApplicationRouter);
 app.use('/api', valuateRouter);
+app.use('/api', creditReviewRouter);
 
 // 健康檢查
 app.get('/health', (_req, res) => {
