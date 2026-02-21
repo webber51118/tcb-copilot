@@ -194,3 +194,63 @@ export interface RecommendationResult {
   alternatives: RecommendedProduct[];
   activePromotionIds: string[];
 }
+
+// ─────────────────────────────────────────────────────────────────
+// ML 鑑價 SubAgent（POST /api/valuate）
+// ─────────────────────────────────────────────────────────────────
+
+/** 鑑價請求（camelCase，由 Node.js 轉 snake_case 後傳給 Python） */
+export interface ValuationRequest {
+  /** 坪數（大於 0） */
+  areaPing: number;
+  /** 屋齡（年，0~80） */
+  propertyAge: number;
+  /** 建物類型：大樓 / 華廈 / 公寓 / 透天 / 別墅 */
+  buildingType: string;
+  /** 樓層（1~99） */
+  floor: number;
+  /** 是否含車位 */
+  hasParking: boolean;
+  /** 格局（例：3房2廳） */
+  layout: string;
+  /** 縣市（例：台北市） */
+  region: string;
+  /** 申請貸款金額（元） */
+  loanAmount: number;
+}
+
+/** 蒙地卡羅信心區間 */
+export interface ValuationConfidenceInterval {
+  /** P5 悲觀估值（元） */
+  p5: number;
+  /** P50 中位估值（元，建議鑑估值） */
+  p50: number;
+  /** P95 樂觀估值（元） */
+  p95: number;
+}
+
+/** 鑑價結果（Python 服務回傳，camelCase 轉換後） */
+export interface ValuationResult {
+  /** 建議鑑估值（P50，元） */
+  estimatedValue: number;
+  /** 蒙地卡羅信心區間 */
+  confidenceInterval: ValuationConfidenceInterval;
+  /** 貸款成數（loanAmount / estimatedValue） */
+  ltvRatio: number;
+  /** 風險等級：低風險 / 中風險 / 高風險 */
+  riskLevel: '低風險' | '中風險' | '高風險';
+  /** LSTM 市場指數 */
+  lstmIndex: number;
+  /** RF+SDE 情緒分數（-1 ~ 1） */
+  sentimentScore: number;
+  /** 基準估值（未套用市場指數，元） */
+  baseValue: number;
+  /** 各係數明細 */
+  breakdown: Record<string, number>;
+  /** 運算模式：demo / production */
+  mode: 'demo' | 'production';
+  /** 縣市 */
+  region: string;
+  /** 建物類型 */
+  buildingType: string;
+}

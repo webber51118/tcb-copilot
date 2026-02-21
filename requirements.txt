@@ -1,0 +1,15 @@
+# ML 鑑價 SubAgent 相依套件
+# Demo 模式：不需要 TensorFlow（以線性近似替代）
+# 真實替換時：取消 tensorflow 與 scikit-learn 的注解
+
+numpy>=1.24.0
+scipy>=1.10.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.4.0
+httpx>=0.25.0
+
+# 真實模型訓練時取消注解：
+# tensorflow>=2.13.0
+# scikit-learn>=1.3.0
+# pandas>=2.0.0

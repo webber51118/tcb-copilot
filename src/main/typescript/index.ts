@@ -23,6 +23,7 @@ import { applicationAdminRouter } from './api/applicationAdmin';
 import { recommendRouter } from './api/recommend';
 import { parseDocumentRouter } from './api/parseDocument';
 import { submitApplicationRouter } from './api/submitApplication';
+import { valuateRouter } from './api/valuate';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,6 +62,7 @@ app.options('/api/*', (_req, res) => res.sendStatus(200));
 app.use('/api', recommendRouter);
 app.use('/api', parseDocumentRouter);
 app.use('/api', submitApplicationRouter);
+app.use('/api', valuateRouter);
 
 // 健康檢查
 app.get('/health', (_req, res) => {
