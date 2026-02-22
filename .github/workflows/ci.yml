@@ -1,0 +1,92 @@
+name: CI — 個金 Co-Pilot 領航員
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────
+  # Job 1：TypeScript / Node.js — Jest 單元測試 + 覆蓋率
+  # ──────────────────────────────────────────────────────────────────
+  typescript-tests:
+    name: TypeScript Jest Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript compile check
+        run: npx tsc --noEmit
+
+      - name: Run Jest tests with coverage
+        run: npm test -- --coverage --coverageReporters=text --coverageReporters=lcov
+        env:
+          CI: true
+          # 避免 Claude API / LINE SDK 真實呼叫（測試均有 mock）
+          ANTHROPIC_API_KEY: dummy_for_ci
+          LINE_CHANNEL_ACCESS_TOKEN: dummy_for_ci
+          LINE_CHANNEL_SECRET: dummy_for_ci
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ts-coverage
+          path: coverage/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 2：Python — pytest 單元測試 + 覆蓋率
+  # ──────────────────────────────────────────────────────────────────
+  python-tests:
+    name: Python pytest Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run pytest with coverage
+        run: |
+          python -m pytest src/main/python/tests/ \
+            --cov=src/main/python \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=70 \
+            -v
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-coverage
+          path: coverage.xml
+          retention-days: 7
