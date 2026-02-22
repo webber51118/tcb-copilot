@@ -8,10 +8,13 @@ import { WebhookEvent, messagingApi } from '@line/bot-sdk';
 import { lineClient } from '../core/lineClient';
 import { getSession, updateSession, resetSession } from '../core/sessionStore';
 import { transition } from '../core/conversationStateMachine';
-import { ConversationState, LoanType, BuildingType } from '../models/enums';
+import { ConversationState, LoanType, BuildingType, OccupationType } from '../models/enums';
 import { LineReplyMessage, RecommendedProduct, UserSession, DocumentParseResult } from '../models/types';
 import { recommendProducts } from './recommendationEngine';
 import { parseImageBuffer } from './documentParser';
+import { ragQuery } from './ragService';
+import { runFullReview } from './workflowService';
+import { FullReviewRequest, FullReviewResponse } from '../models/workflow';
 
 /** LINE Blob 客戶端（用於下載圖片內容） */
 const blobClient = new messagingApi.MessagingApiBlobClient({
@@ -68,10 +71,69 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     return replyMessages(event.replyToken, result.messages);
   }
 
+  // 法規問答入口（全域可用）
+  if (userText === '法規問答') {
+    return replyMessages(event.replyToken, [{
+      type: 'text',
+      text: '⚖️ 法規問答服務\n\n請選擇常見問題，或輸入「法規:您的問題」進行查詢：',
+      quickReply: {
+        items: [
+          { type: 'action', action: { type: 'message', label: '第一戶寬限期', text: '法規:第一戶房貸有寬限期嗎？' } },
+          { type: 'action', action: { type: 'message', label: '第二戶成數', text: '法規:第二戶房貸最高可以貸幾成？' } },
+          { type: 'action', action: { type: 'message', label: 'DBR上限', text: '法規:DBR上限是多少？' } },
+          { type: 'action', action: { type: 'message', label: '青安貸款', text: '法規:青安貸款的利率和申請條件是什麼？' } },
+        ],
+      },
+    }]);
+  }
+
+  // 法規問答查詢（「法規:問題」前綴）
+  if (userText.startsWith('法規:')) {
+    const question = userText.slice(3).trim();
+    if (question.length > 0) {
+      await replyMessages(event.replyToken, [{
+        type: 'text',
+        text: '📖 正在查詢法規知識庫，請稍候...',
+      }]);
+      try {
+        const loanTypeHint =
+          session.loanType === LoanType.MORTGAGE ? 'mortgage'
+          : session.loanType === LoanType.PERSONAL ? 'personal'
+          : undefined;
+        const ragResult = await ragQuery({ question, loanType: loanTypeHint });
+        const confidenceLabel: Record<string, string> = { high: '高', medium: '中', low: '低' };
+        await pushMessages(userId, [{
+          type: 'text',
+          text: `📋 法規問答\n\n${ragResult.answer}\n\n📌 資料來源：${ragResult.sources.join('、')}\n🔍 信心程度：${confidenceLabel[ragResult.confidence] ?? '中'}`,
+          quickReply: {
+            items: [
+              { type: 'action', action: { type: 'message', label: '繼續查詢', text: '法規問答' } },
+              { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
+            ],
+          },
+        }]);
+      } catch (err) {
+        console.error('[conversationHandler] RAG 查詢失敗:', err);
+        await pushMessages(userId, [{
+          type: 'text',
+          text: '⚠️ 法規查詢暫時無法使用，請稍後再試。',
+        }]);
+      }
+      return;
+    }
+  }
+
   // 執行狀態轉移
   const result = transition(session, userText);
   session.state = result.nextState;
   updateSession(session);
+
+  // 申請完成 → 非同步觸發完整 AI 審核流程
+  if (result.nextState === ConversationState.APPLY_DONE) {
+    triggerWorkflowAsync(userId, session).catch((err) =>
+      console.error('[conversationHandler] Workflow 觸發失敗:', err),
+    );
+  }
 
   // 進入 RECOMMEND 狀態：呼叫推薦引擎，顯示豐富推薦海報 → 轉 CONFIRM_APPLY
   if (session.state === ConversationState.RECOMMEND) {
@@ -539,4 +601,194 @@ function toLineMessages(messages: LineReplyMessage[]): Record<string, unknown>[]
     }
     return { type: 'text', text: '（系統錯誤）' };
   });
+}
+
+// ─────────────────────────────────────────────────────────────
+// 完整審核流程（Workflow Integration）
+// ─────────────────────────────────────────────────────────────
+
+/** 從 session 建構 FullReviewRequest（不完整資料補預設值） */
+function buildWorkflowFromSession(session: UserSession): FullReviewRequest | null {
+  const { basicInfo, propertyInfo, loanType } = session;
+  if (
+    !basicInfo.amount ||
+    !basicInfo.termYears ||
+    !basicInfo.income ||
+    !basicInfo.age ||
+    !basicInfo.occupation
+  ) {
+    return null; // 關鍵資料缺失，無法建構請求
+  }
+
+  const isMortgage = loanType === LoanType.MORTGAGE;
+  const occupation = basicInfo.occupation as OccupationType;
+  const isPublicServant = [
+    OccupationType.CIVIL_SERVANT,
+    OccupationType.MILITARY,
+    OccupationType.TEACHER,
+  ].includes(occupation);
+
+  const req: FullReviewRequest = {
+    loanType: isMortgage ? 'mortgage' : 'personal',
+    loanAmount: basicInfo.amount,
+    termYears: basicInfo.termYears,
+    borrower: {
+      name: session.applicantName ?? '申請人',
+      age: basicInfo.age,
+      occupation,
+      isPublicServant,
+      yearsEmployed: 3,
+      hasMyData: session.mydataReady === true,
+      monthlyIncome: basicInfo.income,
+    },
+  };
+
+  if (isMortgage) {
+    req.property = {
+      region: '台北市',
+      isFirstHome: true,
+      isOwnerOccupied: true,
+      purpose: '購屋',
+    };
+    req.valuationInput = {
+      areaPing: propertyInfo.areaPing ?? 30,
+      propertyAge: propertyInfo.propertyAge ?? 10,
+      buildingType: (propertyInfo.buildingType as string) ?? '大樓',
+      floor: propertyInfo.floor ?? 5,
+      hasParking: propertyInfo.hasParking ?? false,
+      layout: propertyInfo.layout ?? '3房2廳',
+    };
+  }
+
+  return req;
+}
+
+/** 非同步觸發完整審核流程，完成後 Push 結果 */
+async function triggerWorkflowAsync(userId: string, session: UserSession): Promise<void> {
+  const workflowReq = buildWorkflowFromSession(session);
+  if (!workflowReq) {
+    console.warn('[conversationHandler] 申請資料不完整，略過 Workflow 觸發');
+    return;
+  }
+
+  // 先 push 「審核中」提示
+  await pushMessages(userId, [{
+    type: 'text',
+    text: '🔍 您的申請已送出！\n\nAI 審核小組正在進行三階段完整評估：\n① ML 鑑價分析\n② 5P 徵審引擎\n③ 授信審議小組\n\n預計需要 30~60 秒，請稍候...',
+  }]);
+
+  const result = await runFullReview(workflowReq);
+  await pushMessages(userId, [buildAuditResultFlex(result)]);
+}
+
+/** 建構審核結果 Flex 卡片 */
+function buildAuditResultFlex(result: FullReviewResponse): LineReplyMessage {
+  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
+  const { finalSummary, applicationId, totalDurationMs } = result;
+  const { decision, approvedAmount, approvedTermYears, interestRateHint, conditions, riskScore, fraudLevel } = finalSummary;
+
+  const decisionColor =
+    decision === '核准' ? '#69F0AE' : decision === '有條件核准' ? '#FFD54F' : '#EF5350';
+  const decisionIcon =
+    decision === '核准' ? '✅' : decision === '有條件核准' ? '⚠️' : '❌';
+  const fraudIcon =
+    fraudLevel === 'normal' ? '🟢 正常' : fraudLevel === 'caution' ? '🟡 注意' : '🔴 警示';
+
+  const rows = [
+    { label: '核准金額', value: `NT$ ${approvedAmount.toLocaleString()}` },
+    { label: '核准年限', value: `${approvedTermYears} 年` },
+    { label: '建議利率', value: interestRateHint },
+    { label: '5P 風控評分', value: `${riskScore} / 100` },
+    { label: '防詐查核', value: fraudIcon },
+  ];
+
+  if (finalSummary.estimatedValue) {
+    rows.splice(2, 0, {
+      label: '鑑估值',
+      value: `NT$ ${finalSummary.estimatedValue.toLocaleString()}`,
+    });
+  }
+  if (finalSummary.ltvRatio !== undefined) {
+    rows.splice(3, 0, {
+      label: '貸款成數',
+      value: `${(finalSummary.ltvRatio * 100).toFixed(1)}%`,
+    });
+  }
+
+  const conditionItems = conditions.length > 0
+    ? conditions.map((c) => ({
+        type: 'box', layout: 'horizontal', spacing: 'sm',
+        contents: [
+          { type: 'text', text: '•', size: 'xs', color: '#FFD54F', flex: 0 },
+          { type: 'text', text: c, size: 'xs', color: '#B0BEC5', flex: 1, wrap: true },
+        ],
+      }))
+    : [{ type: 'text', text: '無附加條件', size: 'xs', color: '#78909C' }];
+
+  return {
+    type: 'flex',
+    altText: `${decisionIcon} AI 審核結果：${decision}`,
+    contents: {
+      type: 'bubble', size: 'mega',
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+        contents: [
+          // 標題
+          {
+            type: 'box', layout: 'vertical', paddingAll: '16px', paddingBottom: '12px', spacing: 'xs',
+            contents: [
+              { type: 'text', text: `${decisionIcon} AI 授信審議結果`, weight: 'bold', size: 'md', color: '#FFFFFF' },
+              { type: 'text', text: `案件編號：${applicationId}`, size: 'xxs', color: '#546E7A' },
+            ],
+          },
+          // 決議橫幅
+          {
+            type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: M,
+            contents: [
+              { type: 'text', text: decision, weight: 'bold', size: 'xl', color: decisionColor, align: 'center' },
+            ],
+          },
+          { type: 'box', layout: 'vertical', height: '2px', backgroundColor: decisionColor, contents: [{ type: 'filler' }] },
+          // 數字明細
+          {
+            type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm', backgroundColor: M,
+            contents: rows.map((r) => ({
+              type: 'box', layout: 'horizontal',
+              contents: [
+                { type: 'text', text: r.label, size: 'sm', color: '#90A4AE', flex: 4 },
+                { type: 'text', text: r.value, size: 'sm', color: '#FFFFFF', weight: 'bold', flex: 6, wrap: true },
+              ],
+            })),
+          },
+          // 附加條件
+          ...(conditions.length > 0 ? [{
+            type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm',
+            contents: [
+              { type: 'text', text: '附加條件', size: 'xs', color: '#78909C', weight: 'bold' },
+              ...conditionItems,
+            ],
+          } as Record<string, unknown>] : []),
+          // 頁尾資訊
+          {
+            type: 'box', layout: 'vertical', paddingAll: '12px',
+            contents: [
+              { type: 'text', text: `⏱ 審核耗時：${(totalDurationMs / 1000).toFixed(1)} 秒`, size: 'xxs', color: '#546E7A' },
+              { type: 'text', text: '本結果由 AI 模擬，實際核貸依行員審查為準', size: 'xxs', color: '#37474F', wrap: true },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
+        contents: [
+          { type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '📋 法規問答', text: '法規問答' },
+          },
+          { type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '🔄 重新試算', text: '重新開始' },
+          },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
 }
