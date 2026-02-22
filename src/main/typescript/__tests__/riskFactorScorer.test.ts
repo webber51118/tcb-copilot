@@ -185,6 +185,202 @@ describe('scoreRiskFactors — liquidityRatio（流動比率）', () => {
   });
 });
 
+// ─── employmentStability 補充（line 49：yearsEmployed > 18）──────
+
+describe('scoreRiskFactors — employmentStability 補充', () => {
+  test('年資 > 18 → level 10（最高年資段）', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ yearsEmployed: 20 }),
+      makeRepayment(60_000, 20_000),
+      makeProtection(),
+      5_000_000,
+    );
+    expect(result.employmentStability.level).toBe(10);
+  });
+
+  test('其他職業（OTHER）→ notes 包含「其他」警示', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ occupation: OccupationType.OTHER, yearsEmployed: 5 }),
+      makeRepayment(60_000, 20_000),
+      makeProtection(),
+      5_000_000,
+    );
+    expect(result.employmentStability.notes).toContain('其他');
+  });
+
+  test('教師（TEACHER）→ 視同軍公教 +1', () => {
+    const base = scoreRiskFactors(
+      makeBorrower({ yearsEmployed: 10, isPublicServant: false, occupation: OccupationType.OFFICE_WORKER }),
+      makeRepayment(60_000, 20_000), makeProtection(), 5_000_000,
+    );
+    const teacher = scoreRiskFactors(
+      makeBorrower({ yearsEmployed: 10, isPublicServant: false, occupation: OccupationType.TEACHER }),
+      makeRepayment(60_000, 20_000), makeProtection(), 5_000_000,
+    );
+    expect(teacher.employmentStability.level).toBe(base.employmentStability.level + 1);
+  });
+});
+
+// ─── incomeGrowth 補充（laborInsuranceGrade 低段覆蓋）─────────
+
+describe('scoreRiskFactors — incomeGrowth 勞保級距', () => {
+  test('勞保級距第 3 級 → level 1', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ laborInsuranceGrade: 3 }),
+      makeRepayment(30_000, 10_000),
+      makeProtection(),
+      5_000_000,
+    );
+    expect(result.incomeGrowth.level).toBe(1);
+  });
+
+  test('勞保級距第 6 級 → level 2', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ laborInsuranceGrade: 6 }),
+      makeRepayment(35_000, 10_000),
+      makeProtection(),
+      5_000_000,
+    );
+    expect(result.incomeGrowth.level).toBe(2);
+  });
+
+  test('勞保級距第 9 級 → level 4', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ laborInsuranceGrade: 9 }),
+      makeRepayment(40_000, 15_000),
+      makeProtection(),
+      5_000_000,
+    );
+    expect(result.incomeGrowth.level).toBe(4);
+  });
+
+  test('勞保級距第 21 級 → level 10', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ laborInsuranceGrade: 21 }),
+      makeRepayment(100_000, 30_000),
+      makeProtection(),
+      5_000_000,
+    );
+    expect(result.incomeGrowth.level).toBe(10);
+  });
+
+  test('薪資所得 25,000/月（無級距）→ level 1', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ hasMyData: true, salaryIncome: 300_000, laborInsuranceGrade: undefined }),
+      makeRepayment(25_000, 10_000),
+      makeProtection(),
+      5_000_000,
+    );
+    expect(result.incomeGrowth.level).toBe(1);
+  });
+});
+
+// ─── netWorthLevel 補充（未上市股票上限、無不動產、LTV 加成）──
+
+describe('scoreRiskFactors — netWorthLevel 修正規則', () => {
+  test('未上市股票 > 淨值 → 上限 level 3', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ unlistedStocks: 8_000_000 }),  // > netWorth 7M
+      makeRepayment(60_000, 20_000),
+      makeProtection({ netWorth: 7_000_000 }),
+      5_000_000,
+    );
+    expect(result.netWorthLevel.level).toBeLessThanOrEqual(3);
+  });
+
+  test('無不動產（realEstateValue=0）→ 上限 level 3', () => {
+    const result = scoreRiskFactors(
+      makeBorrower(),
+      makeRepayment(60_000, 20_000),
+      makeProtection({ realEstateValue: 0, totalAssets: 10_000_000, netWorth: 7_000_000 }),
+      5_000_000,
+    );
+    expect(result.netWorthLevel.level).toBeLessThanOrEqual(3);
+  });
+
+  test('貸款成數 < 60%（低 LTV）→ level +1', () => {
+    const base = scoreRiskFactors(
+      makeBorrower(),
+      makeRepayment(60_000, 20_000),
+      makeProtection({ realEstateValue: 10_000_000, netWorth: 700_000 }),  // netWorth 70萬 → level ~3
+      6_000_000,  // LTV = 60% (not < 60%)
+    );
+    const lowLTV = scoreRiskFactors(
+      makeBorrower(),
+      makeRepayment(60_000, 20_000),
+      makeProtection({ realEstateValue: 10_000_000, netWorth: 700_000 }),
+      5_000_000,  // LTV = 50% (< 60%) → +1
+    );
+    expect(lowLTV.netWorthLevel.level).toBeGreaterThan(base.netWorthLevel.level);
+  });
+});
+
+// ─── netWorthRatio 補充（同三之修正規則）─────────────────────
+
+describe('scoreRiskFactors — netWorthRatio 修正規則', () => {
+  test('未上市股票 > 淨值 → 上限 level 3', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ unlistedStocks: 8_000_000 }),
+      makeRepayment(60_000, 20_000),
+      makeProtection({ netWorth: 7_000_000 }),
+      5_000_000,
+    );
+    expect(result.netWorthRatio.level).toBeLessThanOrEqual(3);
+  });
+
+  test('無不動產 → 上限 level 3', () => {
+    const result = scoreRiskFactors(
+      makeBorrower(),
+      makeRepayment(60_000, 20_000),
+      makeProtection({ realEstateValue: 0, totalAssets: 5_000_000, netWorth: 4_500_000 }),
+      5_000_000,
+    );
+    expect(result.netWorthRatio.level).toBeLessThanOrEqual(3);
+  });
+
+  test('低 LTV < 60% → level +1', () => {
+    const base = scoreRiskFactors(
+      makeBorrower(),
+      makeRepayment(60_000, 20_000),
+      makeProtection({ realEstateValue: 10_000_000, netWorth: 300_000, totalAssets: 1_000_000 }),
+      6_100_000,  // LTV = 61% (not < 60%)
+    );
+    const lowLTV = scoreRiskFactors(
+      makeBorrower(),
+      makeRepayment(60_000, 20_000),
+      makeProtection({ realEstateValue: 10_000_000, netWorth: 300_000, totalAssets: 1_000_000 }),
+      5_900_000,  // LTV = 59% (< 60%) → +1
+    );
+    expect(lowLTV.netWorthRatio.level).toBeGreaterThanOrEqual(base.netWorthRatio.level);
+  });
+});
+
+// ─── debtRatio 補充（非經常性所得、無報稅）────────────────────
+
+describe('scoreRiskFactors — debtRatio 補充', () => {
+  test('含非經常性所得 → 取較保守評級', () => {
+    // 月收入 100K 含 50K 非經常性，扣除後變 50K，支出 35K → 70% → level 3
+    const result = scoreRiskFactors(
+      makeBorrower({ nonRecurringIncome: 600_000, salaryIncome: 600_000 }),
+      makeRepayment(100_000, 35_000),
+      makeProtection(),
+      5_000_000,
+    );
+    // 含非經常性：35/100 = 35% → level 7；扣除後：35/50 = 70% → level 3 → 取 3
+    expect(result.debtRatio.level).toBeLessThanOrEqual(7);
+  });
+
+  test('無報稅（無 MY DATA + 無薪資所得）→ 上限 level 3', () => {
+    const result = scoreRiskFactors(
+      makeBorrower({ hasMyData: false, salaryIncome: undefined }),
+      makeRepayment(40_000, 8_000),  // 20% → 通常 level 8
+      makeProtection(),
+      5_000_000,
+    );
+    expect(result.debtRatio.level).toBeLessThanOrEqual(3);
+  });
+});
+
 // ─── 回傳結構完整性 ─────────────────────────────────────────────
 
 describe('scoreRiskFactors — 回傳結構', () => {
