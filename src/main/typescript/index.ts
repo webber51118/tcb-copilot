@@ -26,6 +26,7 @@ import { submitApplicationRouter } from './api/submitApplication';
 import { valuateRouter } from './api/valuate';
 import { creditReviewRouter } from './api/creditReview';
 import { ragQueryRouter } from './api/ragQuery';
+import { committeeReviewRouter } from './api/committeeReview';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -67,6 +68,7 @@ app.use('/api', submitApplicationRouter);
 app.use('/api', valuateRouter);
 app.use('/api', creditReviewRouter);
 app.use('/api', ragQueryRouter);
+app.use('/api', committeeReviewRouter);
 
 // 健康檢查
 app.get('/health', (_req, res) => {
