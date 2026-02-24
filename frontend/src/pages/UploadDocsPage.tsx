@@ -238,21 +238,10 @@ export default function UploadDocsPage() {
             <p className="text-sm text-green-300">AI 已辨識資料，Bot 將自動發送下一步</p>
           </div>
 
-          <button
-            onClick={() => {
-              try {
-                window.close();
-              } catch {
-                // window.close() 在某些環境無效，引導用戶手動返回
-              }
-            }}
-            className="w-full bg-green-700 hover:bg-green-600 text-white rounded-lg py-4 font-bold text-lg transition"
-          >
-            ✅ 關閉並返回 LINE
-          </button>
-          <p className="text-xs text-center text-gray-500">
-            若無法自動關閉，請手動點左上角返回 LINE 查看 Bot 訊息
-          </p>
+          <div className="bg-gray-800 border border-gray-600 rounded-xl p-4 text-center">
+            <p className="text-white font-bold text-base mb-1">📲 請按右上角 × 關閉</p>
+            <p className="text-gray-400 text-sm">返回 LINE 查看 Bot 傳送的確認訊息</p>
+          </div>
 
           {/* 解析摘要 */}
           {parsedData.mydata && (
