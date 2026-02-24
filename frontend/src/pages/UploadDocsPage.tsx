@@ -91,8 +91,11 @@ export default function UploadDocsPage() {
       } else {
         setError(res.data.message || '解析失敗，請重試');
       }
-    } catch {
-      setError('上傳失敗，請確認網路連線後重試');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.status
+        ? `上傳失敗（${err.response?.status}）：${err.response?.data?.message || '請重試'}`
+        : '上傳失敗，請確認網路連線後重試';
+      setError(msg);
     } finally {
       setIsLoading(false);
     }

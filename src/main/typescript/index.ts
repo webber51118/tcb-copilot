@@ -39,9 +39,9 @@ const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
 // 使用 app.use 讓 Express strip prefix，使 router.post('/') 能正確匹配
 app.use('/api/webhook', lineMiddleware, webhookRouter);
 
-// 其他路由使用 JSON 解析
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 其他路由使用 JSON 解析（10mb 供 base64 圖片上傳）
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Admin API 金鑰驗證中介層
 function adminAuth(req: Request, res: Response, next: NextFunction): void {
