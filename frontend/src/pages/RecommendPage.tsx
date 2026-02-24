@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import ProductCard from '../components/ProductCard';
 import MonthlyCalculator from '../components/MonthlyCalculator';
+import RecommendExplanation from '../components/RecommendExplanation';
 import type { RecommendResponse, LoanType, Promotion } from '../types';
 
 interface LocationState {
@@ -58,6 +59,20 @@ export default function RecommendPage() {
             initialTerm={form?.termYears ?? (isReverseAnnuity ? 20 : 30)}
             rateValue={primary.rateValue}
             isReverseAnnuity={isReverseAnnuity}
+          />
+
+          {/* 推薦理由詳解 */}
+          <RecommendExplanation
+            loanType={loanType}
+            form={{
+              income: form?.income ?? 50000,
+              amount: form?.amount ?? 5_000_000,
+              termYears: form?.termYears ?? (isReverseAnnuity ? 20 : 30),
+              occupation: form?.occupation ?? '',
+              age: form?.age ?? 35,
+            }}
+            primary={primary}
+            alternatives={alternatives}
           />
 
           {/* 備選方案 */}
