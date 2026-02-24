@@ -583,8 +583,11 @@ function buildUploadDocsFlex(session: UserSession, token: string): LineReplyMess
   const ACCENT = isMortgage ? '#4FC3F7' : '#69F0AE';
   const BTN = isMortgage ? '#1565C0' : '#1B5E20';
 
-  const liffUploadId = process.env.LIFF_ID_UPLOAD || 'YOUR_LIFF_ID_UPLOAD';
-  const uploadUrl = `https://liff.line.me/${liffUploadId}?token=${token}&loanType=${session.loanType ?? ''}`;
+  const liffUploadId = process.env.LIFF_ID_UPLOAD;
+  const frontendBase = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const uploadUrl = liffUploadId
+    ? `https://liff.line.me/${liffUploadId}?token=${token}&loanType=${session.loanType ?? ''}`
+    : `${frontendBase}/upload-docs?token=${token}&loanType=${session.loanType ?? ''}`;
 
   const docItems = isMortgage
     ? [
@@ -1258,8 +1261,11 @@ function buildApplicationFormFlex(session: UserSession): LineReplyMessage {
   const BTN = isMortgage ? '#1565C0' : '#1B5E20';
 
   const token = createSessionToken(session.userId);
-  const liffAppId = process.env.LIFF_ID_APPLICATION || 'YOUR_LIFF_ID_APPLICATION';
-  const formUrl = `https://liff.line.me/${liffAppId}?token=${token}`;
+  const liffAppId = process.env.LIFF_ID_APPLICATION;
+  const frontendBaseApp = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const formUrl = liffAppId
+    ? `https://liff.line.me/${liffAppId}?token=${token}`
+    : `${frontendBaseApp}/application-form?token=${token}`;
 
   return {
     type: 'flex',
