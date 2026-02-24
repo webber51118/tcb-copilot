@@ -868,9 +868,37 @@ const handleDocReview: StateHandler = (session, input) => {
     return { nextState: ConversationState.COLLECT_AGE, messages: [textMsg(hint)] };
   }
 
+  // 組合解析資料摘要
+  const lines: string[] = ['📋 AI 文件辨識結果\n'];
+
+  // MyData 資料
+  if (session.applicantName) lines.push(`👤 姓名：${session.applicantName}`);
+  if (session.idNumber) {
+    const masked = session.idNumber.slice(0, 3) + '****' + session.idNumber.slice(-3);
+    lines.push(`🪪 身分證：${masked}`);
+  }
+  if (session.basicInfo.income) {
+    lines.push(`💰 月收入：NT$ ${session.basicInfo.income.toLocaleString()}`);
+  }
+  if (session.employer) lines.push(`🏢 就業單位：${session.employer}`);
+
+  // 謄本資料（房貸/以房養老）
+  const isMortgage = session.loanType !== LoanType.PERSONAL;
+  if (isMortgage && session.landRegistryReady) {
+    lines.push('');
+    lines.push('🏠 土地建物謄本');
+    if (session.propertyInfo.buildingType) lines.push(`  建物類型：${session.propertyInfo.buildingType}`);
+    if (session.propertyInfo.floor) lines.push(`  樓層：${session.propertyInfo.floor} 樓`);
+    if (session.propertyInfo.areaPing) lines.push(`  坪數：${session.propertyInfo.areaPing} 坪`);
+    if (session.propertyInfo.propertyAge) lines.push(`  屋齡：${session.propertyInfo.propertyAge} 年`);
+  }
+
+  lines.push('\n請確認以上資料是否正確：');
+  const summaryText = lines.join('\n');
+
   return {
     nextState: ConversationState.DOC_REVIEW,
-    messages: [textMsg('請確認解析出的資料是否正確：', docReviewQuickReply())],
+    messages: [textMsg(summaryText, docReviewQuickReply())],
   };
 };
 
