@@ -11,6 +11,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import express, { Request, Response, NextFunction } from 'express';
 
+const FRONTEND_DIST = path.join(process.cwd(), 'frontend', 'dist');
+
 // 確保資料目錄存在
 ['data', 'data/applications', 'data/credit-reviews'].forEach((dir) => {
   const p = path.join(process.cwd(), dir);
@@ -76,6 +78,15 @@ app.use('/api', workflowRouter);
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: '個金Co-Pilot領航員' });
 });
+
+// 前端靜態檔案（build 後才有效）
+if (fs.existsSync(FRONTEND_DIST)) {
+  app.use(express.static(FRONTEND_DIST));
+  // SPA fallback：所有非 API 路由都回傳 index.html
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
+  });
+}
 
 // 啟動伺服器
 app.listen(PORT, () => {
