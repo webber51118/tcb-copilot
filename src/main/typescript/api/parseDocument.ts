@@ -12,6 +12,7 @@ import { validateToken } from '../config/sessionTokenStore';
 import { getSession, updateSession } from '../core/sessionStore';
 import { parseMyDataDoc, parseLandRegistryDoc } from '../services/documentParser';
 import { lineClient } from '../core/lineClient';
+import { transition } from '../core/conversationStateMachine';
 import { LoanType, BuildingType, ConversationState } from '../models/enums';
 
 export const parseDocumentRouter = Router();
@@ -95,22 +96,30 @@ parseDocumentRouter.post('/parse-document', async (req: Request, res: Response) 
     const allDocsReady = session.mydataReady && (!isMortgage || session.landRegistryReady);
 
     if (allDocsReady) {
-      // 推進狀態機：push "文件解析完成" 至 LINE，讓 Bot 繼續下一步
+      // 推進狀態機至 DOC_REVIEW，取得確認訊息後直接 push 給用戶
       session.state = ConversationState.DOC_REVIEW;
       updateSession(session);
       try {
-        await lineClient.pushMessage({
-          to: userId,
-          messages: [{
-            type: 'text',
-            text: '✅ 文件上傳完成！\n\nAI 已辨識您的資料，請確認以下解析結果：',
-          }],
-        });
-        // 觸發狀態機繼續（傳入 '文件解析完成' 作為觸發詞）
-        await lineClient.pushMessage({
-          to: userId,
-          messages: [{ type: 'text', text: '文件解析完成' }],
-        });
+        const docReviewResult = transition(session, '');
+        const lineMessages = docReviewResult.messages
+          .filter((m) => m.type !== 'text' || (m.text && m.text.length > 0))
+          .map((m) => {
+            if (m.type === 'text') {
+              const msg: Record<string, unknown> = { type: 'text', text: m.text };
+              if (m.quickReply) msg.quickReply = m.quickReply;
+              return msg;
+            }
+            if (m.type === 'flex') {
+              return { type: 'flex', altText: m.altText, contents: m.contents };
+            }
+            return m as unknown as Record<string, unknown>;
+          });
+        if (lineMessages.length > 0) {
+          await lineClient.pushMessage({
+            to: userId,
+            messages: lineMessages as Parameters<typeof lineClient.pushMessage>[0]['messages'],
+          });
+        }
       } catch (pushErr) {
         console.error('[parseDocument] Push 通知失敗:', pushErr);
       }
