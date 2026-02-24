@@ -31,55 +31,101 @@ function textMsg(text: string, quickReply?: { items: import('../models/types').Q
   return msg;
 }
 
-/** 建構歡迎 Flex Carousel — 主選單 4 張：房貸/信貸/AI智能推薦/當期活動 */
-function buildWelcomeCarousel(): LineReplyMessage {
-  const D = '#0D1B2A';
-  const M = '#0F2035';
-  const B = '#0A1628';
-  const cards = [
-    { emoji: '🏠', title: '房屋貸款', sub: 'MORTGAGE', num: '4大方案', numLabel: '青安・國軍・Next貸・養老', accent: '#4FC3F7', btn: '#1565C0', text: '房貸' },
-    { emoji: '💳', title: '信用貸款', sub: 'PERSONAL LOAN', num: '最快1天', numLabel: '線上申辦核貸', accent: '#69F0AE', btn: '#1B5E20', text: '信貸' },
-    { emoji: '🤖', title: 'AI智能推薦', sub: 'AI RECOMMENDATION', num: '智能分析', numLabel: '精準推薦最適方案', accent: '#CE93D8', btn: '#6A1B9A', text: 'AI智能推薦' },
-    { emoji: '🎁', title: '當期活動', sub: 'SPECIAL OFFERS', num: '限時專案', numLabel: '合庫最新優惠', accent: '#FF5252', btn: '#B71C1C', text: '當期活動' },
-  ];
+/** 建構歡迎主選單 Bubble — 單一 bubble 六宮格選單（白色金融風格） */
+function buildWelcomeMenu(): LineReplyMessage {
+  const WHITE = '#FFFFFF';
+  const LIGHT = '#F0F6FF';
+  const TCB_BLUE = '#1B4F8A';
+  const TCB_BLUE_DARK = '#143D6B';
+  const ACCENT_TEAL = '#0077B6';
+  const GRAY_TEXT = '#64748B';
+  const BORDER = '#E2E8F0';
 
-  const bubbles = cards.map((c) => ({
-    type: 'bubble', size: 'kilo',
-    body: {
-      type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+  /** 單個圖示按鈕 */
+  function iconBtn(emoji: string, label: string, sub: string, text: string) {
+    return {
+      type: 'box', layout: 'vertical', flex: 1, alignItems: 'center', spacing: 'xs',
+      paddingAll: '10px',
+      action: { type: 'message', label, text },
       contents: [
-        {
-          type: 'box', layout: 'vertical', paddingTop: '22px', paddingBottom: '4px',
-          paddingStart: '16px', paddingEnd: '16px', spacing: 'xs',
-          contents: [
-            { type: 'text', text: c.emoji, size: '3xl', align: 'center' },
-            { type: 'text', text: c.title, weight: 'bold', size: 'lg', color: '#FFFFFF', align: 'center', margin: 'sm' },
-            { type: 'text', text: c.sub, size: 'xxs', color: '#546E7A', align: 'center' },
-          ],
-        },
-        { type: 'box', layout: 'vertical', margin: 'md', height: '3px', backgroundColor: c.accent, contents: [{ type: 'filler' }] },
-        {
-          type: 'box', layout: 'vertical', backgroundColor: M,
-          paddingTop: '14px', paddingBottom: '18px', paddingStart: '16px', paddingEnd: '16px', spacing: 'xs',
-          contents: [
-            { type: 'text', text: c.num, weight: 'bold', size: 'xxl', color: c.accent, align: 'center' },
-            { type: 'text', text: c.numLabel, size: 'xxs', color: '#78909C', align: 'center' },
-          ],
-        },
+        { type: 'text', text: emoji, size: 'xl', align: 'center' },
+        { type: 'text', text: label, weight: 'bold', size: 'xs', color: TCB_BLUE, align: 'center', wrap: true },
+        { type: 'text', text: sub, size: 'xxs', color: GRAY_TEXT, align: 'center', wrap: true },
       ],
-    },
-    footer: {
-      type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: B,
-      contents: [{ type: 'button', style: 'primary', color: c.btn, height: 'sm',
-        action: { type: 'message', label: '立即了解 →', text: c.text },
-      }],
-    },
-  }));
+    };
+  }
 
   return {
     type: 'flex',
     altText: '歡迎使用合庫個金Co-Pilot領航員，請選擇服務項目',
-    contents: { type: 'carousel', contents: bubbles } as unknown as Record<string, unknown>,
+    contents: {
+      type: 'bubble', size: 'mega',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: TCB_BLUE,
+        paddingTop: '16px', paddingBottom: '14px', paddingStart: '18px', paddingEnd: '18px', spacing: 'xs',
+        contents: [
+          {
+            type: 'box', layout: 'horizontal', alignItems: 'center',
+            contents: [
+              {
+                type: 'box', layout: 'vertical', flex: 1,
+                contents: [
+                  { type: 'text', text: '合作金庫銀行', size: 'xs', color: '#BDD5F0', weight: 'bold' },
+                  { type: 'text', text: '個金 Co-Pilot 領航員 🏦', weight: 'bold', size: 'md', color: WHITE },
+                  { type: 'text', text: '您的專屬貸款智能助理', size: 'xs', color: '#BDD5F0' },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
+        contents: [
+          {
+            type: 'box', layout: 'vertical', paddingTop: '14px', paddingBottom: '6px',
+            paddingStart: '16px', paddingEnd: '16px', spacing: 'xxs',
+            contents: [
+              { type: 'text', text: '貸款服務', weight: 'bold', size: 'sm', color: TCB_BLUE_DARK },
+              { type: 'text', text: '謹慎理財，貸款先規劃', size: 'xxs', color: GRAY_TEXT },
+              { type: 'separator', margin: 'sm', color: BORDER },
+            ],
+          },
+          {
+            type: 'box', layout: 'horizontal', paddingStart: '8px', paddingEnd: '8px', paddingBottom: '4px',
+            contents: [
+              iconBtn('🏠', '房貸試算', '與申辦', '房貸'),
+              iconBtn('💳', '信貸試算', '與申辦', '信貸'),
+              iconBtn('🧓', '以房養老', '活化資產', '以房養老'),
+            ],
+          },
+          {
+            type: 'separator', margin: 'none', color: BORDER,
+          },
+          {
+            type: 'box', layout: 'horizontal', paddingStart: '8px', paddingEnd: '8px',
+            paddingTop: '4px', paddingBottom: '8px',
+            contents: [
+              iconBtn('🤖', 'AI智能推薦', '精準配對', 'AI智能推薦'),
+              iconBtn('🎁', '優惠專案', '限時活動', '當期活動'),
+              iconBtn('⚖️', '法規問答', '徵信規定', '法規問答'),
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'horizontal', backgroundColor: LIGHT,
+        paddingTop: '10px', paddingBottom: '10px', paddingStart: '14px', paddingEnd: '14px',
+        alignItems: 'center',
+        contents: [
+          { type: 'text', text: '📢 房貸最低 2.275% 起', size: 'xs', color: ACCENT_TEAL, flex: 1, wrap: true },
+          {
+            type: 'button', style: 'primary', color: TCB_BLUE, height: 'sm', flex: 0,
+            action: { type: 'message', label: '立即試算', text: '房貸' },
+          },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
   };
 }
 
@@ -108,60 +154,67 @@ function qrItem(label: string, text?: string): import('../models/types').QuickRe
  * 前三張按鈕：開始線上申請；第四張：申請以房養老
  */
 function buildMortgageProductCarousel(): LineReplyMessage {
-  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
-  const ACCENT = '#4FC3F7'; const BTN = '#1565C0';
-  const ACCENT_RA = '#FFB74D'; const BTN_RA = '#BF360C';
+  const WHITE = '#FFFFFF';
+  const LIGHT = '#F0F6FF';
+  const TCB_BLUE = '#1B4F8A';
+  const BADGE_BG = '#EBF4FF';
+  const BORDER = '#E2E8F0';
+  const GRAY_TEXT = '#64748B';
+  const BTN = TCB_BLUE;
+  const ACCENT_RA = '#D97706';
+  const BTN_RA = '#92400E';
 
   const mainCards = [
-    { badge: '首購專屬', name: '青安貸款', sub: '財政部青年安心成家', rate: '2.275%', limit: '1,000萬', term: '40年', tags: ['寬限期最長5年', '首購族限定'], accent: ACCENT, btn: BTN },
-    { badge: '軍人限定', name: '國軍輔導', sub: '國軍輔導理財購屋貸款', rate: '2.23%', limit: '依估值', term: '30年', tags: ['現役軍人專屬', '業界最優惠'], accent: ACCENT, btn: BTN },
-    { badge: '週轉資金', name: 'Next 貸', sub: '幸福週轉金', rate: '2.35%起', limit: '依估值', term: '30年', tags: ['年所得80萬+', 'A區最低利率'], accent: ACCENT, btn: BTN },
+    { badge: '首購專屬', name: '青安貸款', sub: '財政部青年安心成家', rate: '2.275%', limit: '1,000萬', term: '40年', tags: ['寬限期最長5年', '首購族限定'] },
+    { badge: '軍人限定', name: '國軍輔導', sub: '國軍輔導理財購屋貸款', rate: '2.23%', limit: '依估值', term: '30年', tags: ['現役軍人專屬', '業界最優惠'] },
+    { badge: '週轉資金', name: 'Next 貸', sub: '幸福週轉金', rate: '2.35%起', limit: '依估值', term: '30年', tags: ['年所得80萬+', 'A區最低利率'] },
   ];
 
   const mainBubbles = mainCards.map((c) => ({
     type: 'bubble', size: 'kilo',
     body: {
-      type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+      type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
       contents: [
         {
           type: 'box', layout: 'vertical', paddingAll: '14px', paddingBottom: '10px', spacing: 'xs',
+          backgroundColor: TCB_BLUE,
           contents: [
             { type: 'box', layout: 'horizontal', contents: [
               { type: 'box', layout: 'vertical', flex: 0, paddingStart: '8px', paddingEnd: '8px',
-                paddingTop: '3px', paddingBottom: '3px', backgroundColor: '#1A3A6B', cornerRadius: '10px',
-                contents: [{ type: 'text', text: c.badge, size: 'xxs', color: c.accent }] },
+                paddingTop: '3px', paddingBottom: '3px', backgroundColor: BADGE_BG, cornerRadius: '10px',
+                contents: [{ type: 'text', text: c.badge, size: 'xxs', color: TCB_BLUE }] },
             ]},
-            { type: 'text', text: c.name, weight: 'bold', size: 'xl', color: '#FFFFFF', margin: 'sm' },
-            { type: 'text', text: c.sub, size: 'xxs', color: '#78909C' },
+            { type: 'text', text: c.name, weight: 'bold', size: 'xl', color: WHITE, margin: 'sm' },
+            { type: 'text', text: c.sub, size: 'xxs', color: '#BDD5F0' },
           ],
         },
-        { type: 'box', layout: 'vertical', height: '2px', backgroundColor: c.accent, contents: [{ type: 'filler' }] },
         {
-          type: 'box', layout: 'vertical', backgroundColor: M,
+          type: 'box', layout: 'vertical', backgroundColor: LIGHT,
           paddingStart: '14px', paddingEnd: '14px', paddingTop: '12px', paddingBottom: '12px', spacing: 'xs',
           contents: [
-            { type: 'text', text: c.rate, weight: 'bold', size: 'xxl', color: c.accent },
-            { type: 'text', text: '優惠利率', size: 'xxs', color: '#78909C' },
+            { type: 'text', text: c.rate, weight: 'bold', size: 'xxl', color: TCB_BLUE },
+            { type: 'text', text: '最低利率', size: 'xxs', color: GRAY_TEXT },
           ],
         },
+        { type: 'separator', color: BORDER },
         {
-          type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm',
+          type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: WHITE,
           contents: [
             { type: 'box', layout: 'horizontal', contents: [
               { type: 'text', text: '💰', size: 'xs', flex: 0 },
-              { type: 'text', text: `最高${c.limit}`, size: 'xs', color: '#B0BEC5', flex: 1, margin: 'sm' },
+              { type: 'text', text: `最高${c.limit}`, size: 'xs', color: '#1E293B', flex: 1, margin: 'sm' },
               { type: 'text', text: '📅', size: 'xs', flex: 0 },
-              { type: 'text', text: `最長${c.term}`, size: 'xs', color: '#B0BEC5', flex: 1, margin: 'sm' },
+              { type: 'text', text: `最長${c.term}`, size: 'xs', color: '#1E293B', flex: 1, margin: 'sm' },
             ]},
-            ...c.tags.map((t) => ({ type: 'text', text: `✦ ${t}`, size: 'xxs', color: '#69F0AE' })),
+            ...c.tags.map((t) => ({ type: 'text', text: `✓ ${t}`, size: 'xxs', color: GRAY_TEXT })),
           ],
         },
       ],
     },
     footer: {
-      type: 'box', layout: 'vertical', paddingAll: '10px', backgroundColor: B,
-      contents: [{ type: 'button', style: 'primary', color: c.btn, height: 'sm',
-        action: { type: 'message', label: '開始線上申請 →', text: '開始線上申請' },
+      type: 'box', layout: 'vertical', paddingAll: '10px', backgroundColor: WHITE,
+      contents: [{ type: 'button', style: 'primary', color: BTN, height: 'sm',
+        action: { type: 'message', label: '開始線上申請', text: '開始線上申請' },
       }],
     },
   }));
@@ -170,48 +223,49 @@ function buildMortgageProductCarousel(): LineReplyMessage {
   const reverseBubble = {
     type: 'bubble', size: 'kilo',
     body: {
-      type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+      type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
       contents: [
         {
           type: 'box', layout: 'vertical', paddingAll: '14px', paddingBottom: '10px', spacing: 'xs',
+          backgroundColor: '#7C3A00',
           contents: [
             { type: 'box', layout: 'horizontal', contents: [
               { type: 'box', layout: 'vertical', flex: 0, paddingStart: '8px', paddingEnd: '8px',
-                paddingTop: '3px', paddingBottom: '3px', backgroundColor: '#3E2200', cornerRadius: '10px',
+                paddingTop: '3px', paddingBottom: '3px', backgroundColor: '#FEF3C7', cornerRadius: '10px',
                 contents: [{ type: 'text', text: '退休養老', size: 'xxs', color: ACCENT_RA }] },
             ]},
-            { type: 'text', text: '以房養老', weight: 'bold', size: 'xl', color: '#FFFFFF', margin: 'sm' },
-            { type: 'text', text: '幸福滿袋・反向年金', size: 'xxs', color: '#78909C' },
+            { type: 'text', text: '以房養老', weight: 'bold', size: 'xl', color: WHITE, margin: 'sm' },
+            { type: 'text', text: '幸福滿袋・反向年金', size: 'xxs', color: '#FDE68A' },
           ],
         },
-        { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT_RA, contents: [{ type: 'filler' }] },
         {
-          type: 'box', layout: 'vertical', backgroundColor: M,
+          type: 'box', layout: 'vertical', backgroundColor: '#FFF7ED',
           paddingStart: '14px', paddingEnd: '14px', paddingTop: '12px', paddingBottom: '12px', spacing: 'xs',
           contents: [
             { type: 'text', text: '分段2.338%', weight: 'bold', size: 'xxl', color: ACCENT_RA },
-            { type: 'text', text: '優惠利率', size: 'xxs', color: '#78909C' },
+            { type: 'text', text: '最低利率', size: 'xxs', color: GRAY_TEXT },
           ],
         },
+        { type: 'separator', color: BORDER },
         {
-          type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm',
+          type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: WHITE,
           contents: [
             { type: 'box', layout: 'horizontal', contents: [
               { type: 'text', text: '🔑', size: 'xs', flex: 0 },
-              { type: 'text', text: '年滿60歲', size: 'xs', color: '#B0BEC5', flex: 1, margin: 'sm' },
+              { type: 'text', text: '年滿60歲', size: 'xs', color: '#1E293B', flex: 1, margin: 'sm' },
               { type: 'text', text: '📅', size: 'xs', flex: 0 },
-              { type: 'text', text: '最長35年', size: 'xs', color: '#B0BEC5', flex: 1, margin: 'sm' },
+              { type: 'text', text: '最長35年', size: 'xs', color: '#1E293B', flex: 1, margin: 'sm' },
             ]},
-            { type: 'text', text: '✦ 月月定額撥付，無需還款', size: 'xxs', color: '#69F0AE' },
-            { type: 'text', text: '✦ 房屋繼續居住使用', size: 'xxs', color: '#69F0AE' },
+            { type: 'text', text: '✓ 月月定額撥付，無需還款', size: 'xxs', color: GRAY_TEXT },
+            { type: 'text', text: '✓ 房屋繼續居住使用', size: 'xxs', color: GRAY_TEXT },
           ],
         },
       ],
     },
     footer: {
-      type: 'box', layout: 'vertical', paddingAll: '10px', backgroundColor: B,
+      type: 'box', layout: 'vertical', paddingAll: '10px', backgroundColor: WHITE,
       contents: [{ type: 'button', style: 'primary', color: BTN_RA, height: 'sm',
-        action: { type: 'message', label: '申請以房養老 →', text: '申請以房養老' },
+        action: { type: 'message', label: '申請以房養老', text: '申請以房養老' },
       }],
     },
   };
@@ -225,8 +279,13 @@ function buildMortgageProductCarousel(): LineReplyMessage {
 
 /** 信貸產品介紹 Carousel — 按鈕改為「開始線上申請」 */
 function buildPersonalProductCarousel(): LineReplyMessage {
-  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
-  const ACCENT = '#69F0AE'; const BTN = '#1B5E20';
+  const WHITE = '#FFFFFF';
+  const LIGHT = '#F0F6FF';
+  const TCB_BLUE = '#1B4F8A';
+  const BADGE_BG = '#EBF4FF';
+  const BORDER = '#E2E8F0';
+  const GRAY_TEXT = '#64748B';
+  const BTN = TCB_BLUE;
   const cards = [
     { badge: '軍公教專屬', name: '軍公教優惠信貸', sub: '軍公教人員優惠信用貸款', rate: '1.78%起', limit: '300萬', term: '7年', tags: ['軍公教警消適用', '薪轉戶最優惠'] },
     { badge: '一般民眾', name: '優職優利信貸', sub: '優職優利信用貸款', rate: '2.228%起', limit: '300萬', term: '7年', tags: ['上市上櫃員工適用', '線上申辦快速核貸'] },
@@ -235,47 +294,48 @@ function buildPersonalProductCarousel(): LineReplyMessage {
   const bubbles = cards.map((c) => ({
     type: 'bubble', size: 'kilo',
     body: {
-      type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+      type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
       contents: [
         {
           type: 'box', layout: 'vertical', paddingAll: '14px', paddingBottom: '10px', spacing: 'xs',
+          backgroundColor: TCB_BLUE,
           contents: [
             { type: 'box', layout: 'horizontal', contents: [
               { type: 'box', layout: 'vertical', flex: 0, paddingStart: '8px', paddingEnd: '8px',
-                paddingTop: '3px', paddingBottom: '3px', backgroundColor: '#1A3D2B', cornerRadius: '10px',
-                contents: [{ type: 'text', text: c.badge, size: 'xxs', color: ACCENT }] },
+                paddingTop: '3px', paddingBottom: '3px', backgroundColor: BADGE_BG, cornerRadius: '10px',
+                contents: [{ type: 'text', text: c.badge, size: 'xxs', color: TCB_BLUE }] },
             ]},
-            { type: 'text', text: c.name, weight: 'bold', size: 'xl', color: '#FFFFFF', margin: 'sm' },
-            { type: 'text', text: c.sub, size: 'xxs', color: '#78909C' },
+            { type: 'text', text: c.name, weight: 'bold', size: 'xl', color: WHITE, margin: 'sm' },
+            { type: 'text', text: c.sub, size: 'xxs', color: '#BDD5F0' },
           ],
         },
-        { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
         {
-          type: 'box', layout: 'vertical', backgroundColor: M,
+          type: 'box', layout: 'vertical', backgroundColor: LIGHT,
           paddingStart: '14px', paddingEnd: '14px', paddingTop: '12px', paddingBottom: '12px', spacing: 'xs',
           contents: [
-            { type: 'text', text: c.rate, weight: 'bold', size: 'xxl', color: ACCENT },
-            { type: 'text', text: '優惠利率', size: 'xxs', color: '#78909C' },
+            { type: 'text', text: c.rate, weight: 'bold', size: 'xxl', color: TCB_BLUE },
+            { type: 'text', text: '最低利率', size: 'xxs', color: GRAY_TEXT },
           ],
         },
+        { type: 'separator', color: BORDER },
         {
-          type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm',
+          type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: WHITE,
           contents: [
             { type: 'box', layout: 'horizontal', contents: [
               { type: 'text', text: '💰', size: 'xs', flex: 0 },
-              { type: 'text', text: `最高${c.limit}`, size: 'xs', color: '#B0BEC5', flex: 1, margin: 'sm' },
+              { type: 'text', text: `最高${c.limit}`, size: 'xs', color: '#1E293B', flex: 1, margin: 'sm' },
               { type: 'text', text: '📅', size: 'xs', flex: 0 },
-              { type: 'text', text: `最長${c.term}`, size: 'xs', color: '#B0BEC5', flex: 1, margin: 'sm' },
+              { type: 'text', text: `最長${c.term}`, size: 'xs', color: '#1E293B', flex: 1, margin: 'sm' },
             ]},
-            ...c.tags.map((t) => ({ type: 'text', text: `✦ ${t}`, size: 'xxs', color: '#4FC3F7' })),
+            ...c.tags.map((t) => ({ type: 'text', text: `✓ ${t}`, size: 'xxs', color: GRAY_TEXT })),
           ],
         },
       ],
     },
     footer: {
-      type: 'box', layout: 'vertical', paddingAll: '10px', backgroundColor: B,
+      type: 'box', layout: 'vertical', paddingAll: '10px', backgroundColor: WHITE,
       contents: [{ type: 'button', style: 'primary', color: BTN, height: 'sm',
-        action: { type: 'message', label: '開始線上申請 →', text: '開始線上申請' },
+        action: { type: 'message', label: '開始線上申請', text: '開始線上申請' },
       }],
     },
   }));
@@ -289,73 +349,84 @@ function buildPersonalProductCarousel(): LineReplyMessage {
 
 /** 以房養老產品介紹（SHOW_PRODUCT_INTRO 後備頁面） */
 function buildReverseAnnuityIntro(): LineReplyMessage {
-  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
-  const ACCENT = '#FFB74D'; const BTN = '#BF360C';
+  const WHITE = '#FFFFFF';
+  const LIGHT = '#FFF7ED';
+  const HEADER_BG = '#7C3A00';
+  const ACCENT = '#D97706';
+  const BTN = '#92400E';
+  const BORDER = '#E2E8F0';
+  const GRAY_TEXT = '#64748B';
   return {
     type: 'flex',
     altText: '以房養老-幸福滿袋 產品介紹',
     contents: {
       type: 'bubble', size: 'mega',
       body: {
-        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
         contents: [
           {
             type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '12px', spacing: 'sm',
+            backgroundColor: HEADER_BG,
             contents: [
               { type: 'text', text: '🏡', size: '3xl', align: 'center' },
-              { type: 'text', text: '以房養老－幸福滿袋', weight: 'bold', size: 'lg', color: '#FFFFFF', align: 'center', margin: 'sm' },
-              { type: 'text', text: 'REVERSE MORTGAGE', size: 'xxs', color: '#546E7A', align: 'center' },
+              { type: 'text', text: '以房養老－幸福滿袋', weight: 'bold', size: 'lg', color: WHITE, align: 'center', margin: 'sm' },
+              { type: 'text', text: 'REVERSE MORTGAGE', size: 'xxs', color: '#FDE68A', align: 'center' },
             ],
           },
           { type: 'box', layout: 'vertical', height: '3px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
           {
-            type: 'box', layout: 'vertical', backgroundColor: M, paddingAll: '16px', spacing: 'md',
+            type: 'box', layout: 'vertical', backgroundColor: LIGHT, paddingAll: '16px', spacing: 'md',
             contents: [
               { type: 'box', layout: 'horizontal', contents: [
-                { type: 'text', text: '利率', size: 'sm', color: '#90A4AE', flex: 3 },
+                { type: 'text', text: '利率', size: 'sm', color: GRAY_TEXT, flex: 3 },
                 { type: 'text', text: '分段2.338% / 一段2.608%', size: 'sm', weight: 'bold', color: ACCENT, flex: 7, wrap: true },
               ]},
               { type: 'box', layout: 'horizontal', contents: [
-                { type: 'text', text: '年齡資格', size: 'sm', color: '#90A4AE', flex: 3 },
-                { type: 'text', text: '年滿60歲以上', size: 'sm', weight: 'bold', color: '#FFFFFF', flex: 7 },
+                { type: 'text', text: '年齡資格', size: 'sm', color: GRAY_TEXT, flex: 3 },
+                { type: 'text', text: '年滿60歲以上', size: 'sm', weight: 'bold', color: '#1E293B', flex: 7 },
               ]},
               { type: 'box', layout: 'horizontal', contents: [
-                { type: 'text', text: '最高核貸', size: 'sm', color: '#90A4AE', flex: 3 },
-                { type: 'text', text: '房屋估值 7成', size: 'sm', weight: 'bold', color: '#FFFFFF', flex: 7 },
+                { type: 'text', text: '最高核貸', size: 'sm', color: GRAY_TEXT, flex: 3 },
+                { type: 'text', text: '房屋估值 7成', size: 'sm', weight: 'bold', color: '#1E293B', flex: 7 },
               ]},
               { type: 'box', layout: 'horizontal', contents: [
-                { type: 'text', text: '最長期間', size: 'sm', color: '#90A4AE', flex: 3 },
-                { type: 'text', text: '35年', size: 'sm', weight: 'bold', color: '#FFFFFF', flex: 7 },
+                { type: 'text', text: '最長期間', size: 'sm', color: GRAY_TEXT, flex: 3 },
+                { type: 'text', text: '35年', size: 'sm', weight: 'bold', color: '#1E293B', flex: 7 },
               ]},
             ],
           },
+          { type: 'separator', color: BORDER },
           {
-            type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm',
+            type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm', backgroundColor: WHITE,
             contents: [
-              { type: 'text', text: '✦ 每月定額撥付，無需還款', size: 'sm', color: '#69F0AE' },
-              { type: 'text', text: '✦ 房屋繼續居住，照常使用', size: 'sm', color: '#69F0AE' },
-              { type: 'text', text: '✦ 保障晚年生活品質與尊嚴', size: 'sm', color: '#69F0AE' },
+              { type: 'text', text: '✓ 每月定額撥付，無需還款', size: 'sm', color: GRAY_TEXT },
+              { type: 'text', text: '✓ 房屋繼續居住，照常使用', size: 'sm', color: GRAY_TEXT },
+              { type: 'text', text: '✓ 保障晚年生活品質與尊嚴', size: 'sm', color: GRAY_TEXT },
             ],
           },
         ],
       },
       footer: {
-        type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: B,
+        type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: WHITE,
         contents: [{ type: 'button', style: 'primary', color: BTN,
-          action: { type: 'message', label: '申請以房養老 →', text: '申請以房養老' },
+          action: { type: 'message', label: '申請以房養老', text: '申請以房養老' },
         }],
       },
     } as unknown as Record<string, unknown>,
   };
 }
 
-/** 月付試算表 — 深色科技風格 */
+/** 月付試算表 — 白色金融風格 */
 function buildRateTable(loanType: LoanType | null): LineReplyMessage {
-  const D = '#0D1B2A'; const B = '#0A1628';
+  const WHITE = '#FFFFFF';
+  const LIGHT = '#F0F6FF';
+  const TCB_BLUE = '#1B4F8A';
+  const BORDER = '#E2E8F0';
+  const GRAY_TEXT = '#64748B';
   const isMortgage = loanType !== LoanType.PERSONAL;
-  const ACCENT = isMortgage ? '#4FC3F7' : '#69F0AE';
-  const BTN = isMortgage ? '#1565C0' : '#1B5E20';
-  const HDR = isMortgage ? '#152535' : '#0F2A1A';
+  const ACCENT = TCB_BLUE;
+  const BTN = TCB_BLUE;
+  const HDR = LIGHT;
 
   if (!isMortgage) {
     const rate = 2.228;
@@ -371,9 +442,9 @@ function buildRateTable(loanType: LoanType | null): LineReplyMessage {
       },
       ...terms.map((t, i) => ({
         type: 'box', layout: 'horizontal', paddingAll: '9px',
-        backgroundColor: i % 2 === 0 ? '#0D1B2A' : '#111F2E',
+        backgroundColor: i % 2 === 0 ? WHITE : '#F8FAFC',
         contents: [
-          { type: 'text', text: `${t}年`, size: 'xxs', weight: 'bold', color: '#FFFFFF', flex: 3 },
+          { type: 'text', text: `${t}年`, size: 'xxs', weight: 'bold', color: '#1E293B', flex: 3 },
           ...amounts.map((a) => ({ type: 'text', text: calcMonthlyPayment(a, rate, t), size: 'xxs', color: ACCENT, flex: 2, align: 'center' })),
         ],
       })),
@@ -383,27 +454,29 @@ function buildRateTable(loanType: LoanType | null): LineReplyMessage {
       contents: {
         type: 'bubble', size: 'mega',
         body: {
-          type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+          type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
           contents: [
             {
               type: 'box', layout: 'vertical', paddingAll: '16px', paddingBottom: '12px', spacing: 'xs',
+              backgroundColor: TCB_BLUE,
               contents: [
-                { type: 'text', text: '💳 信貸月付試算表', weight: 'bold', size: 'md', color: '#FFFFFF' },
-                { type: 'text', text: `利率以 ${rate}% 試算 ｜ 最高可貸300萬`, size: 'xs', color: '#78909C' },
+                { type: 'text', text: '💳 信貸月付試算表', weight: 'bold', size: 'md', color: WHITE },
+                { type: 'text', text: `利率以 ${rate}% 試算 ｜ 最高可貸300萬`, size: 'xs', color: '#BDD5F0' },
               ],
             },
             { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
             { type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'none', contents: [
-              { type: 'text', text: '每月應繳（元）', size: 'xxs', color: '#546E7A', align: 'right', margin: 'none' },
+              { type: 'text', text: '每月應繳（元）', size: 'xxs', color: GRAY_TEXT, align: 'right', margin: 'none' },
               { type: 'box', layout: 'vertical', margin: 'sm', spacing: 'none', contents: rows },
-              { type: 'text', text: '※ 實際利率依審核結果為準（1.78%~5.758%）', size: 'xxs', color: '#546E7A', wrap: true, margin: 'md' },
+              { type: 'separator', margin: 'md', color: BORDER },
+              { type: 'text', text: '※ 實際利率依審核結果為準（1.78%~5.758%）', size: 'xxs', color: GRAY_TEXT, wrap: true, margin: 'md' },
             ]},
           ],
         },
         footer: {
-          type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: B,
+          type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: WHITE,
           contents: [{ type: 'button', style: 'primary', color: BTN, height: 'sm',
-            action: { type: 'message', label: '開始線上申請 →', text: '開始線上申請' },
+            action: { type: 'message', label: '開始線上申請', text: '開始線上申請' },
           }],
         },
       } as unknown as Record<string, unknown>,
@@ -423,9 +496,9 @@ function buildRateTable(loanType: LoanType | null): LineReplyMessage {
     },
     ...terms.map((t, i) => ({
       type: 'box', layout: 'horizontal', paddingAll: '9px',
-      backgroundColor: i % 2 === 0 ? '#0D1B2A' : '#111F2E',
+      backgroundColor: i % 2 === 0 ? WHITE : '#F8FAFC',
       contents: [
-        { type: 'text', text: `${t}年`, size: 'xxs', weight: 'bold', color: '#FFFFFF', flex: 3 },
+        { type: 'text', text: `${t}年`, size: 'xxs', weight: 'bold', color: '#1E293B', flex: 3 },
         ...amounts.map((a) => ({ type: 'text', text: calcMonthlyPayment(a, rate, t), size: 'xxs', color: ACCENT, flex: 2, align: 'center' })),
       ],
     })),
@@ -435,39 +508,45 @@ function buildRateTable(loanType: LoanType | null): LineReplyMessage {
     contents: {
       type: 'bubble', size: 'mega',
       body: {
-        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
         contents: [
           {
             type: 'box', layout: 'vertical', paddingAll: '16px', paddingBottom: '12px', spacing: 'xs',
+            backgroundColor: TCB_BLUE,
             contents: [
-              { type: 'text', text: '🏠 房貸月付試算表', weight: 'bold', size: 'md', color: '#FFFFFF' },
-              { type: 'text', text: `利率以 ${rate}% 試算（青安方案）`, size: 'xs', color: '#78909C' },
+              { type: 'text', text: '🏠 房貸月付試算表', weight: 'bold', size: 'md', color: WHITE },
+              { type: 'text', text: `利率以 ${rate}% 試算（青安方案）`, size: 'xs', color: '#BDD5F0' },
             ],
           },
           { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
           { type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'none', contents: [
-            { type: 'text', text: '每月應繳（元）', size: 'xxs', color: '#546E7A', align: 'right', margin: 'none' },
+            { type: 'text', text: '每月應繳（元）', size: 'xxs', color: GRAY_TEXT, align: 'right', margin: 'none' },
             { type: 'box', layout: 'vertical', margin: 'sm', spacing: 'none', contents: rows },
-            { type: 'text', text: '※ 實際利率依審核結果為準（2.23%~2.45%）', size: 'xxs', color: '#546E7A', wrap: true, margin: 'md' },
+            { type: 'separator', margin: 'md', color: BORDER },
+            { type: 'text', text: '※ 實際利率依審核結果為準（2.23%~2.45%）', size: 'xxs', color: GRAY_TEXT, wrap: true, margin: 'md' },
           ]},
         ],
       },
       footer: {
-        type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: B,
+        type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: WHITE,
         contents: [{ type: 'button', style: 'primary', color: BTN, height: 'sm',
-          action: { type: 'message', label: '開始線上申請 →', text: '開始線上申請' },
+          action: { type: 'message', label: '開始線上申請', text: '開始線上申請' },
         }],
       },
     } as unknown as Record<string, unknown>,
   };
 }
 
-/** 申辦流程 — 深色科技風格 */
+/** 申辦流程 — 白色金融風格 */
 function buildApplicationSteps(loanType: LoanType | null): LineReplyMessage {
-  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
+  const WHITE = '#FFFFFF';
+  const LIGHT = '#F0F6FF';
+  const TCB_BLUE = '#1B4F8A';
+  const BORDER = '#E2E8F0';
+  const GRAY_TEXT = '#64748B';
   const isMortgage = loanType !== LoanType.PERSONAL;
-  const ACCENT = isMortgage ? '#4FC3F7' : '#69F0AE';
-  const BTN = isMortgage ? '#1565C0' : '#1B5E20';
+  const ACCENT = TCB_BLUE;
+  const BTN = TCB_BLUE;
   const steps = isMortgage
     ? [
         { n: '1', title: '線上試算申請', desc: 'AI 推薦最適方案，填寫基本資料' },
@@ -489,32 +568,33 @@ function buildApplicationSteps(loanType: LoanType | null): LineReplyMessage {
     contents: {
       type: 'bubble', size: 'mega',
       body: {
-        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
         contents: [
           {
             type: 'box', layout: 'vertical', paddingAll: '16px', paddingBottom: '12px', spacing: 'xs',
+            backgroundColor: TCB_BLUE,
             contents: [
-              { type: 'text', text: '📋 申辦流程', weight: 'bold', size: 'md', color: '#FFFFFF' },
-              { type: 'text', text: isMortgage ? '房屋貸款 5步驟輕鬆辦' : '信用貸款 5步驟快速核貸', size: 'xs', color: '#78909C' },
+              { type: 'text', text: '📋 申辦流程', weight: 'bold', size: 'md', color: WHITE },
+              { type: 'text', text: isMortgage ? '房屋貸款 5步驟輕鬆辦' : '信用貸款 5步驟快速核貸', size: 'xs', color: '#BDD5F0' },
             ],
           },
           { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
           {
-            type: 'box', layout: 'vertical', backgroundColor: M, paddingAll: '16px', spacing: 'lg',
+            type: 'box', layout: 'vertical', backgroundColor: LIGHT, paddingAll: '16px', spacing: 'lg',
             contents: steps.map((s, i) => ({
               type: 'box', layout: 'horizontal', spacing: 'md', alignItems: 'flex-start',
               contents: [
                 {
                   type: 'box', layout: 'vertical', flex: 0, width: '28px', height: '28px',
-                  backgroundColor: i === 0 ? ACCENT : '#1E3A5F', cornerRadius: '14px',
+                  backgroundColor: i === 0 ? ACCENT : BORDER, cornerRadius: '14px',
                   justifyContent: 'center', alignItems: 'center',
-                  contents: [{ type: 'text', text: s.n, size: 'xs', color: i === 0 ? '#0D1B2A' : ACCENT, align: 'center', weight: 'bold' }],
+                  contents: [{ type: 'text', text: s.n, size: 'xs', color: i === 0 ? WHITE : ACCENT, align: 'center', weight: 'bold' }],
                 },
                 {
                   type: 'box', layout: 'vertical', flex: 1,
                   contents: [
-                    { type: 'text', text: s.title, size: 'sm', weight: 'bold', color: '#FFFFFF' },
-                    { type: 'text', text: s.desc, size: 'xs', color: '#90A4AE', wrap: true },
+                    { type: 'text', text: s.title, size: 'sm', weight: 'bold', color: '#1E293B' },
+                    { type: 'text', text: s.desc, size: 'xs', color: GRAY_TEXT, wrap: true },
                   ],
                 },
               ],
@@ -523,9 +603,9 @@ function buildApplicationSteps(loanType: LoanType | null): LineReplyMessage {
         ],
       },
       footer: {
-        type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: B,
+        type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: WHITE,
         contents: [{ type: 'button', style: 'primary', color: BTN,
-          action: { type: 'message', label: '開始線上申請 →', text: '開始線上申請' },
+          action: { type: 'message', label: '開始線上申請', text: '開始線上申請' },
         }],
       },
     } as unknown as Record<string, unknown>,
@@ -577,11 +657,15 @@ function buildProductIntroResult(session: UserSession): TransitionResult {
 
 /** 建構文件上傳 LIFF Flex 卡片 */
 function buildUploadDocsFlex(session: UserSession, token: string): LineReplyMessage {
-  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
+  const WHITE = '#FFFFFF';
+  const LIGHT = '#F0F6FF';
+  const TCB_BLUE = '#1B4F8A';
+  const BORDER = '#E2E8F0';
+  const GRAY_TEXT = '#64748B';
   const isMortgage = session.loanType === LoanType.MORTGAGE
     || session.loanType === LoanType.REVERSE_ANNUITY;
-  const ACCENT = isMortgage ? '#4FC3F7' : '#69F0AE';
-  const BTN = isMortgage ? '#1565C0' : '#1B5E20';
+  const ACCENT = TCB_BLUE;
+  const BTN = TCB_BLUE;
 
   const liffUploadId = process.env.LIFF_ID_UPLOAD;
   const frontendBase = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -604,18 +688,19 @@ function buildUploadDocsFlex(session: UserSession, token: string): LineReplyMess
     contents: {
       type: 'bubble', size: 'mega',
       body: {
-        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
         contents: [
           {
             type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '12px', spacing: 'sm',
+            backgroundColor: TCB_BLUE,
             contents: [
-              { type: 'text', text: '📤 AI 文件辨識', weight: 'bold', size: 'lg', color: '#FFFFFF' },
-              { type: 'text', text: '上傳文件，AI 自動填入申請資料', size: 'xs', color: '#78909C' },
+              { type: 'text', text: '📤 AI 文件辨識', weight: 'bold', size: 'lg', color: WHITE },
+              { type: 'text', text: '上傳文件，AI 自動填入申請資料', size: 'xs', color: '#BDD5F0' },
             ],
           },
           { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
           {
-            type: 'box', layout: 'vertical', backgroundColor: M, paddingAll: '16px', spacing: 'md',
+            type: 'box', layout: 'vertical', backgroundColor: LIGHT, paddingAll: '16px', spacing: 'md',
             contents: docItems.map((d) => ({
               type: 'box', layout: 'horizontal', spacing: 'md', alignItems: 'center',
               contents: [
@@ -623,24 +708,25 @@ function buildUploadDocsFlex(session: UserSession, token: string): LineReplyMess
                 {
                   type: 'box', layout: 'vertical', flex: 1,
                   contents: [
-                    { type: 'text', text: d.label, size: 'sm', weight: 'bold', color: '#FFFFFF' },
-                    { type: 'text', text: d.desc, size: 'xxs', color: '#90A4AE' },
+                    { type: 'text', text: d.label, size: 'sm', weight: 'bold', color: '#1E293B' },
+                    { type: 'text', text: d.desc, size: 'xxs', color: GRAY_TEXT },
                   ],
                 },
               ],
             })),
           },
+          { type: 'separator', color: BORDER },
           {
-            type: 'box', layout: 'vertical', paddingAll: '12px',
+            type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: WHITE,
             contents: [
-              { type: 'text', text: '✦ AI 自動辨識，節省填寫時間', size: 'xs', color: ACCENT },
-              { type: 'text', text: '✦ 亦可選擇手動填寫', size: 'xs', color: '#78909C' },
+              { type: 'text', text: '✓ AI 自動辨識，節省填寫時間', size: 'xs', color: ACCENT },
+              { type: 'text', text: '✓ 亦可選擇手動填寫', size: 'xs', color: GRAY_TEXT },
             ],
           },
         ],
       },
       footer: {
-        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: WHITE,
         contents: [
           { type: 'button', style: 'primary', color: BTN,
             action: { type: 'uri', label: '📤 上傳文件（建議）', uri: uploadUrl },
@@ -677,12 +763,12 @@ function buildPrepareDocsResult(session: UserSession): TransitionResult {
 // State Handlers
 // ─────────────────────────────────────────────────────────────
 
-/** IDLE → 歡迎訊息，以 Flex Carousel 呈現貸款類型入口 */
+/** IDLE → 歡迎訊息，以 Flex Bubble 選單呈現貸款類型入口 */
 const handleIdle: StateHandler = (_session, _input) => ({
   nextState: ConversationState.CHOOSE_LOAN_TYPE,
   messages: [
-    textMsg('您好！歡迎使用合庫「個金Co-Pilot領航員」👋\n\n請選擇您需要的服務：'),
-    buildWelcomeCarousel(),
+    textMsg('👋 您好！歡迎使用合庫「個金Co-Pilot領航員」\n\n請從下方選單選擇您需要的服務：'),
+    buildWelcomeMenu(),
   ],
 });
 
@@ -1282,11 +1368,15 @@ const handleRecommend: StateHandler = (_session, _input) => ({
 
 /** 建構 LIFF 申請書連結 Flex 卡片 */
 function buildApplicationFormFlex(session: UserSession): LineReplyMessage {
-  const D = '#0D1B2A'; const B = '#0A1628';
+  const WHITE = '#FFFFFF';
+  const LIGHT = '#F0F6FF';
+  const TCB_BLUE = '#1B4F8A';
+  const BORDER = '#E2E8F0';
+  const GRAY_TEXT = '#64748B';
   const isMortgage = session.loanType === LoanType.MORTGAGE
     || session.loanType === LoanType.REVERSE_ANNUITY;
-  const ACCENT = isMortgage ? '#4FC3F7' : '#69F0AE';
-  const BTN = isMortgage ? '#1565C0' : '#1B5E20';
+  const ACCENT = TCB_BLUE;
+  const BTN = isMortgage ? TCB_BLUE : '#0F766E';
 
   const token = createSessionToken(session.userId);
   const liffAppId = process.env.LIFF_ID_APPLICATION;
@@ -1301,34 +1391,36 @@ function buildApplicationFormFlex(session: UserSession): LineReplyMessage {
     contents: {
       type: 'bubble', size: 'mega',
       body: {
-        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE,
         contents: [
           {
             type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '12px', spacing: 'sm',
+            backgroundColor: TCB_BLUE,
             contents: [
-              { type: 'text', text: '📝 填寫申請書', weight: 'bold', size: 'lg', color: '#FFFFFF' },
-              { type: 'text', text: '最後一步：完成電子申請書與簽名', size: 'xs', color: '#78909C' },
+              { type: 'text', text: '📝 填寫申請書', weight: 'bold', size: 'lg', color: WHITE },
+              { type: 'text', text: '最後一步：完成電子申請書與簽名', size: 'xs', color: '#BDD5F0' },
             ],
           },
           { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
           {
-            type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm',
+            type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm', backgroundColor: LIGHT,
             contents: [
-              { type: 'text', text: '申請書包含以下步驟：', size: 'xs', color: '#78909C' },
-              { type: 'text', text: '① 確認申貸資訊', size: 'sm', color: '#B0BEC5' },
-              { type: 'text', text: '② 補充個人資料', size: 'sm', color: '#B0BEC5' },
-              { type: 'text', text: '③ 閱讀並同意條款', size: 'sm', color: '#B0BEC5' },
-              { type: 'text', text: '④ 手寫電子簽名', size: 'sm', color: '#B0BEC5' },
+              { type: 'text', text: '申請書包含以下步驟：', size: 'xs', color: GRAY_TEXT },
+              { type: 'text', text: '① 確認申貸資訊', size: 'sm', color: '#1E293B' },
+              { type: 'text', text: '② 補充個人資料', size: 'sm', color: '#1E293B' },
+              { type: 'text', text: '③ 閱讀並同意條款', size: 'sm', color: '#1E293B' },
+              { type: 'text', text: '④ 手寫電子簽名', size: 'sm', color: '#1E293B' },
+              { type: 'separator', margin: 'md', color: BORDER },
               { type: 'text', text: '⏱ 預計 2~3 分鐘完成', size: 'xs', color: ACCENT, margin: 'md' },
             ],
           },
         ],
       },
       footer: {
-        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: WHITE,
         contents: [
           { type: 'button', style: 'primary', color: BTN,
-            action: { type: 'uri', label: '填寫申請書 →', uri: formUrl },
+            action: { type: 'uri', label: '填寫申請書', uri: formUrl },
           },
           { type: 'button', style: 'secondary',
             action: { type: 'message', label: '重新試算', text: '重新開始' },
