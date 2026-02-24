@@ -11,7 +11,8 @@ import { Router, Request, Response } from 'express';
 import { validateToken } from '../config/sessionTokenStore';
 import { getSession, updateSession } from '../core/sessionStore';
 import { parseMyDataDoc, parseLandRegistryDoc } from '../services/documentParser';
-import { LoanType, BuildingType } from '../models/enums';
+import { lineClient } from '../core/lineClient';
+import { LoanType, BuildingType, ConversationState } from '../models/enums';
 
 export const parseDocumentRouter = Router();
 
@@ -89,7 +90,33 @@ parseDocumentRouter.post('/parse-document', async (req: Request, res: Response) 
       }
     }
 
-    res.json({ success: true, data: result });
+    // 判斷是否所有必要文件均已上傳完成
+    const isMortgage = session.loanType !== LoanType.PERSONAL;
+    const allDocsReady = session.mydataReady && (!isMortgage || session.landRegistryReady);
+
+    if (allDocsReady) {
+      // 推進狀態機：push "文件解析完成" 至 LINE，讓 Bot 繼續下一步
+      session.state = ConversationState.DOC_REVIEW;
+      updateSession(session);
+      try {
+        await lineClient.pushMessage({
+          to: userId,
+          messages: [{
+            type: 'text',
+            text: '✅ 文件上傳完成！\n\nAI 已辨識您的資料，請確認以下解析結果：',
+          }],
+        });
+        // 觸發狀態機繼續（傳入 '文件解析完成' 作為觸發詞）
+        await lineClient.pushMessage({
+          to: userId,
+          messages: [{ type: 'text', text: '文件解析完成' }],
+        });
+      } catch (pushErr) {
+        console.error('[parseDocument] Push 通知失敗:', pushErr);
+      }
+    }
+
+    res.json({ success: true, data: result, allDocsReady });
   } catch (err) {
     console.error('[parseDocument] 解析失敗:', err);
     res.status(500).json({ success: false, message: '文件解析失敗，請重試' });
