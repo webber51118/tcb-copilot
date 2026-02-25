@@ -84,7 +84,7 @@ function buildWelcomeMenu(): LineReplyMessage {
         contents: [
           {
             type: 'box', layout: 'vertical', paddingTop: '14px', paddingBottom: '6px',
-            paddingStart: '16px', paddingEnd: '16px', spacing: 'xxs',
+            paddingStart: '16px', paddingEnd: '16px', spacing: 'xs',
             contents: [
               { type: 'text', text: '貸款服務', weight: 'bold', size: 'sm', color: TCB_BLUE_DARK },
               { type: 'text', text: '謹慎理財，貸款先規劃', size: 'xxs', color: GRAY_TEXT },
@@ -96,7 +96,7 @@ function buildWelcomeMenu(): LineReplyMessage {
             contents: [
               iconBtn('🏠', '房貸試算', '與申辦', '房貸'),
               iconBtn('💳', '信貸試算', '與申辦', '信貸'),
-              iconBtn('🧓', '以房養老', '活化資產', '以房養老'),
+              iconBtn('🛡️', '房貸壽險', '保障家人', '房貸壽險'),
             ],
           },
           {
@@ -108,7 +108,7 @@ function buildWelcomeMenu(): LineReplyMessage {
             contents: [
               iconBtn('🤖', 'AI智能推薦', '精準配對', 'AI智能推薦'),
               iconBtn('🎁', '優惠專案', '限時活動', '當期活動'),
-              iconBtn('⚖️', '法規問答', '徵信規定', '法規問答'),
+              iconBtn('❓', '常見問答', '快速解答', '常見問答'),
             ],
           },
         ],

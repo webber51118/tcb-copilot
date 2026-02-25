@@ -12,7 +12,6 @@ import { ConversationState, LoanType, BuildingType, OccupationType } from '../mo
 import { LineReplyMessage, RecommendedProduct, UserSession, DocumentParseResult } from '../models/types';
 import { recommendProducts } from './recommendationEngine';
 import { parseImageBuffer } from './documentParser';
-import { ragQuery } from './ragService';
 import { runFullReview } from './workflowService';
 import { FullReviewRequest, FullReviewResponse } from '../models/workflow';
 
@@ -71,56 +70,73 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     return replyMessages(event.replyToken, result.messages);
   }
 
-  // 法規問答入口（全域可用）
-  if (userText === '法規問答') {
+  // 全域貸款類型切換：任何狀態下輸入「房貸」或「信貸」都能重新進入產品介紹
+  if (userText === '房貸' || userText === '信貸') {
+    session.loanType = userText === '房貸' ? LoanType.MORTGAGE : LoanType.PERSONAL;
+    session.state = ConversationState.CHOOSE_LOAN_TYPE;
+    updateSession(session);
+    const loanResult = transition(session, userText);
+    session.state = loanResult.nextState;
+    updateSession(session);
+    return replyMessages(event.replyToken, loanResult.messages);
+  }
+
+  // 房貸壽險專區（全域可用）
+  if (userText === '房貸壽險') {
     return replyMessages(event.replyToken, [{
       type: 'text',
-      text: '⚖️ 法規問答服務\n\n請選擇常見問題，或輸入「法規:您的問題」進行查詢：',
+      text: '🛡️ 房貸壽險專區\n\n房貸壽險是隨貸款餘額**遞減型定期壽險**，保障被保險人在貸款期間發生身故或全殘時，由保險理賠金償還剩餘貸款，讓家人不受債務壓力。\n\n✅ 主要優點：\n• 保費隨餘額遞減，越繳越少\n• 保障與貸款同步，不多繳不浪費\n• 萬一不幸，家人無需擔憂房貸\n\n📞 洽詢合庫房貸壽險方案，請至各分行諮詢，或繼續申辦房貸。',
       quickReply: {
         items: [
-          { type: 'action', action: { type: 'message', label: '第一戶寬限期', text: '法規:第一戶房貸有寬限期嗎？' } },
-          { type: 'action', action: { type: 'message', label: '第二戶成數', text: '法規:第二戶房貸最高可以貸幾成？' } },
-          { type: 'action', action: { type: 'message', label: 'DBR上限', text: '法規:DBR上限是多少？' } },
-          { type: 'action', action: { type: 'message', label: '青安貸款', text: '法規:青安貸款的利率和申請條件是什麼？' } },
+          { type: 'action', action: { type: 'message', label: '房貸試算', text: '房貸' } },
+          { type: 'action', action: { type: 'message', label: '我想洽詢', text: '我想洽詢' } },
+          { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
         ],
       },
     }]);
   }
 
-  // 法規問答查詢（「法規:問題」前綴）
-  if (userText.startsWith('法規:')) {
-    const question = userText.slice(3).trim();
-    if (question.length > 0) {
-      await replyMessages(event.replyToken, [{
-        type: 'text',
-        text: '📖 正在查詢法規知識庫，請稍候...',
-      }]);
-      try {
-        const loanTypeHint =
-          session.loanType === LoanType.MORTGAGE ? 'mortgage'
-          : session.loanType === LoanType.PERSONAL ? 'personal'
-          : undefined;
-        const ragResult = await ragQuery({ question, loanType: loanTypeHint });
-        const confidenceLabel: Record<string, string> = { high: '高', medium: '中', low: '低' };
-        await pushMessages(userId, [{
-          type: 'text',
-          text: `📋 法規問答\n\n${ragResult.answer}\n\n📌 資料來源：${ragResult.sources.join('、')}\n🔍 信心程度：${confidenceLabel[ragResult.confidence] ?? '中'}`,
-          quickReply: {
-            items: [
-              { type: 'action', action: { type: 'message', label: '繼續查詢', text: '法規問答' } },
-              { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
-            ],
-          },
-        }]);
-      } catch (err) {
-        console.error('[conversationHandler] RAG 查詢失敗:', err);
-        await pushMessages(userId, [{
-          type: 'text',
-          text: '⚠️ 法規查詢暫時無法使用，請稍後再試。',
-        }]);
-      }
-      return;
-    }
+  // 貸款常見問答入口（全域可用）
+  if (userText === '常見問答' || userText === '貸款常見問答') {
+    return replyMessages(event.replyToken, [{
+      type: 'text',
+      text: '❓ 貸款常見問答\n\n請選擇您想了解的問題：',
+      quickReply: {
+        items: [
+          { type: 'action', action: { type: 'message', label: '申請需要什麼文件', text: '問答:申請文件' } },
+          { type: 'action', action: { type: 'message', label: '對保需要帶什麼', text: '問答:對保資料' } },
+          { type: 'action', action: { type: 'message', label: '一定要有保證人嗎', text: '問答:保證人' } },
+          { type: 'action', action: { type: 'message', label: '什麼是指標利率', text: '問答:指標利率' } },
+        ],
+      },
+    }]);
+  }
+
+  // 貸款常見問答查詢（「問答:」前綴）
+  if (userText.startsWith('問答:')) {
+    const faqKey = userText.slice(3).trim();
+    const faqMap: Record<string, string> = {
+      '申請文件': '📋 申請貸款所需文件\n\n【基本文件】\n• 身分證正本 + 第二證件（健保卡／駕照）\n• 印章、戶籍謄本或戶口名簿\n• 買賣契約影本（房貸適用）\n\n【財力證明】\n• 最近一年綜合所得稅各類所得資料清單\n• 薪資轉帳存摺影本\n• 在職證明\n• 不動產所有權狀影本（房貸）\n• 最近一個月國稅局財產歸戶清單\n\n（資料來源：合庫銀行官網）',
+      '對保資料': '📝 對保時需攜帶以下資料\n\n• 借款人身分證正本\n• 保證人身分證正本（如需保證人）\n• 第二證件：駕照或健保卡\n• 印章\n\n對保時間通常約 30 分鐘，建議提前預約。\n\n（資料來源：合庫銀行官網）',
+      '保證人': '👥 關於保證人\n\n本行依據借款人的：\n• 個人信用狀況\n• 財資力狀況\n• 還款能力\n\n綜合審核後，再決定是否需要徵取保證人。\n\n信用狀況良好、收入穩定的客戶，通常不需要提供保證人。\n\n（資料來源：合庫銀行官網）',
+      '指標利率': '📊 什麼是貸款指標利率？\n\n貸款利率 = 指標利率（浮動）＋ 利率加碼（固定）\n\n• **指標利率**：由央行政策決定，每月或每季調整\n• **利率加碼**：銀行依您的信用與條件個別訂定\n\n因此，當指標利率上升時，每月還款金額也會增加；反之則減少。建議在申辦前確認目前適用利率。\n\n（資料來源：合庫銀行官網）',
+      '青安貸款': '🏠 青安貸款條件\n\n【申請資格】\n• 本人或配偶年齡 40 歲以下\n• 購買第一棟自住住宅\n• 無自有房屋（或配偶無自有房屋）\n\n【優惠條件】\n• 最低利率：2.275%\n• 最高貸款：1,000 萬元\n• 最長期間：40 年\n• 寬限期：最長 5 年\n\n🌟 為政策性優惠貸款，額度有限。',
+      '房貸成數': '🏦 房貸最高可以貸幾成？\n\n【第一戶自住】\n• 一般：約 7～8 成\n• 青安貸款：最高 8 成\n\n【第二戶以上】\n• 受央行選擇性信用管制，最高 6 成\n• 台北市、新北市特定地區更嚴格\n\n【以房養老（反向抵押）】\n• 最高約 7 成估值\n• 按月撥付，無需還款',
+      'DBR': '📏 DBR 上限是多少？\n\n DBR（Debt Burden Ratio）= 所有無擔保貸款月付金 ÷ 月收入\n\n依金融監管規定：\n• **無擔保貸款（信貸）DBR 不得超過 22 倍**\n  即月付金總額 ≤ 月收入 × 22\n\n例：月收入 50,000 元\n→ 信貸月付金上限約 50,000 × 22 / 12 ≈ 91,667 元\n\n房貸屬有擔保貸款，另以負債比率（負債比 ≤ 85%）計算。',
+    };
+    const answer = faqMap[faqKey] || `抱歉，找不到「${faqKey}」的相關問答，請嘗試其他問題。`;
+    return replyMessages(event.replyToken, [{
+      type: 'text',
+      text: answer,
+      quickReply: {
+        items: [
+          { type: 'action', action: { type: 'message', label: '青安貸款條件', text: '問答:青安貸款' } },
+          { type: 'action', action: { type: 'message', label: '房貸可貸幾成', text: '問答:房貸成數' } },
+          { type: 'action', action: { type: 'message', label: 'DBR上限', text: '問答:DBR' } },
+          { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
+        ],
+      },
+    }]);
   }
 
   // 執行狀態轉移

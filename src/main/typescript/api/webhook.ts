@@ -14,13 +14,22 @@ const router = Router();
 router.post('/', async (req: Request, res: Response) => {
   const events: WebhookEvent[] = req.body.events;
 
-  try {
-    await Promise.all(events.map(handleEvent));
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Webhook 處理錯誤:', err);
-    res.status(500).json({ error: '內部伺服器錯誤' });
-  }
+  // LINE 要求 webhook 一律回 200，否則會重試導致重複訊息
+  res.json({ success: true });
+
+  // 非同步處理事件，個別事件失敗不影響其他事件
+  await Promise.all(events.map(async (event) => {
+    try {
+      await handleEvent(event);
+    } catch (err) {
+      const lineErr = err as { statusCode?: number; message?: string; originalError?: unknown };
+      console.error('[webhook] 事件處理失敗:', {
+        statusCode: lineErr?.statusCode,
+        message: lineErr?.message,
+        body: lineErr?.originalError,
+      });
+    }
+  }));
 });
 
 export default router;
