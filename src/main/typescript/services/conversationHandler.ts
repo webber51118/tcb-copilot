@@ -847,8 +847,8 @@ function buildIntroVideoFlex(): LineReplyMessage {
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm', backgroundColor: WHITE, paddingAll: '16px',
         contents: [
-          { type: 'text', text: '🎬 合庫個金Co-Pilot 服務介紹', weight: 'bold', size: 'sm', color: TCB_BLUE, wrap: true },
-          { type: 'text', text: '點擊影片，快速了解 AI 如何為您打造最適貸款方案！', size: 'xs', color: '#64748B', wrap: true },
+          { type: 'text', text: '心照不宣MV / 合作金庫', weight: 'bold', size: 'sm', color: TCB_BLUE, wrap: true },
+          { type: 'text', text: '一起向前，合作金庫是你的堡壘', size: 'xs', color: '#64748B', wrap: true },
         ],
       },
       footer: {
