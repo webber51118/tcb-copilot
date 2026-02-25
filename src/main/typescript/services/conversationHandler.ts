@@ -22,6 +22,21 @@ const blobClient = new messagingApi.MessagingApiBlobClient({
 
 /** 處理單一 webhook 事件 */
 export async function handleEvent(event: WebhookEvent): Promise<void> {
+  // ── 新用戶加入好友：先送介紹影片，再送主選單 ──
+  if (event.type === 'follow') {
+    const userId = event.source.userId;
+    if (!userId) return;
+    const session = getSession(userId);
+    const menuResult = transition(session, '');
+    session.state = menuResult.nextState;
+    updateSession(session);
+    await replyMessages(event.replyToken, [
+      buildIntroVideoFlex(),
+      ...menuResult.messages,
+    ]);
+    return;
+  }
+
   if (event.type !== 'message') return;
   if (event.message.type !== 'text' && event.message.type !== 'image') return;
 
@@ -798,12 +813,50 @@ function buildAuditResultFlex(result: FullReviewResponse): LineReplyMessage {
         type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
         contents: [
           { type: 'button', style: 'secondary', height: 'sm',
-            action: { type: 'message', label: '📋 法規問答', text: '法規問答' },
+            action: { type: 'message', label: '❓ 常見問答', text: '常見問答' },
           },
           { type: 'button', style: 'secondary', height: 'sm',
             action: { type: 'message', label: '🔄 重新試算', text: '重新開始' },
           },
         ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
+
+/** 加入好友時顯示的 YouTube 介紹影片 Flex 卡片 */
+function buildIntroVideoFlex(): LineReplyMessage {
+  const YOUTUBE_URL = 'https://www.youtube.com/watch?v=fFw6cGiyl58';
+  const THUMBNAIL = 'https://img.youtube.com/vi/fFw6cGiyl58/hqdefault.jpg';
+  const TCB_BLUE = '#1B4F8A';
+  const WHITE = '#FFFFFF';
+
+  return {
+    type: 'flex',
+    altText: '🎬 歡迎加入！先看看我們的服務介紹影片',
+    contents: {
+      type: 'bubble', size: 'mega',
+      hero: {
+        type: 'image',
+        url: THUMBNAIL,
+        size: 'full',
+        aspectRatio: '20:13',
+        aspectMode: 'cover',
+        action: { type: 'uri', label: '播放影片', uri: YOUTUBE_URL },
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'sm', backgroundColor: WHITE, paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '🎬 合庫個金Co-Pilot 服務介紹', weight: 'bold', size: 'sm', color: TCB_BLUE, wrap: true },
+          { type: 'text', text: '點擊影片，快速了解 AI 如何為您打造最適貸款方案！', size: 'xs', color: '#64748B', wrap: true },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', backgroundColor: WHITE, paddingAll: '12px',
+        contents: [{
+          type: 'button', style: 'primary', color: TCB_BLUE,
+          action: { type: 'uri', label: '▶ 立即觀看影片', uri: YOUTUBE_URL },
+        }],
       },
     } as unknown as Record<string, unknown>,
   };
