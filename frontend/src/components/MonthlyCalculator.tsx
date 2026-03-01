@@ -10,14 +10,14 @@ interface MonthlyCalculatorProps {
 function calcMonthly(principal: number, annualRate: number, years: number): number {
   const r = annualRate / 100 / 12;
   const n = years * 12;
-  if (r === 0 || n === 0) return Math.round(principal / n);
+  if (r === 0 || n === 0) return Math.round(principal / Math.max(n, 1));
   return Math.round(principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
 }
 
 function calcReverseAnnuity(totalCredit: number, annualRate: number, years: number): number {
   const r = annualRate / 100 / 12;
   const n = years * 12;
-  if (r === 0 || n === 0) return Math.round(totalCredit / n);
+  if (r === 0 || n === 0) return Math.round(totalCredit / Math.max(n, 1));
   return Math.round(totalCredit * r / (1 - Math.pow(1 + r, -n)));
 }
 

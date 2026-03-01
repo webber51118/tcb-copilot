@@ -60,7 +60,7 @@ function buildReasons(loanType: LoanType, form: FormSnapshot, product: Recommend
 
   // 年齡適配
   if (loanType === 'reverse_annuity' && form.age >= 60) {
-    reasons.push(`年齡 ${form.age} 歲符合以房養老申請資格（須年滿 55 歲）`);
+    reasons.push(`年齡 ${form.age} 歲符合以房養老申請資格（須年滿 60 歲）`);
   } else if (loanType === 'mortgage' && form.age <= 40) {
     reasons.push(`年齡 ${form.age} 歲，可申請較長還款年限，分散每月還款壓力`);
   }
