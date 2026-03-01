@@ -2,10 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import PromotionCarousel from '../components/PromotionCarousel';
 import { usePromotions } from '../hooks/usePromotions';
+import { useLiff } from '../hooks/useLiff';
 
 export default function HomePage() {
   const navigate = useNavigate();
   const { promotions } = usePromotions();
+  const { profile } = useLiff();
 
   return (
     <div className="min-h-screen bg-tcb-gray flex flex-col">
@@ -14,11 +16,18 @@ export default function HomePage() {
       <div className="flex-1 overflow-y-auto pb-8">
         {/* 歡迎區 */}
         <div className="bg-gradient-to-b from-tcb-blue to-blue-700 text-white px-4 pt-6 pb-10">
+          {profile && (
+            <p className="text-xs opacity-70 mb-1">
+              👋 {profile.displayName}，您好！
+            </p>
+          )}
           <h1 className="text-xl font-black leading-tight">
-            您的專屬貸款<br />智慧領航員
+            {profile ? '您的專屬貸款顧問' : '您的專屬貸款'}<br />智慧領航員
           </h1>
           <p className="text-sm opacity-80 mt-1">
-            30秒完成評估，AI 為您量身推薦最優惠方案
+            {profile
+              ? `${profile.displayName.slice(0, 6)}，30 秒完成評估，AI 為您量身推薦最優惠方案`
+              : '30秒完成評估，AI 為您量身推薦最優惠方案'}
           </p>
         </div>
 

@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Promotion } from '../types';
+
+const AUTO_ADVANCE_MS = 4000;
 
 const HOLIDAY_COLORS: Record<string, string> = {
   兒童節: 'from-yellow-400 to-orange-400',
@@ -15,6 +17,33 @@ interface PromotionCarouselProps {
 
 export default function PromotionCarousel({ promotions }: PromotionCarouselProps) {
   const [idx, setIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  /** 啟動自動輪播計時器 */
+  const startTimer = () => {
+    if (promotions.length <= 1) return;
+    timerRef.current = setInterval(() => {
+      // fade out → 換卡 → fade in
+      setVisible(false);
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % promotions.length);
+        setVisible(true);
+      }, 200);
+    }, AUTO_ADVANCE_MS);
+  };
+
+  /** 重置計時器（用戶手動點擊後重新計時） */
+  const resetTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    startTimer();
+  };
+
+  useEffect(() => {
+    startTimer();
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [promotions.length]);
+
   if (promotions.length === 0) return null;
 
   const promo = promotions[idx];
@@ -23,9 +52,22 @@ export default function PromotionCarousel({ promotions }: PromotionCarouselProps
     ? promo.bonusDescription
     : promo.standalone?.savingsHighlight;
 
+  const handleDotClick = (i: number) => {
+    if (i === idx) return;
+    setVisible(false);
+    setTimeout(() => {
+      setIdx(i);
+      setVisible(true);
+    }, 200);
+    resetTimer();
+  };
+
   return (
     <div className="relative">
-      <div className={`bg-gradient-to-r ${gradientClass} text-white rounded-2xl p-4 mx-4`}>
+      {/* 輪播卡片（fade 動畫） */}
+      <div
+        className={`bg-gradient-to-r ${gradientClass} text-white rounded-2xl p-4 mx-4 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      >
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full">
@@ -41,14 +83,15 @@ export default function PromotionCarousel({ promotions }: PromotionCarouselProps
         </div>
       </div>
 
+      {/* 分頁點（多張才顯示） */}
       {promotions.length > 1 && (
         <div className="flex justify-center gap-1.5 mt-2">
           {promotions.map((_, i) => (
             <button
               key={i}
-              onClick={() => setIdx(i)}
-              className={`w-1.5 h-1.5 rounded-full transition-all ${
-                i === idx ? 'bg-tcb-blue w-4' : 'bg-gray-300'
+              onClick={() => handleDotClick(i)}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === idx ? 'bg-tcb-blue w-4' : 'bg-gray-300 w-1.5'
               }`}
             />
           ))}
