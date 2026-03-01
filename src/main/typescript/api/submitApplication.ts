@@ -15,6 +15,7 @@ import { createApplication } from '../config/applicationStore';
 import { generateApplicationPdf } from '../services/pdfGenerator';
 import { lineClient } from '../core/lineClient';
 import { LoanType } from '../models/enums';
+import { pushStaffNewCaseNotification } from '../services/staffNotifier';
 
 export const submitApplicationRouter = Router();
 
@@ -104,13 +105,17 @@ submitApplicationRouter.post('/submit-application', async (req: Request, res: Re
   // 重置 session
   resetSession(userId);
 
-  // Push LINE 申請完成通知
+  // Push LINE 申請完成通知（客戶）
   try {
     await pushApplyDoneMessage(userId, application.id, application.applicantName, application.applicantPhone);
   } catch (err) {
-    console.error('[submitApplication] LINE Push 失敗:', err);
-    // Push 失敗不影響 API 回應
+    console.error('[submitApplication] LINE Push（客戶）失敗:', err);
   }
+
+  // Push 行員新案件通知（非同步，不阻塞回應）
+  pushStaffNewCaseNotification(application).catch((err) => {
+    console.error('[submitApplication] 行員通知失敗:', err);
+  });
 
   res.json({
     success: true,
