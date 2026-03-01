@@ -53,12 +53,20 @@ interface ValuationResult {
 }
 
 interface CreditReviewResult {
-  riskScore: number;
-  fraudLevel: 'normal' | 'caution' | 'alert';
-  thresholdPass: boolean;
-  primaryMetricLabel: string;
-  primaryMetricValue: number;
   overallAssessment: string;
+  fraudCheck: { overallLevel: 'normal' | 'caution' | 'alert' };
+  thresholds: {
+    debtIncomeRatio: { value: number; pass: boolean };
+    dbr?: { value: number; pass: boolean };
+  };
+  riskFactors: {
+    employmentStability: { level: number };
+    incomeGrowth: { level: number };
+    netWorthLevel: { level: number };
+    netWorthRatio: { level: number };
+    liquidityRatio: { level: number };
+    debtRatio: { level: number };
+  };
 }
 
 interface AgentOpinion {
@@ -465,23 +473,47 @@ export default function AdminCaseDetailPage() {
                   <h4 className="font-bold text-gray-700 text-sm">5P 徵審分析</h4>
                   <span className="text-xs text-gray-400 ml-auto">{reviewResult.phases.creditReview.durationMs}ms</span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: '5P 風控評分', value: `${reviewResult.phases.creditReview.result.riskScore ?? '—'} 分` },
-                    { label: '防詐查核', value: FRAUD_LABEL[reviewResult.phases.creditReview.result.fraudLevel] || '—' },
-                    { label: '合規門檻', value: reviewResult.phases.creditReview.result.thresholdPass ? '✅ 通過' : '❌ 未通過' },
-                    { label: reviewResult.phases.creditReview.result.primaryMetricLabel?.split('：')[0] || '指標',
-                      value: reviewResult.phases.creditReview.result.primaryMetricLabel?.split('：')[1] || '—' },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="bg-gray-50 rounded-lg p-3 text-center">
-                      <div className="text-xs text-gray-400 mb-1">{label}</div>
-                      <div className="text-sm font-black text-[#1B4F8A]">{value}</div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-500 mt-3 bg-blue-50 rounded-lg p-2.5 leading-relaxed">
-                  {reviewResult.phases.creditReview.result.overallAssessment}
-                </p>
+                {(() => {
+                  const cr = reviewResult.phases.creditReview.result;
+                  const fs = reviewResult.finalSummary;
+                  const isPersonal = reviewResult.loanType === 'personal';
+                  // riskScore 由 workflowService buildCreditReviewSummary 計算，存在 finalSummary
+                  const riskScore = fs.riskScore;
+                  // fraudLevel 在 creditReview.result.fraudCheck.overallLevel
+                  const fraudLevel = cr.fraudCheck?.overallLevel ?? 'normal';
+                  // 合規門檻：信貸看 dbr.pass，房貸看 debtIncomeRatio.pass
+                  const thresholdPass = isPersonal
+                    ? (cr.thresholds?.dbr?.pass ?? cr.thresholds?.debtIncomeRatio?.pass ?? false)
+                    : (cr.thresholds?.debtIncomeRatio?.pass ?? false);
+                  // 主要指標值
+                  const metricVal = isPersonal
+                    ? (cr.thresholds?.dbr?.value ?? cr.thresholds?.debtIncomeRatio?.value ?? 0)
+                    : (cr.thresholds?.debtIncomeRatio?.value ?? 0);
+                  const metricLabel = isPersonal ? 'DBR' : '負債比';
+                  const metricValue = isPersonal
+                    ? `${metricVal.toFixed(1)} 倍`
+                    : `${(metricVal * 100).toFixed(1)}%`;
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { label: '5P 風控評分', value: `${riskScore ?? '—'} 分` },
+                          { label: '防詐查核', value: FRAUD_LABEL[fraudLevel] || '—' },
+                          { label: '合規門檻', value: thresholdPass ? '✅ 通過' : '❌ 未通過' },
+                          { label: metricLabel, value: metricValue },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="bg-gray-50 rounded-lg p-3 text-center">
+                            <div className="text-xs text-gray-400 mb-1">{label}</div>
+                            <div className="text-sm font-black text-[#1B4F8A]">{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-3 bg-blue-50 rounded-lg p-2.5 leading-relaxed">
+                        {cr.overallAssessment}
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Phase 3：審議小組 */}
