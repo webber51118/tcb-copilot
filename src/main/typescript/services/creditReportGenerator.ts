@@ -67,13 +67,16 @@ async function generatePdf(
   let page = pdfDoc.addPage([W, H]);
   let cursorY = H - MARGIN;
 
+  /** 移除非 ASCII 字元（pdf-lib WinAnsi 不支援中文）*/
+  const safe = (text: string) => text.replace(/[^\x00-\x7F]/g, '?');
+
   /** 寫文字（左上角為原點 y 向下） */
   const draw: DrawFn = (text, x, y, size = 10) => {
-    page.drawText(text, { x, y: H - y, size, font, color: rgb(0, 0, 0) });
+    page.drawText(safe(text), { x, y: H - y, size, font, color: rgb(0, 0, 0) });
   };
 
   const drawBold: DrawFn = (text, x, y, size = 10) => {
-    page.drawText(text, { x, y: H - y, size, font: boldFont, color: rgb(0, 0, 0.6) });
+    page.drawText(safe(text), { x, y: H - y, size, font: boldFont, color: rgb(0, 0, 0.6) });
   };
 
   const drawLine = (y: number) => {
