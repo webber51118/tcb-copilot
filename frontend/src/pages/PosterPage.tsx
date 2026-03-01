@@ -1,8 +1,8 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import PosterCanvas from '../components/PosterCanvas/PosterCanvas';
-import { shareToLine } from '../services/liff';
+import { initLiff, shareToLine } from '../services/liff';
 import type { RecommendResponse, LoanType } from '../types';
 
 interface LocationState {
@@ -16,6 +16,10 @@ export default function PosterPage() {
   const location = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const state = location.state as LocationState | null;
+
+  useEffect(() => {
+    initLiff().catch((err) => console.warn('[LIFF] 初始化失敗:', err));
+  }, []);
 
   if (!state?.result) {
     navigate('/', { replace: true });

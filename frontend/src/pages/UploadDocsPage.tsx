@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import { initLiff, closeLiff } from '../services/liff';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -41,6 +42,10 @@ export default function UploadDocsPage() {
   const landRegInputRef = useRef<HTMLInputElement>(null);
 
   const isMortgage = loanType === 'mortgage' || loanType === 'reverse_annuity';
+
+  useEffect(() => {
+    initLiff().catch((err) => console.warn('[LIFF] 初始化失敗:', err));
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -238,10 +243,12 @@ export default function UploadDocsPage() {
             <p className="text-sm text-green-300">AI 已辨識資料，Bot 將自動發送下一步</p>
           </div>
 
-          <div className="bg-gray-800 border border-gray-600 rounded-xl p-4 text-center">
-            <p className="text-white font-bold text-base mb-1">📲 請按右上角 × 關閉</p>
-            <p className="text-gray-400 text-sm">返回 LINE 查看 Bot 傳送的確認訊息</p>
-          </div>
+          <button
+            onClick={closeLiff}
+            className="w-full bg-green-700 hover:bg-green-600 text-white rounded-xl py-3 font-bold transition"
+          >
+            返回 LINE
+          </button>
 
           {/* 解析摘要 */}
           {parsedData.mydata && (
