@@ -54,18 +54,18 @@ function adminAuth(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-// 後台管理 API（活動 + 申請案件）
-app.use('/api/admin', adminAuth, promotionAdminRouter);
-app.use('/api/admin', adminAuth, applicationAdminRouter);
-
-// LIFF 公開 API（推薦引擎 + 活動查詢，允許 CORS 供前端呼叫）
+// 全域 CORS（含 Admin API Key header + PATCH method）
 app.use('/api', (_req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, x-admin-api-key');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
   next();
 });
 app.options('/api/*', (_req, res) => res.sendStatus(200));
+
+// 後台管理 API（活動 + 申請案件）
+app.use('/api/admin', adminAuth, promotionAdminRouter);
+app.use('/api/admin', adminAuth, applicationAdminRouter);
 app.use('/api', recommendRouter);
 app.use('/api', parseDocumentRouter);
 app.use('/api', submitApplicationRouter);
