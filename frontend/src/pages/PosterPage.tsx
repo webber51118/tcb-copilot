@@ -1,8 +1,9 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import PosterCanvas from '../components/PosterCanvas/PosterCanvas';
 import { initLiff, shareToLine } from '../services/liff';
+import { uploadPoster } from '../services/api';
 import type { RecommendResponse, LoanType } from '../types';
 
 interface LocationState {
@@ -15,6 +16,8 @@ export default function PosterPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareError, setShareError] = useState('');
   const state = location.state as LocationState | null;
 
   useEffect(() => {
@@ -41,9 +44,20 @@ export default function PosterPage() {
   const handleShare = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const imageUrl = canvas.toDataURL('image/png');
-    const text = `合庫個金Co-Pilot為我推薦：${primary.name}\n利率 ${primary.rateRange}，立即了解！`;
-    await shareToLine(imageUrl, text);
+    setIsSharing(true);
+    setShareError('');
+    try {
+      // Bug 1 Fix：先上傳取得 HTTPS URL，再傳入 shareTargetPicker
+      const imageBase64 = canvas.toDataURL('image/png');
+      const imageUrl = await uploadPoster(imageBase64);
+      const text = `合庫個金Co-Pilot為我推薦：${primary.name}\n利率 ${primary.rateRange}，立即了解！`;
+      await shareToLine(imageUrl, text);
+    } catch (err) {
+      console.error('[分享] 失敗:', err);
+      setShareError('分享失敗，請稍後再試');
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   return (
@@ -72,11 +86,15 @@ export default function PosterPage() {
           >
             下載海報（PNG）
           </button>
+          {shareError && (
+            <p className="text-xs text-red-400 text-center">⚠️ {shareError}</p>
+          )}
           <button
             onClick={handleShare}
-            className="w-full bg-green-500 text-white font-bold py-3 px-6 rounded-xl active:opacity-80 transition-opacity text-center"
+            disabled={isSharing}
+            className={`w-full bg-green-500 text-white font-bold py-3 px-6 rounded-xl transition-opacity text-center ${isSharing ? 'opacity-50' : 'active:opacity-80'}`}
           >
-            分享至 LINE
+            {isSharing ? '上傳中...' : '分享至 LINE'}
           </button>
           <button
             onClick={() => navigate('/')}

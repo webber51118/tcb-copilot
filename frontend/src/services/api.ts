@@ -20,3 +20,13 @@ export async function fetchActivePromotions(): Promise<Promotion[]> {
   const res = await client.get<{ success: boolean; data: Promotion[] }>('/api/promotions/active');
   return res.data.data;
 }
+
+/** 上傳海報 base64，回傳可分享的 HTTPS URL（有效 30 分鐘） */
+export async function uploadPoster(imageBase64: string): Promise<string> {
+  const res = await client.post<{ success: boolean; imageUrl: string }>(
+    '/api/poster-upload',
+    { imageBase64 },
+    { timeout: 30000 }, // 圖片較大，給予較長 timeout
+  );
+  return res.data.imageUrl;
+}

@@ -14,7 +14,7 @@ import express, { Request, Response, NextFunction } from 'express';
 const FRONTEND_DIST = path.join(process.cwd(), 'frontend', 'dist');
 
 // 確保資料目錄存在
-['data', 'data/applications', 'data/credit-reviews'].forEach((dir) => {
+['data', 'data/applications', 'data/credit-reviews', 'data/posters'].forEach((dir) => {
   const p = path.join(process.cwd(), dir);
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
 });
@@ -30,6 +30,7 @@ import { creditReviewRouter } from './api/creditReview';
 import { ragQueryRouter } from './api/ragQuery';
 import { committeeReviewRouter } from './api/committeeReview';
 import { workflowRouter } from './api/workflow';
+import { posterUploadRouter } from './api/posterUpload';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -73,6 +74,10 @@ app.use('/api', creditReviewRouter);
 app.use('/api', ragQueryRouter);
 app.use('/api', committeeReviewRouter);
 app.use('/api', workflowRouter);
+app.use('/api', posterUploadRouter);
+
+// 海報暫存圖片靜態服務（在 SPA fallback 之前註冊）
+app.use('/posters', express.static(path.join(process.cwd(), 'data', 'posters')));
 
 // 健康檢查
 app.get('/health', (_req, res) => {

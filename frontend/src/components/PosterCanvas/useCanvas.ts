@@ -77,7 +77,15 @@ export function useCanvas(
     if (!ctx) return;
 
     drawPoster(ctx, opts).catch(console.error);
-  }, [opts.product.id, opts.activePromotion?.id]);
+  // Bug 2 Fix：補齊 formData 關鍵欄位與 loanType，確保資料變動時重繪 Canvas
+  }, [
+    opts.product.id,
+    opts.activePromotion?.id,
+    opts.loanType,
+    opts.formData?.amount,
+    opts.formData?.termYears,
+    opts.formData?.occupation,
+  ]);
 }
 
 async function drawPoster(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
