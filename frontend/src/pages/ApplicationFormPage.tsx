@@ -8,6 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { initLiff, closeLiff } from '../services/liff';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -65,6 +66,11 @@ export default function ApplicationFormPage() {
   const isDrawing = useRef(false);
   const [hasSig, setHasSig] = useState(false);
 
+  // LIFF SDK 初始化
+  useEffect(() => {
+    initLiff().catch((err) => console.warn('[LIFF] 初始化失敗:', err));
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get('token') || '';
@@ -91,15 +97,18 @@ export default function ApplicationFormPage() {
   // ── Canvas 簽名邏輯 ──
   const getPos = (e: React.TouchEvent | React.MouseEvent, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
+    // 修正 canvas 內部解析度與 CSS 渲染尺寸的比例差，避免手機上坐標偏移
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     if ('touches' in e) {
       return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top,
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY,
       };
     }
     return {
-      x: (e as React.MouseEvent).clientX - rect.left,
-      y: (e as React.MouseEvent).clientY - rect.top,
+      x: ((e as React.MouseEvent).clientX - rect.left) * scaleX,
+      y: ((e as React.MouseEvent).clientY - rect.top) * scaleY,
     };
   };
 
@@ -216,7 +225,12 @@ export default function ApplicationFormPage() {
               <p className="text-lg font-bold text-green-400">{caseId}</p>
             </div>
             <p className="text-xs text-gray-500">合庫將於 3~5 個工作天內與您聯繫，請保持電話暢通</p>
-            <p className="text-xs text-gray-600 mt-3">LINE 已發送確認通知，請返回 LINE 查看</p>
+            <button
+              onClick={closeLiff}
+              className="mt-6 w-full bg-green-700 hover:bg-green-600 text-white rounded-xl py-3 font-bold transition"
+            >
+              返回 LINE
+            </button>
           </div>
         </div>
       </div>
