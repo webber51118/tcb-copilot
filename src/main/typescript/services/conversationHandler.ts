@@ -410,11 +410,10 @@ function buildDocReviewFlex(
 
 /** 建構豐富推薦產品 Flex Message（含適用資格說明） */
 function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanType | null): LineReplyMessage {
-  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
+  const D = '#FFFFFF'; const M = '#F0F6FF'; const B = '#EBF3FF';
   const isReverseAnnuity = loanType === LoanType.REVERSE_ANNUITY;
   const isMortgage = loanType === LoanType.MORTGAGE || isReverseAnnuity;
-  const ACCENT = isMortgage ? '#4FC3F7' : '#69F0AE';
-  const BTN = isMortgage ? '#1565C0' : '#1B5E20';
+  const ACCENT = isMortgage ? '#1565C0' : '#166534';
   const monthlyLabel = isReverseAnnuity ? '每月撥付' : '預估月付';
   const monthlyValue = product.monthlyPayment
     ? `NT$ ${product.monthlyPayment.toLocaleString()}`
@@ -442,13 +441,13 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
             contents: [
               { type: 'text', text: '🎯', size: 'sm', flex: 0 },
               { type: 'text', text: 'AI 智能推薦', size: 'xs', color: ACCENT, weight: 'bold', flex: 1 },
-              { type: 'text', text: '最適合您的方案', size: 'xxs', color: '#546E7A', align: 'end' },
+              { type: 'text', text: '最適合您的方案', size: 'xxs', color: '#94A3B8', align: 'end' },
             ],
           },
           // 產品名稱
           {
             type: 'box', layout: 'vertical', paddingStart: '16px', paddingEnd: '16px', paddingBottom: '12px',
-            contents: [{ type: 'text', text: product.name, weight: 'bold', size: 'lg', color: '#FFFFFF', wrap: true }],
+            contents: [{ type: 'text', text: product.name, weight: 'bold', size: 'lg', color: '#1E293B', wrap: true }],
           },
           { type: 'box', layout: 'vertical', height: '2px', backgroundColor: ACCENT, contents: [{ type: 'filler' }] },
           // 利率 + 月付金
@@ -459,15 +458,15 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
                 type: 'box', layout: 'vertical', flex: 1, alignItems: 'center',
                 contents: [
                   { type: 'text', text: product.rateRange, weight: 'bold', size: 'md', color: ACCENT, wrap: true, align: 'center' },
-                  { type: 'text', text: '利率範圍', size: 'xxs', color: '#78909C', align: 'center' },
+                  { type: 'text', text: '利率範圍', size: 'xxs', color: '#64748B', align: 'center' },
                 ],
               },
-              { type: 'box', layout: 'vertical', width: '1px', backgroundColor: '#1E3A5F', contents: [{ type: 'filler' }] },
+              { type: 'box', layout: 'vertical', width: '1px', backgroundColor: '#CBD5E1', contents: [{ type: 'filler' }] },
               {
                 type: 'box', layout: 'vertical', flex: 1, alignItems: 'center',
                 contents: [
-                  { type: 'text', text: monthlyValue, weight: 'bold', size: 'sm', color: '#FFD54F', wrap: true, align: 'center' },
-                  { type: 'text', text: monthlyLabel, size: 'xxs', color: '#78909C', align: 'center' },
+                  { type: 'text', text: monthlyValue, weight: 'bold', size: 'sm', color: '#1B4F8A', wrap: true, align: 'center' },
+                  { type: 'text', text: monthlyLabel, size: 'xxs', color: '#64748B', align: 'center' },
                 ],
               },
             ],
@@ -476,26 +475,26 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
           {
             type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm',
             contents: [
-              { type: 'text', text: '方案特色', size: 'xs', color: '#78909C', weight: 'bold' },
+              { type: 'text', text: '方案特色', size: 'xs', color: '#64748B', weight: 'bold' },
               ...product.features.slice(0, 3).map((f) => ({
                 type: 'box', layout: 'horizontal', spacing: 'sm',
                 contents: [
                   { type: 'text', text: '◆', size: 'xs', color: ACCENT, flex: 0 },
-                  { type: 'text', text: f, size: 'xs', color: '#B0BEC5', flex: 1, wrap: true },
+                  { type: 'text', text: f, size: 'xs', color: '#374151', flex: 1, wrap: true },
                 ],
               })),
-              { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#1E3A5F', margin: 'sm', contents: [{ type: 'filler' }] },
+              { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#E2E8F0', margin: 'sm', contents: [{ type: 'filler' }] },
               // 適用資格
-              { type: 'text', text: '適用資格', size: 'xs', color: '#78909C', weight: 'bold', margin: 'sm' },
+              { type: 'text', text: '適用資格', size: 'xs', color: '#64748B', weight: 'bold', margin: 'sm' },
               ...eligibilityLines.map((e) => ({
                 type: 'box', layout: 'horizontal', spacing: 'sm',
                 contents: [
-                  { type: 'text', text: '✓', size: 'xs', color: '#69F0AE', flex: 0 },
-                  { type: 'text', text: e, size: 'xs', color: '#B0BEC5', flex: 1, wrap: true },
+                  { type: 'text', text: '✓', size: 'xs', color: ACCENT, flex: 0 },
+                  { type: 'text', text: e, size: 'xs', color: '#374151', flex: 1, wrap: true },
                 ],
               })),
-              { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#1E3A5F', margin: 'sm', contents: [{ type: 'filler' }] },
-              { type: 'text', text: `💡 ${product.savingsHighlight}`, size: 'xs', color: '#69F0AE', wrap: true },
+              { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#E2E8F0', margin: 'sm', contents: [{ type: 'filler' }] },
+              { type: 'text', text: `💡 ${product.savingsHighlight}`, size: 'xs', color: ACCENT, wrap: true },
             ],
           },
         ],
@@ -517,7 +516,7 @@ function buildCrossSellFlex(
   crossSell: NonNullable<RecommendedProduct['crossSell']>,
   loanType: LoanType | null,
 ): LineReplyMessage {
-  const D = '#0D1B2A'; const B = '#0A1628';
+  const BG = '#FFFFFF'; const FOOTER = '#F0F6FF'; const BORDER = '#E2E8F0';
   const isMortgage = loanType === LoanType.MORTGAGE || loanType === LoanType.REVERSE_ANNUITY;
 
   const bubbles: unknown[] = [];
@@ -526,17 +525,17 @@ function buildCrossSellFlex(
     bubbles.push({
       type: 'bubble', size: 'kilo',
       body: {
-        type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: D, spacing: 'sm',
+        type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: BG, spacing: 'sm',
         contents: [
-          { type: 'text', text: '🛡️ 搭配保險', size: 'xs', color: '#CE93D8', weight: 'bold' },
-          { type: 'text', text: crossSell.insurance.name, size: 'sm', color: '#FFFFFF', weight: 'bold', wrap: true },
-          { type: 'text', text: `月繳 ${crossSell.insurance.price}`, size: 'sm', color: '#FFD54F' },
+          { type: 'text', text: '🛡️ 保障規劃', size: 'xs', color: '#0F766E', weight: 'bold' },
+          { type: 'text', text: crossSell.insurance.name, size: 'sm', color: '#1E293B', weight: 'bold', wrap: true },
+          { type: 'text', text: `月繳 ${crossSell.insurance.price}`, size: 'sm', color: '#1B4F8A' },
         ],
       },
       footer: {
-        type: 'box', layout: 'vertical', paddingAll: '8px', backgroundColor: B,
+        type: 'box', layout: 'vertical', paddingAll: '8px', backgroundColor: FOOTER, borderWidth: '1px', borderColor: BORDER,
         contents: [{ type: 'button', style: 'secondary', height: 'sm',
-          action: { type: 'message', label: '了解更多', text: '我想洽詢' },
+          action: { type: 'message', label: '進一步了解', text: '我想洽詢' },
         }],
       },
     });
@@ -546,18 +545,18 @@ function buildCrossSellFlex(
     bubbles.push({
       type: 'bubble', size: 'kilo',
       body: {
-        type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: D, spacing: 'sm',
+        type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: BG, spacing: 'sm',
         contents: [
-          { type: 'text', text: '💳 搭配信用卡', size: 'xs', color: isMortgage ? '#4FC3F7' : '#69F0AE', weight: 'bold' },
-          { type: 'text', text: crossSell.creditCard.name, size: 'sm', color: '#FFFFFF', weight: 'bold', wrap: true },
-          { type: 'text', text: `回饋 ${crossSell.creditCard.cashback}`, size: 'sm', color: '#FFD54F' },
-          { type: 'text', text: `年費 ${crossSell.creditCard.fee}`, size: 'xs', color: '#78909C' },
+          { type: 'text', text: '💳 推薦卡片', size: 'xs', color: isMortgage ? '#1565C0' : '#166534', weight: 'bold' },
+          { type: 'text', text: crossSell.creditCard.name, size: 'sm', color: '#1E293B', weight: 'bold', wrap: true },
+          { type: 'text', text: `回饋 ${crossSell.creditCard.cashback}`, size: 'sm', color: '#1B4F8A' },
+          { type: 'text', text: `年費 ${crossSell.creditCard.fee}`, size: 'xs', color: '#64748B' },
         ],
       },
       footer: {
-        type: 'box', layout: 'vertical', paddingAll: '8px', backgroundColor: B,
+        type: 'box', layout: 'vertical', paddingAll: '8px', backgroundColor: FOOTER, borderWidth: '1px', borderColor: BORDER,
         contents: [{ type: 'button', style: 'secondary', height: 'sm',
-          action: { type: 'message', label: '了解更多', text: '我想洽詢' },
+          action: { type: 'message', label: '進一步了解', text: '我想洽詢' },
         }],
       },
     });
@@ -569,7 +568,7 @@ function buildCrossSellFlex(
 
   return {
     type: 'flex',
-    altText: '🎁 搭配方案推薦',
+    altText: '🎁 貼心加值服務',
     contents: bubbles.length === 1
       ? bubbles[0] as Record<string, unknown>
       : { type: 'carousel', contents: bubbles } as Record<string, unknown>,
