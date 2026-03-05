@@ -5,7 +5,9 @@
 import axios from 'axios';
 import type { RecommendRequest, RecommendResponse, Promotion, AutoValuateResponse } from '../types';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// 開發模式：Vite proxy 處理 /api → localhost:3000
+// 生產模式：前端由後端 serve，使用相對路徑即可
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const client = axios.create({ baseURL: BASE_URL, timeout: 10000 });
 
