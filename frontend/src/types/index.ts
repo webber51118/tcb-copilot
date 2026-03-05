@@ -117,6 +117,7 @@ export const TAIWAN_CITIES: string[] = [
 
 export interface ValuationFormData {
   imageBase64: string | null;
+  address: string;
   region: string;
   buildingType: string;
   areaPing: number | null;

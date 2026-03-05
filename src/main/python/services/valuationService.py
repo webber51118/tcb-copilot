@@ -93,7 +93,7 @@ def valuate(request: ValuationRequest) -> ValuationResult:
         sentiment_score = sentiment_score,
         base_value      = base_value,
         breakdown       = breakdown,
-        mode            = "demo",
+        mode            = "production",
         region          = request.region,
         building_type   = request.building_type,
     )

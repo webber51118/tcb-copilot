@@ -8,8 +8,15 @@ import { TAIWAN_CITIES } from '../types';
 
 const BUILDING_TYPES = ['大樓', '華廈', '公寓', '透天', '別墅'];
 
+/** 從完整地址萃取縣市（例：「台北市大安區...」→「台北市」） */
+function extractRegionFromAddress(address: string): string {
+  const match = TAIWAN_CITIES.find((city) => address.includes(city));
+  return match || '';
+}
+
 const INITIAL: ValuationFormData = {
   imageBase64: null,
+  address: '',
   region: '',
   buildingType: '',
   areaPing: null,
@@ -92,7 +99,7 @@ export default function ValuationPage() {
   // ── Step 2 是否可送出 ─────────────────────────────────────
   const canSubmit = isImageMode
     ? !!form.layout && form.hasParking !== null && !!form.loanAmount && !loading
-    : !!form.region && !!form.buildingType && !!form.areaPing && !!form.propertyAge &&
+    : !!form.address && !!form.region && !!form.buildingType && !!form.areaPing && !!form.propertyAge &&
       form.floor !== null && !!form.layout && form.hasParking !== null && !!form.loanAmount && !loading;
 
   const val = form.valuationResult;
@@ -180,20 +187,27 @@ export default function ValuationPage() {
             )}
 
             <div className="space-y-4">
-              {/* 手動模式才顯示：縣市 */}
+              {/* 手動模式才顯示：完整地址（自動萃取縣市） */}
               {!isImageMode && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">所在縣市 *</label>
-                  <select
-                    value={form.region}
-                    onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">物件地址 *</label>
+                  <input
+                    type="text"
+                    placeholder="例：台北市大安區忠孝東路四段100號"
+                    value={form.address ?? ''}
+                    onChange={(e) => {
+                      const addr = e.target.value;
+                      const region = extractRegionFromAddress(addr);
+                      setForm((f) => ({ ...f, address: addr, region }));
+                    }}
                     className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
-                  >
-                    <option value="">請選擇縣市</option>
-                    {TAIWAN_CITIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                  />
+                  {form.address && !form.region && (
+                    <p className="text-xs text-orange-500 mt-1">請輸入包含縣市的完整地址（例：台北市...）</p>
+                  )}
+                  {form.region && (
+                    <p className="text-xs text-green-600 mt-1">已識別縣市：{form.region}</p>
+                  )}
                 </div>
               )}
 
@@ -426,11 +440,12 @@ export default function ValuationPage() {
                 </div>
               </details>
 
-              {val.mode === 'demo' && (
-                <p className="text-center text-xs text-gray-400">
-                  * Demo 模式：使用統計公式估算，僅供參考
-                </p>
+              {form.address && (
+                <p className="text-center text-xs text-gray-400">物件地址：{form.address}</p>
               )}
+              <p className="text-center text-xs text-gray-400">
+                * 本結果由 AI 四層鑑價引擎估算，僅供參考，實際價格依市場交易為準
+              </p>
 
               {/* CTA */}
               <button
