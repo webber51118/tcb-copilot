@@ -39,7 +39,7 @@ export default function ApplicationPage() {
   const isNextDisabled = () => {
     if (step === 1) return !form.loanType;
     if (step === 2) {
-      const base = !form.age || (!form.income) || !form.termYears || !form.amount;
+      const base = !form.age || !form.income || !form.termYears || !form.amount || !form.employer;
       if (form.loanType === 'reverse_annuity') return base;
       return base || !form.occupation || !form.purpose;
     }

@@ -1237,6 +1237,23 @@ const handleCollectAmount: StateHandler = (session, input) => {
   }
   session.basicInfo.amount = amount;
 
+  return {
+    nextState: ConversationState.COLLECT_EMPLOYER,
+    messages: [textMsg('請問您目前任職的公司名稱？\n（例如：台積電、某某有限公司）')],
+  };
+};
+
+/** 收集任職公司 */
+const handleCollectEmployer: StateHandler = (session, input) => {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return {
+      nextState: ConversationState.COLLECT_EMPLOYER,
+      messages: [textMsg('請輸入您目前任職的公司名稱')],
+    };
+  }
+  session.employer = trimmed;
+
   // 信貸：已上傳文件 → 直接推薦；否則確認 MYDATA
   if (session.loanType === LoanType.PERSONAL) {
     if (session.parsedFromDoc) {
@@ -1576,6 +1593,7 @@ const stateHandlers: Record<ConversationState, StateHandler> = {
   [ConversationState.COLLECT_PURPOSE]: handleCollectPurpose,
   [ConversationState.COLLECT_TERM]: handleCollectTerm,
   [ConversationState.COLLECT_AMOUNT]: handleCollectAmount,
+  [ConversationState.COLLECT_EMPLOYER]: handleCollectEmployer,
   [ConversationState.COLLECT_PROPERTY_AGE]: handleCollectPropertyAge,
   [ConversationState.COLLECT_AREA]: handleCollectArea,
   [ConversationState.COLLECT_PARKING]: handleCollectParking,

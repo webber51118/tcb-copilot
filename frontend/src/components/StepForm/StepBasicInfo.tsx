@@ -128,6 +128,18 @@ export default function StepBasicInfo({ data, onChange }: StepBasicInfoProps) {
         display={data.amount ? `NT$ ${(data.amount / 10000).toFixed(0)}萬` : '請選擇'}
         onChange={(v) => onChange({ amount: v })}
       />
+
+      {/* 任職公司 */}
+      <div>
+        <p className="text-sm text-gray-500 mb-1">任職公司</p>
+        <input
+          type="text"
+          value={data.employer}
+          onChange={(e) => onChange({ employer: e.target.value })}
+          placeholder="請輸入目前任職公司名稱"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-tcb-blue"
+        />
+      </div>
     </div>
   );
 }

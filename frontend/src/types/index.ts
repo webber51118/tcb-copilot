@@ -80,6 +80,7 @@ export interface ApplicationFormData {
   purpose: string;
   termYears: number | null;
   amount: number | null;
+  employer: string;
   propertyAge: number | null;
   areaPing: number | null;
   hasParking: boolean | null;
@@ -96,6 +97,7 @@ export const INITIAL_FORM_DATA: ApplicationFormData = {
   purpose: '',
   termYears: null,
   amount: null,
+  employer: '',
   propertyAge: null,
   areaPing: null,
   hasParking: null,

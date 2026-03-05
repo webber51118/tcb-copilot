@@ -24,6 +24,8 @@ export enum ConversationState {
   COLLECT_TERM = 'COLLECT_TERM',
   /** 收集貸款金額 */
   COLLECT_AMOUNT = 'COLLECT_AMOUNT',
+  /** 收集任職公司 */
+  COLLECT_EMPLOYER = 'COLLECT_EMPLOYER',
   /** 收集屋齡（房貸專用） */
   COLLECT_PROPERTY_AGE = 'COLLECT_PROPERTY_AGE',
   /** 收集坪數（房貸專用） */
