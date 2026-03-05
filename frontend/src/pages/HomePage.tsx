@@ -87,6 +87,21 @@ export default function HomePage() {
             </div>
             <span className="ml-auto text-gray-300 text-lg">›</span>
           </button>
+
+          <button
+            onClick={() => navigate('/valuate')}
+            className="w-full card flex items-center gap-4 active:scale-95 transition-transform"
+          >
+            <div className="w-14 h-14 bg-tcb-light rounded-2xl flex items-center justify-center text-2xl shrink-0">
+              🏡
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-gray-800">AI 自動鑑價</p>
+              <p className="text-xs text-gray-500">上傳謄本 · AI 解析 · 即時鑑估</p>
+              <p className="text-xs text-tcb-blue font-medium mt-0.5">LSTM + RF+SDE 四層引擎</p>
+            </div>
+            <span className="ml-auto text-gray-300 text-lg">›</span>
+          </button>
         </div>
 
         {/* 底部說明 */}

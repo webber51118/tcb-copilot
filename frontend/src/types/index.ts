@@ -103,3 +103,54 @@ export const INITIAL_FORM_DATA: ApplicationFormData = {
   floor: null,
   buildingType: '',
 };
+
+// ─────────────────────────────────────────────────────────────────
+// AI 自動鑑價型別
+// ─────────────────────────────────────────────────────────────────
+
+export const TAIWAN_CITIES: string[] = [
+  '台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市',
+  '新竹市', '新竹縣', '基隆市', '苗栗縣', '彰化縣', '南投縣',
+  '雲林縣', '嘉義市', '嘉義縣', '屏東縣', '宜蘭縣', '花蓮縣',
+  '台東縣', '澎湖縣', '金門縣', '連江縣',
+];
+
+export interface ValuationFormData {
+  imageBase64: string | null;
+  region: string;
+  buildingType: string;
+  areaPing: number | null;
+  propertyAge: number | null;
+  floor: number | null;
+  layout: string;
+  hasParking: boolean | null;
+  loanAmount: number | null;
+  valuationResult: ValuationResult | null;
+}
+
+export interface LandRegistryParsed {
+  buildingType?: string;
+  floor?: number;
+  areaPing?: number;
+  propertyAge?: number;
+}
+
+export interface ValuationResult {
+  estimatedValue: number;
+  confidenceInterval: { p5: number; p50: number; p95: number };
+  ltvRatio: number;
+  riskLevel: '低風險' | '中風險' | '高風險';
+  lstmIndex: number;
+  sentimentScore: number;
+  baseValue: number;
+  breakdown: Record<string, number>;
+  mode: 'demo' | 'production';
+  region: string;
+  buildingType: string;
+}
+
+export interface AutoValuateResponse {
+  parsed: LandRegistryParsed | null;
+  parseSuccess: boolean;
+  valuation: ValuationResult;
+}

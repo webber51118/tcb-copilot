@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios';
-import type { RecommendRequest, RecommendResponse, Promotion } from '../types';
+import type { RecommendRequest, RecommendResponse, Promotion, AutoValuateResponse } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -18,6 +18,28 @@ export async function fetchRecommendation(data: RecommendRequest): Promise<Recom
 /** 取得進行中活動 */
 export async function fetchActivePromotions(): Promise<Promotion[]> {
   const res = await client.get<{ success: boolean; data: Promotion[] }>('/api/promotions/active');
+  return res.data.data;
+}
+
+/** AI 自動鑑價：上傳謄本圖片（可選）+ 物件資訊，回傳鑑估結果 */
+export async function callAutoValuate(
+  imageBase64: string | null,
+  params: {
+    region: string;
+    buildingType: string;
+    areaPing: number;
+    propertyAge: number;
+    floor: number;
+    layout: string;
+    hasParking: boolean;
+    loanAmount: number;
+  },
+): Promise<AutoValuateResponse> {
+  const res = await client.post<{ success: boolean; data: AutoValuateResponse }>(
+    '/api/auto-valuate',
+    { imageBase64, ...params },
+    { timeout: 30000 },
+  );
   return res.data.data;
 }
 

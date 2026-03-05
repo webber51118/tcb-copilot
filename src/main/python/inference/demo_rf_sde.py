@@ -94,8 +94,17 @@ def run_demo_rf_sde(
     demand_factor = BUILDING_DEMAND_FACTOR.get(building_type, 0.0)
     age_factor    = age_sentiment_factor(property_age)
 
+    # Google Trends SVI 調整（Stub，未來替換為真實 pytrends 數據）
+    # [REPLACE_GOOGLE_TRENDS_START]
+    svi_adj = 0.0  # Stub: 固定為 0（不影響情緒分數）
+    # 真實替換時：
+    #   from src.main.python.utils.google_trends_fetcher import get_composite_sentiment_index
+    #   composite_svi = get_composite_sentiment_index()
+    #   svi_adj = (composite_svi - 50.0) / 100.0 * 0.1  # 正規化至 ±0.05 範圍
+    # [REPLACE_GOOGLE_TRENDS_END]
+
     # 合成情緒分數（clip 到 -1 ~ 1）
-    raw_sentiment   = slope_3m + demand_factor + age_factor
+    raw_sentiment   = slope_3m + demand_factor + age_factor + svi_adj
     sentiment_score = max(-1.0, min(1.0, raw_sentiment))
 
     # 情緒分數 → 估值調整

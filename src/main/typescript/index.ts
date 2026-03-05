@@ -31,6 +31,8 @@ import { ragQueryRouter } from './api/ragQuery';
 import { committeeReviewRouter } from './api/committeeReview';
 import { workflowRouter } from './api/workflow';
 import { posterUploadRouter } from './api/posterUpload';
+import lineTestRouter from './api/lineTest';
+import { autoValuateRouter } from './api/autoValuate';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -66,6 +68,7 @@ app.options('/api/*', (_req, res) => res.sendStatus(200));
 // 後台管理 API（活動 + 申請案件）
 app.use('/api/admin', adminAuth, promotionAdminRouter);
 app.use('/api/admin', adminAuth, applicationAdminRouter);
+app.use('/api/admin', adminAuth, lineTestRouter);
 app.use('/api', recommendRouter);
 app.use('/api', parseDocumentRouter);
 app.use('/api', submitApplicationRouter);
@@ -75,6 +78,7 @@ app.use('/api', ragQueryRouter);
 app.use('/api', committeeReviewRouter);
 app.use('/api', workflowRouter);
 app.use('/api', posterUploadRouter);
+app.use('/api', autoValuateRouter);
 
 // 海報暫存圖片靜態服務（在 SPA fallback 之前註冊）
 app.use('/posters', express.static(path.join(process.cwd(), 'data', 'posters')));
