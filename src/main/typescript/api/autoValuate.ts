@@ -76,15 +76,30 @@ autoValuateRouter.post('/auto-valuate', async (req: Request, res: Response): Pro
         const lr = parseResult.landRegistry;
         // 以 AI 解析值覆蓋鑑價參數
         valuationReq = {
-          region:      lr.region      || body.region      || '台北市',
-          buildingType: lr.buildingType || body.buildingType || '大樓',
-          areaPing:    lr.areaPing    ?? Number(body.areaPing)    ?? 30,
-          propertyAge: lr.propertyAge ?? Number(body.propertyAge) ?? 10,
-          floor:       lr.floor       ?? Number(body.floor)       ?? 5,
+          region:      lr.region       || '台北市',
+          buildingType: lr.buildingType || '大樓',
+          areaPing:    lr.areaPing     || 0,
+          propertyAge: lr.propertyAge  ?? 0,
+          floor:       lr.floor        || 0,
           hasParking:  Boolean(body.hasParking),
           layout:      body.layout,
           loanAmount:  Number(body.loanAmount),
         };
+
+        // 驗證必要欄位是否成功解析（areaPing/floor 必須 > 0）
+        const missing: string[] = [];
+        if (!valuationReq.areaPing)    missing.push('坪數');
+        if (!valuationReq.floor)       missing.push('樓層');
+        if (!valuationReq.buildingType) missing.push('建物類型');
+        if (!valuationReq.region)      missing.push('縣市');
+
+        if (missing.length > 0) {
+          res.status(400).json({
+            success: false,
+            message: `AI 無法從謄本辨識：${missing.join('、')}。請略過圖片並手動填寫。`,
+          });
+          return;
+        }
       } else {
         // 解析失敗 → 回傳錯誤，請使用者手動填寫
         res.status(400).json({ success: false, message: '謄本解析失敗，請略過圖片並手動填寫物件資訊' });
