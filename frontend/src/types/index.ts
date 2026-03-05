@@ -129,6 +129,7 @@ export interface ValuationFormData {
 }
 
 export interface LandRegistryParsed {
+  region?: string;
   buildingType?: string;
   floor?: number;
   areaPing?: number;

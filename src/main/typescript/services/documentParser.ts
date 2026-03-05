@@ -111,7 +111,8 @@ export async function parseLandRegistryDoc(imageBase64: string): Promise<Documen
 若某欄位無法辨識，請填入 null。
 格式如下（只回傳 JSON，不要其他文字）：
 {
-  "buildingType": "建物種類/構造（如：大樓、華廈、公寓、透天、套房）",
+  "region": "縣市（如：台北市、新北市、台中市）",
+  "buildingType": "建物種類/構造（如：大樓、華廈、公寓、透天、別墅）",
   "floor": 所在樓層（整數，例如：5）,
   "areaPing": 建築面積（坪數，浮點數，例如：32.5）,
   "propertyAge": 屋齡（整數，從建築完成日期計算至今的年數，例如：15）
@@ -132,9 +133,10 @@ export async function parseLandRegistryDoc(imageBase64: string): Promise<Documen
     return {
       success: true,
       landRegistry: {
+        region:      parsed.region || undefined,
         buildingType: parsed.buildingType || undefined,
-        floor: typeof parsed.floor === 'number' ? Math.round(parsed.floor) : undefined,
-        areaPing: typeof parsed.areaPing === 'number' ? parsed.areaPing : undefined,
+        floor:       typeof parsed.floor === 'number' ? Math.round(parsed.floor) : undefined,
+        areaPing:    typeof parsed.areaPing === 'number' ? parsed.areaPing : undefined,
         propertyAge: typeof parsed.propertyAge === 'number' ? Math.round(parsed.propertyAge) : undefined,
       },
     };

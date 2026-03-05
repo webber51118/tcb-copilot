@@ -38,6 +38,7 @@ export interface DocumentParseResult {
   };
   /** 土地建物謄本解析結果 */
   landRegistry?: {
+    region?: string;
     buildingType?: string;
     floor?: number;
     areaPing?: number;

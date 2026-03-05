@@ -54,20 +54,22 @@ export default function ValuationPage() {
     [handleFile],
   );
 
+  // 是否為圖片模式（上傳謄本）
+  const isImageMode = !!form.imageBase64;
+
   // ── Step 2 → 3：送出鑑估 ─────────────────────────────────
   const handleSubmitValuation = async () => {
     const { imageBase64, region, buildingType, areaPing, propertyAge, floor, layout, hasParking, loanAmount } = form;
-    if (!region || !buildingType || !areaPing || !propertyAge || floor === null || !layout || hasParking === null || !loanAmount) return;
 
     const result = await runValuation(imageBase64, {
-      region,
-      buildingType,
-      areaPing,
-      propertyAge,
-      floor,
+      region:      region || '',
+      buildingType: buildingType || '',
+      areaPing:    areaPing ?? 0,
+      propertyAge: propertyAge ?? 0,
+      floor:       floor ?? 0,
       layout,
-      hasParking,
-      loanAmount,
+      hasParking:  hasParking ?? false,
+      loanAmount:  loanAmount ?? 0,
     });
 
     if (result) {
@@ -88,16 +90,10 @@ export default function ValuationPage() {
   };
 
   // ── Step 2 是否可送出 ─────────────────────────────────────
-  const canSubmit =
-    !!form.region &&
-    !!form.buildingType &&
-    !!form.areaPing &&
-    !!form.propertyAge &&
-    form.floor !== null &&
-    !!form.layout &&
-    form.hasParking !== null &&
-    !!form.loanAmount &&
-    !loading;
+  const canSubmit = isImageMode
+    ? !!form.layout && form.hasParking !== null && !!form.loanAmount && !loading
+    : !!form.region && !!form.buildingType && !!form.areaPing && !!form.propertyAge &&
+      form.floor !== null && !!form.layout && form.hasParking !== null && !!form.loanAmount && !loading;
 
   const val = form.valuationResult;
 
@@ -169,114 +165,136 @@ export default function ValuationPage() {
           <StepForm
             currentStep={2}
             totalSteps={3}
-            title="確認物件資訊"
+            title={isImageMode ? '補充資訊' : '填寫物件資訊'}
             onNext={handleSubmitValuation}
             onBack={handleBack}
             nextLabel={loading ? (loadingStep === 'parsing' ? '解析謄本中...' : '鑑估中...') : '開始鑑估'}
             nextDisabled={!canSubmit}
           >
-            {parsed && (
+            {/* 圖片模式：顯示 AI 解析說明 */}
+            {isImageMode && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-700">
-                <p className="font-bold mb-1">AI 已從謄本解析出以下資料，請確認或修正：</p>
-                <p>建物類型：{parsed.buildingType || '—'} ／ 樓層：{parsed.floor ?? '—'} ／ 坪數：{parsed.areaPing ?? '—'} ／ 屋齡：{parsed.propertyAge ?? '—'}</p>
+                <p className="font-bold mb-1">AI 將自動從謄本解析物件資料</p>
+                <p>縣市、坪數、屋齡、樓層、建物類型由 AI 自動辨識，請補充以下資訊即可送出鑑估。</p>
               </div>
             )}
 
             <div className="space-y-4">
-              {/* 縣市 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">所在縣市 *</label>
-                <select
-                  value={form.region}
-                  onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
-                >
-                  <option value="">請選擇縣市</option>
-                  {TAIWAN_CITIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
+              {/* 手動模式才顯示：縣市 */}
+              {!isImageMode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">所在縣市 *</label>
+                  <select
+                    value={form.region}
+                    onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
+                  >
+                    <option value="">請選擇縣市</option>
+                    {TAIWAN_CITIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {/* 建物類型 */}
+              {/* 手動模式才顯示：建物類型 */}
+              {!isImageMode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">建物類型 *</label>
+                  <div className="flex flex-wrap gap-2">
+                    {BUILDING_TYPES.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setForm((f) => ({ ...f, buildingType: t }))}
+                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${form.buildingType === t ? 'bg-tcb-blue text-white border-tcb-blue' : 'bg-white text-gray-600 border-gray-300'}`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 手動模式才顯示：坪數 */}
+              {!isImageMode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">坪數 *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    step={0.5}
+                    placeholder="例：32.5"
+                    value={form.areaPing ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, areaPing: parseFloat(e.target.value) || null }))}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
+                  />
+                </div>
+              )}
+
+              {/* 手動模式才顯示：屋齡 */}
+              {!isImageMode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">屋齡（年）*</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={80}
+                    placeholder="例：15"
+                    value={form.propertyAge ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, propertyAge: parseInt(e.target.value, 10) || null }))}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
+                  />
+                </div>
+              )}
+
+              {/* 手動模式才顯示：樓層 */}
+              {!isImageMode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">樓層 *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    placeholder="例：8"
+                    value={form.floor ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, floor: parseInt(e.target.value, 10) || null }))}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
+                  />
+                </div>
+              )}
+
+              {/* 格局（圖片 + 手動模式都顯示） */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">建物類型 *</label>
-                <div className="flex flex-wrap gap-2">
-                  {BUILDING_TYPES.map((t) => (
+                <label className="block text-sm font-medium text-gray-700 mb-1">格局 *</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['2房1廳1衛', '3房2廳1衛', '3房2廳2衛', '4房2廳2衛'].map((l) => (
                     <button
-                      key={t}
-                      onClick={() => setForm((f) => ({ ...f, buildingType: t }))}
-                      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${form.buildingType === t ? 'bg-tcb-blue text-white border-tcb-blue' : 'bg-white text-gray-600 border-gray-300'}`}
+                      key={l}
+                      onClick={() => setForm((f) => ({ ...f, layout: l }))}
+                      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${form.layout === l ? 'bg-tcb-blue text-white border-tcb-blue' : 'bg-white text-gray-600 border-gray-300'}`}
                     >
-                      {t}
+                      {l}
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* 坪數 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">坪數 *</label>
-                <input
-                  type="number"
-                  min={1}
-                  step={0.5}
-                  placeholder="例：32.5"
-                  value={form.areaPing ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, areaPing: parseFloat(e.target.value) || null }))}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
-                />
-              </div>
-
-              {/* 屋齡 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">屋齡（年）*</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={80}
-                  placeholder="例：15"
-                  value={form.propertyAge ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, propertyAge: parseInt(e.target.value, 10) || null }))}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
-                />
-              </div>
-
-              {/* 樓層 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">樓層 *</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={99}
-                  placeholder="例：8"
-                  value={form.floor ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, floor: parseInt(e.target.value, 10) || null }))}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
-                />
-              </div>
-
-              {/* 格局 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">格局 *</label>
                 <input
                   type="text"
-                  placeholder="例：3房2廳2衛"
+                  placeholder="或自行輸入，例：3房2廳2衛"
                   value={form.layout}
                   onChange={(e) => setForm((f) => ({ ...f, layout: e.target.value }))}
                   className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
                 />
               </div>
 
-              {/* 車位 */}
+              {/* 車位（圖片 + 手動模式都顯示） */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">含車位？*</label>
                 <div className="flex gap-3">
-                  {[['有車位', true], ['無車位', false]].map(([label, val]) => (
+                  {[['有車位', true], ['無車位', false]].map(([label, v]) => (
                     <button
                       key={String(label)}
-                      onClick={() => setForm((f) => ({ ...f, hasParking: val as boolean }))}
-                      className={`flex-1 py-2 rounded-xl text-sm border transition-colors ${form.hasParking === val ? 'bg-tcb-blue text-white border-tcb-blue' : 'bg-white text-gray-600 border-gray-300'}`}
+                      onClick={() => setForm((f) => ({ ...f, hasParking: v as boolean }))}
+                      className={`flex-1 py-2 rounded-xl text-sm border transition-colors ${form.hasParking === v ? 'bg-tcb-blue text-white border-tcb-blue' : 'bg-white text-gray-600 border-gray-300'}`}
                     >
                       {label as string}
                     </button>
@@ -284,7 +302,7 @@ export default function ValuationPage() {
                 </div>
               </div>
 
-              {/* 申請貸款金額 */}
+              {/* 申請貸款金額（圖片 + 手動模式都顯示） */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">申請貸款金額（元）*</label>
                 <input

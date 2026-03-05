@@ -26,37 +26,37 @@ interface AutoValuateBody {
 autoValuateRouter.post('/auto-valuate', async (req: Request, res: Response): Promise<void> => {
   const body = req.body as AutoValuateBody;
 
-  // 必填欄位驗證
-  const required = ['region', 'buildingType', 'areaPing', 'propertyAge', 'floor', 'layout', 'loanAmount'] as const;
-  for (const field of required) {
-    if (body[field] === undefined || body[field] === null || body[field] === '') {
-      res.status(400).json({ success: false, message: `缺少必填欄位：${field}` });
-      return;
-    }
+  const hasImage = !!body.imageBase64;
+
+  // 必填驗證：有圖片時只需 layout/hasParking/loanAmount；無圖片時需全部欄位
+  if (!body.layout) {
+    res.status(400).json({ success: false, message: '缺少必填欄位：layout' });
+    return;
   }
   if (body.hasParking === undefined || body.hasParking === null) {
     res.status(400).json({ success: false, message: '缺少必填欄位：hasParking' });
     return;
   }
-
-  // Step 1：若有圖片則解析謄本（僅供前端顯示，不用於鑑價計算）
-  let parsed = null;
-  let parseSuccess = false;
-
-  if (body.imageBase64) {
-    try {
-      const parseResult = await parseLandRegistryDoc(body.imageBase64);
-      if (parseResult.success && parseResult.landRegistry) {
-        parsed = parseResult.landRegistry;
-        parseSuccess = true;
+  if (!body.loanAmount) {
+    res.status(400).json({ success: false, message: '缺少必填欄位：loanAmount' });
+    return;
+  }
+  if (!hasImage) {
+    const manualRequired = ['region', 'buildingType', 'areaPing', 'propertyAge', 'floor'] as const;
+    for (const field of manualRequired) {
+      if (body[field] === undefined || body[field] === null || body[field] === '') {
+        res.status(400).json({ success: false, message: `缺少必填欄位：${field}` });
+        return;
       }
-    } catch (err) {
-      console.error('[autoValuate] 謄本解析失敗（繼續鑑價）:', err);
     }
   }
 
-  // Step 2：用 Step 2 確認值（非 AI 解析值）呼叫鑑價引擎
-  const valuationReq: ValuationRequest = {
+  // Step 1：若有圖片則解析謄本，解析結果直接用於鑑價
+  let parsed = null;
+  let parseSuccess = false;
+
+  // 先以 body 值初始化（無圖片時使用）
+  let valuationReq: ValuationRequest = {
     areaPing:    Number(body.areaPing),
     propertyAge: Number(body.propertyAge),
     buildingType: body.buildingType,
@@ -66,6 +66,36 @@ autoValuateRouter.post('/auto-valuate', async (req: Request, res: Response): Pro
     region:      body.region,
     loanAmount:  Number(body.loanAmount),
   };
+
+  if (hasImage) {
+    try {
+      const parseResult = await parseLandRegistryDoc(body.imageBase64!);
+      if (parseResult.success && parseResult.landRegistry) {
+        parsed = parseResult.landRegistry;
+        parseSuccess = true;
+        const lr = parseResult.landRegistry;
+        // 以 AI 解析值覆蓋鑑價參數
+        valuationReq = {
+          region:      lr.region      || body.region      || '台北市',
+          buildingType: lr.buildingType || body.buildingType || '大樓',
+          areaPing:    lr.areaPing    ?? Number(body.areaPing)    ?? 30,
+          propertyAge: lr.propertyAge ?? Number(body.propertyAge) ?? 10,
+          floor:       lr.floor       ?? Number(body.floor)       ?? 5,
+          hasParking:  Boolean(body.hasParking),
+          layout:      body.layout,
+          loanAmount:  Number(body.loanAmount),
+        };
+      } else {
+        // 解析失敗 → 回傳錯誤，請使用者手動填寫
+        res.status(400).json({ success: false, message: '謄本解析失敗，請略過圖片並手動填寫物件資訊' });
+        return;
+      }
+    } catch (err) {
+      console.error('[autoValuate] 謄本解析錯誤:', err);
+      res.status(400).json({ success: false, message: '謄本解析發生錯誤，請略過圖片並手動填寫' });
+      return;
+    }
+  }
 
   try {
     const valuation = await callValuationEngine(valuationReq);
