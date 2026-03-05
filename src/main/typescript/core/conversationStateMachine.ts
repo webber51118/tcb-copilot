@@ -106,7 +106,7 @@ function buildWelcomeMenu(): LineReplyMessage {
             type: 'box', layout: 'horizontal', paddingStart: '8px', paddingEnd: '8px',
             paddingTop: '4px', paddingBottom: '8px',
             contents: [
-              iconBtn('🤖', 'AI智能推薦', '精準配對', 'AI智能推薦'),
+              iconBtn('🏡', 'AI自動鑑價', '即時估算', 'AI自動鑑價'),
               iconBtn('🎁', '優惠專案', '限時活動', '當期活動'),
               iconBtn('❓', '常見問答', '快速解答', '常見問答'),
             ],
@@ -786,10 +786,91 @@ const handleChooseLoanType: StateHandler = (session, input) => {
     };
   }
 
-  if (t === 'AI智能推薦') {
+  if (t === 'AI自動鑑價') {
+    const liffValuateId = process.env.LIFF_ID_VALUATE;
+    const frontendBase  = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const valuateUrl    = liffValuateId
+      ? `https://liff.line.me/${liffValuateId}`
+      : `${frontendBase}/valuate`;
+
+    const TCB_BLUE_V = '#1B4F8A';
+    const WHITE_V    = '#FFFFFF';
+
     return {
-      nextState: ConversationState.AI_SUGGEST_Q1,
-      messages: [textMsg('🤖 AI 智能推薦\n\n請問您的主要需求是？', aiSuggestQ1QuickReply())],
+      nextState: ConversationState.CHOOSE_LOAN_TYPE,
+      messages: [{
+        type: 'flex',
+        altText: '🏡 AI 自動鑑價 — 上傳謄本，即時估算房屋市值',
+        contents: {
+          type: 'bubble', size: 'mega',
+          body: {
+            type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: WHITE_V,
+            contents: [
+              {
+                type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '16px',
+                backgroundColor: TCB_BLUE_V, spacing: 'xs',
+                contents: [
+                  { type: 'text', text: '🏡 AI 自動鑑價', weight: 'bold', size: 'lg', color: WHITE_V },
+                  { type: 'text', text: '上傳謄本 · AI 解析 · 即時鑑估', size: 'xs', color: '#BDD5F0' },
+                ],
+              },
+              {
+                type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'md',
+                contents: [
+                  {
+                    type: 'box', layout: 'horizontal', spacing: 'md',
+                    contents: [
+                      { type: 'text', text: '📄', size: 'xl', flex: 0 },
+                      {
+                        type: 'box', layout: 'vertical', flex: 1, spacing: 'xs',
+                        contents: [
+                          { type: 'text', text: 'Step 1 上傳謄本', weight: 'bold', size: 'sm', color: TCB_BLUE_V },
+                          { type: 'text', text: '拍照或上傳土地建物謄本，AI 自動辨識坪數、屋齡等欄位', size: 'xs', color: '#64748B', wrap: true },
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    type: 'box', layout: 'horizontal', spacing: 'md',
+                    contents: [
+                      { type: 'text', text: '🔍', size: 'xl', flex: 0 },
+                      {
+                        type: 'box', layout: 'vertical', flex: 1, spacing: 'xs',
+                        contents: [
+                          { type: 'text', text: 'Step 2 確認物件資訊', weight: 'bold', size: 'sm', color: TCB_BLUE_V },
+                          { type: 'text', text: '確認縣市、建物類型、坪數等資料後送出鑑估', size: 'xs', color: '#64748B', wrap: true },
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    type: 'box', layout: 'horizontal', spacing: 'md',
+                    contents: [
+                      { type: 'text', text: '📊', size: 'xl', flex: 0 },
+                      {
+                        type: 'box', layout: 'vertical', flex: 1, spacing: 'xs',
+                        contents: [
+                          { type: 'text', text: 'Step 3 查看鑑估結果', weight: 'bold', size: 'sm', color: TCB_BLUE_V },
+                          { type: 'text', text: 'LSTM + RF+SDE 四層引擎，產出 P5/P50/P95 信心區間', size: 'xs', color: '#64748B', wrap: true },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          footer: {
+            type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: WHITE_V,
+            contents: [
+              {
+                type: 'button', style: 'primary', color: TCB_BLUE_V,
+                action: { type: 'uri', label: '🏡 開始 AI 自動鑑價', uri: valuateUrl },
+              },
+            ],
+          },
+        } as unknown as Record<string, unknown>,
+      }],
     };
   }
 

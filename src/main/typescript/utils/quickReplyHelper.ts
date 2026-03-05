@@ -21,7 +21,7 @@ export function loanTypeQuickReply(): { items: QuickReplyItem[] } {
     items: [
       item('房屋貸款', '房貸'),
       item('信用貸款', '信貸'),
-      item('AI智能推薦', 'AI智能推薦'),
+      item('AI自動鑑價', 'AI自動鑑價'),
       item('當期活動', '當期活動'),
     ],
   };
