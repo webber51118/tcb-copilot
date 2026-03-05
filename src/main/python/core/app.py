@@ -45,7 +45,7 @@ async def health_check() -> dict:
     return {
         "status":  "ok",
         "service": "ML 鑑價 SubAgent",
-        "mode":    "demo",
+        "mode":    "production",
         "port":    8001,
     }
 
