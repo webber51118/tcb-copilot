@@ -21,10 +21,11 @@ BASE_URL    = "https://plvr.land.moi.gov.tw/DownloadOpenData"
 DATA_DIR    = Path("data/lvpr/raw")
 OUTPUT_PATH = Path("data/lvpr/cleaned_lvpr.parquet")
 
-# 下載近 8 季（民國 112Q1 ~ 113Q4，即 2023~2024）
+# 下載近 12 季（民國 112Q1 ~ 114Q4，即 2023~2025）
 QUARTERS = [
     ("112", "1"), ("112", "2"), ("112", "3"), ("112", "4"),
     ("113", "1"), ("113", "2"), ("113", "3"), ("113", "4"),
+    ("114", "1"), ("114", "2"), ("114", "3"), ("114", "4"),
 ]
 
 PING_PER_SQM = 1 / 3.30579  # 1 sqm ≈ 0.3025 坪
