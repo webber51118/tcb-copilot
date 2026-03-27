@@ -107,7 +107,7 @@ export default function ValuationPage() {
 
   // ── Step 2 是否可送出 ─────────────────────────────────────
   const canSubmit = isImageMode
-    ? !!form.layout && form.hasParking !== null && !!form.loanAmount && !loading
+    ? !!form.layout && form.hasParking !== null && !!form.loanAmount && !!form.totalFloors && !loading
     : !!form.address && !!form.district && !!form.buildingType && !!form.areaPing && !!form.propertyAge &&
       form.floor !== null && !!form.totalFloors && !!form.layout && form.hasParking !== null && !!form.loanAmount && !loading;
 
@@ -191,11 +191,45 @@ export default function ValuationPage() {
             {isImageMode && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-700">
                 <p className="font-bold mb-1">AI 將自動從謄本解析物件資料</p>
-                <p>縣市、坪數、屋齡、樓層、建物類型由 AI 自動辨識，請補充以下資訊即可送出鑑估。</p>
+                <p>行政區、坪數、屋齡、樓層、建物類型由 AI 自動辨識。請補充謄本上通常未記載的欄位。</p>
               </div>
             )}
 
             <div className="space-y-4">
+              {/* 圖片模式才顯示：總樓層（謄本通常未記載）+ 行政區（可選，AI 不確定時手動補） */}
+              {isImageMode && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      總樓層數 <span className="text-red-500">*</span>
+                      <span className="text-xs text-gray-400 ml-1">（謄本未記載，請手動填寫）</span>
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      placeholder="例：12"
+                      value={form.totalFloors ?? ''}
+                      onChange={(e) => setForm((f) => ({ ...f, totalFloors: parseInt(e.target.value, 10) || null }))}
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      行政區
+                      <span className="text-xs text-gray-400 ml-1">（AI 自動辨識；若解析失敗可在此補填）</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="例：大安區、板橋區（可留空讓 AI 自動辨識）"
+                      value={form.district ?? ''}
+                      onChange={(e) => setForm((f) => ({ ...f, district: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
+                    />
+                  </div>
+                </>
+              )}
+
               {/* 手動模式才顯示：完整地址（自動萃取縣市） */}
               {!isImageMode && (
                 <div>

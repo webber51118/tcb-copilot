@@ -88,11 +88,11 @@ valuateXgboostRouter.post('/valuate/xgboost', async (req: Request, res: Response
           loanAmount:   Number(body.loanAmount),
         };
 
+        // 只驗證鑑價計算絕對必要的欄位（district 空值由 Python Demo 模式降級處理）
         const missing: string[] = [];
         if (!xgboostParams.areaPing)     missing.push('坪數');
         if (!xgboostParams.floor)        missing.push('樓層');
         if (!xgboostParams.buildingType) missing.push('建物類型');
-        if (!xgboostParams.district)     missing.push('行政區');
 
         if (missing.length > 0) {
           res.status(400).json({
