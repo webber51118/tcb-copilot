@@ -39,8 +39,10 @@ export interface DocumentParseResult {
   /** 土地建物謄本解析結果 */
   landRegistry?: {
     region?: string;
+    district?: string;
     buildingType?: string;
     floor?: number;
+    totalFloors?: number;
     areaPing?: number;
     propertyAge?: number;
   };
@@ -233,6 +235,29 @@ export interface ValuationConfidenceInterval {
   p50: number;
   /** P95 樂觀估值（元） */
   p95: number;
+}
+
+/** XGBoost 個別物件鑑價請求 */
+export interface XGBoostValuationRequest {
+  district:     string;
+  buildingType: string;
+  areaPing:     number;
+  propertyAge:  number;
+  floor:        number;
+  totalFloors:  number;
+  hasParking:   boolean;
+  rooms:        number;
+  loanAmount:   number;
+}
+
+/** XGBoost 個別物件鑑價結果 */
+export interface XGBoostValuationResult {
+  estimatedValue:     number;
+  confidenceInterval: { p5: number; p50: number; p95: number };
+  ltvRatio:           number;
+  riskLevel:          '低風險' | '中風險' | '高風險';
+  pricePerPing:       number;
+  model:              'xgboost';
 }
 
 /** 鑑價結果（Python 服務回傳，camelCase 轉換後） */

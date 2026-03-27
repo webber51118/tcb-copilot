@@ -112,8 +112,10 @@ export async function parseLandRegistryDoc(imageBase64: string): Promise<Documen
 格式如下（只回傳 JSON，不要其他文字）：
 {
   "region": "縣市（如：台北市、新北市、台中市）",
+  "district": "行政區（如：大安區、板橋區、中壢區）",
   "buildingType": "建物種類/構造（如：大樓、華廈、公寓、透天、別墅）",
   "floor": 所在樓層（整數，例如：5）,
+  "totalFloors": 該建物總樓層數（整數，例如：12）,
   "areaPing": 建築面積（坪數，浮點數，例如：32.5）,
   "propertyAge": 屋齡（整數，從建築完成日期計算至今的年數，例如：15）
 }`,
@@ -133,11 +135,13 @@ export async function parseLandRegistryDoc(imageBase64: string): Promise<Documen
     return {
       success: true,
       landRegistry: {
-        region:      parsed.region || undefined,
+        region:       parsed.region       || undefined,
+        district:     parsed.district     || undefined,
         buildingType: parsed.buildingType || undefined,
-        floor:       typeof parsed.floor === 'number' ? Math.round(parsed.floor) : undefined,
-        areaPing:    typeof parsed.areaPing === 'number' ? parsed.areaPing : undefined,
-        propertyAge: typeof parsed.propertyAge === 'number' ? Math.round(parsed.propertyAge) : undefined,
+        floor:        typeof parsed.floor       === 'number' ? Math.round(parsed.floor)       : undefined,
+        totalFloors:  typeof parsed.totalFloors === 'number' ? Math.round(parsed.totalFloors) : undefined,
+        areaPing:     typeof parsed.areaPing    === 'number' ? parsed.areaPing                : undefined,
+        propertyAge:  typeof parsed.propertyAge === 'number' ? Math.round(parsed.propertyAge) : undefined,
       },
     };
   } catch (err) {

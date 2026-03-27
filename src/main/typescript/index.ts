@@ -33,6 +33,7 @@ import { workflowRouter } from './api/workflow';
 import { posterUploadRouter } from './api/posterUpload';
 import lineTestRouter from './api/lineTest';
 import { autoValuateRouter } from './api/autoValuate';
+import { valuateXgboostRouter } from './api/valuateXgboost';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -79,6 +80,7 @@ app.use('/api', committeeReviewRouter);
 app.use('/api', workflowRouter);
 app.use('/api', posterUploadRouter);
 app.use('/api', autoValuateRouter);
+app.use('/api', valuateXgboostRouter);
 
 // 海報暫存圖片靜態服務（在 SPA fallback 之前註冊）
 app.use('/posters', express.static(path.join(process.cwd(), 'data', 'posters')));

@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios';
-import type { RecommendRequest, RecommendResponse, Promotion, AutoValuateResponse } from '../types';
+import type { RecommendRequest, RecommendResponse, Promotion, AutoValuateResponse, XGBoostAutoValuateResponse } from '../types';
 
 // 開發模式：Vite proxy 處理 /api → localhost:3000
 // 生產模式：前端由後端 serve，使用相對路徑即可
@@ -39,6 +39,29 @@ export async function callAutoValuate(
 ): Promise<AutoValuateResponse> {
   const res = await client.post<{ success: boolean; data: AutoValuateResponse }>(
     '/api/auto-valuate',
+    { imageBase64, ...params },
+    { timeout: 30000 },
+  );
+  return res.data.data;
+}
+
+/** XGBoost 個別物件鑑價：上傳謄本圖片（可選）+ 物件資訊，回傳 XGBoost 鑑估結果 */
+export async function callXGBoostAutoValuate(
+  imageBase64: string | null,
+  params: {
+    district:     string;
+    buildingType: string;
+    areaPing:     number;
+    propertyAge:  number;
+    floor:        number;
+    totalFloors:  number;
+    layout:       string;
+    hasParking:   boolean;
+    loanAmount:   number;
+  },
+): Promise<XGBoostAutoValuateResponse> {
+  const res = await client.post<{ success: boolean; data: XGBoostAutoValuateResponse }>(
+    '/api/valuate/xgboost',
     { imageBase64, ...params },
     { timeout: 30000 },
   );

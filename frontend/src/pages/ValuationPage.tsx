@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import StepForm from '../components/StepForm/StepForm';
 import { useValuation } from '../hooks/useValuation';
-import type { ValuationFormData, LandRegistryParsed } from '../types';
+import type { ValuationFormData, LandRegistryParsed, XGBoostValuationResult } from '../types';
 import { TAIWAN_CITIES } from '../types';
 
 const BUILDING_TYPES = ['大樓', '華廈', '公寓', '透天', '別墅'];
@@ -14,17 +14,25 @@ function extractRegionFromAddress(address: string): string {
   return match || '';
 }
 
+/** 從完整地址萃取行政區（例：「台北市大安區...」→「大安區」） */
+function extractDistrictFromAddress(address: string): string {
+  const match = address.match(/[縣市]([^\s,，]{2,4}[區鎮鄉])/);
+  return match?.[1] || '';
+}
+
 const INITIAL: ValuationFormData = {
-  imageBase64: null,
-  address: '',
-  region: '',
+  imageBase64:  null,
+  address:      '',
+  region:       '',
+  district:     '',
   buildingType: '',
-  areaPing: null,
-  propertyAge: null,
-  floor: null,
-  layout: '',
-  hasParking: null,
-  loanAmount: null,
+  areaPing:     null,
+  propertyAge:  null,
+  floor:        null,
+  totalFloors:  null,
+  layout:       '',
+  hasParking:   null,
+  loanAmount:   null,
   valuationResult: null,
 };
 
@@ -39,7 +47,7 @@ export default function ValuationPage() {
   const [parsed, setParsed] = useState<LandRegistryParsed | null>(null);
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { data, loading, loadingStep, error, runValuation, reset } = useValuation();
+  const { loading, loadingStep, error, runXGBoostValuation, reset } = useValuation();
 
   // ── Step 1：圖片上傳 ──────────────────────────────────────
   const handleFile = useCallback((file: File) => {
@@ -64,19 +72,20 @@ export default function ValuationPage() {
   // 是否為圖片模式（上傳謄本）
   const isImageMode = !!form.imageBase64;
 
-  // ── Step 2 → 3：送出鑑估 ─────────────────────────────────
+  // ── Step 2 → 3：送出 XGBoost 鑑估 ────────────────────────
   const handleSubmitValuation = async () => {
-    const { imageBase64, region, buildingType, areaPing, propertyAge, floor, layout, hasParking, loanAmount } = form;
+    const { imageBase64, district, buildingType, areaPing, propertyAge, floor, totalFloors, layout, hasParking, loanAmount } = form;
 
-    const result = await runValuation(imageBase64, {
-      region:      region || '',
+    const result = await runXGBoostValuation(imageBase64, {
+      district:     district     || '',
       buildingType: buildingType || '',
-      areaPing:    areaPing ?? 0,
-      propertyAge: propertyAge ?? 0,
-      floor:       floor ?? 0,
+      areaPing:     areaPing     ?? 0,
+      propertyAge:  propertyAge  ?? 0,
+      floor:        floor        ?? 0,
+      totalFloors:  totalFloors  ?? 0,
       layout,
-      hasParking:  hasParking ?? false,
-      loanAmount:  loanAmount ?? 0,
+      hasParking:   hasParking   ?? false,
+      loanAmount:   loanAmount   ?? 0,
     });
 
     if (result) {
@@ -99,10 +108,10 @@ export default function ValuationPage() {
   // ── Step 2 是否可送出 ─────────────────────────────────────
   const canSubmit = isImageMode
     ? !!form.layout && form.hasParking !== null && !!form.loanAmount && !loading
-    : !!form.address && !!form.region && !!form.buildingType && !!form.areaPing && !!form.propertyAge &&
-      form.floor !== null && !!form.layout && form.hasParking !== null && !!form.loanAmount && !loading;
+    : !!form.address && !!form.district && !!form.buildingType && !!form.areaPing && !!form.propertyAge &&
+      form.floor !== null && !!form.totalFloors && !!form.layout && form.hasParking !== null && !!form.loanAmount && !loading;
 
-  const val = form.valuationResult;
+  const val = form.valuationResult as XGBoostValuationResult | null;
 
   return (
     <div className="min-h-screen bg-tcb-gray flex flex-col">
@@ -197,16 +206,17 @@ export default function ValuationPage() {
                     value={form.address ?? ''}
                     onChange={(e) => {
                       const addr = e.target.value;
-                      const region = extractRegionFromAddress(addr);
-                      setForm((f) => ({ ...f, address: addr, region }));
+                      const region   = extractRegionFromAddress(addr);
+                      const district = extractDistrictFromAddress(addr);
+                      setForm((f) => ({ ...f, address: addr, region, district }));
                     }}
                     className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
                   />
-                  {form.address && !form.region && (
-                    <p className="text-xs text-orange-500 mt-1">請輸入包含縣市的完整地址（例：台北市...）</p>
+                  {form.address && !form.district && (
+                    <p className="text-xs text-orange-500 mt-1">請輸入包含縣市行政區的完整地址（例：台北市大安區...）</p>
                   )}
-                  {form.region && (
-                    <p className="text-xs text-green-600 mt-1">已識別縣市：{form.region}</p>
+                  {form.district && (
+                    <p className="text-xs text-green-600 mt-1">已識別行政區：{form.region} {form.district}</p>
                   )}
                 </div>
               )}
@@ -261,19 +271,33 @@ export default function ValuationPage() {
                 </div>
               )}
 
-              {/* 手動模式才顯示：樓層 */}
+              {/* 手動模式才顯示：樓層 + 總樓層 */}
               {!isImageMode && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">樓層 *</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={99}
-                    placeholder="例：8"
-                    value={form.floor ?? ''}
-                    onChange={(e) => setForm((f) => ({ ...f, floor: parseInt(e.target.value, 10) || null }))}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">所在樓層 *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      placeholder="例：8"
+                      value={form.floor ?? ''}
+                      onChange={(e) => setForm((f) => ({ ...f, floor: parseInt(e.target.value, 10) || null }))}
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">總樓層數 *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      placeholder="例：12"
+                      value={form.totalFloors ?? ''}
+                      onChange={(e) => setForm((f) => ({ ...f, totalFloors: parseInt(e.target.value, 10) || null }))}
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-tcb-blue"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -349,7 +373,7 @@ export default function ValuationPage() {
             <div className="bg-gradient-to-b from-tcb-blue to-blue-700 text-white px-4 pt-6 pb-8">
               <p className="text-xs opacity-70 mb-1">AI 自動鑑價結果</p>
               <p className="text-3xl font-black">{formatWan(val.estimatedValue)}</p>
-              <p className="text-sm opacity-80 mt-1">P50 建議鑑估值 · {val.region} {val.buildingType}</p>
+              <p className="text-sm opacity-80 mt-1">P50 建議鑑估值 · {form.district || form.region} {form.buildingType}</p>
             </div>
 
             <div className="px-4 -mt-4 space-y-4">
@@ -391,7 +415,7 @@ export default function ValuationPage() {
                 </p>
               </div>
 
-              {/* 風險等級 + 市場指標 */}
+              {/* 風險等級 + 單價 */}
               <div className="card">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold text-gray-500">風險等級</span>
@@ -407,38 +431,15 @@ export default function ValuationPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="bg-gray-50 rounded-xl p-2.5">
-                    <p className="text-gray-400 mb-0.5">LSTM 市場指數</p>
-                    <p className="font-bold text-gray-800">{val.lstmIndex.toFixed(2)}</p>
+                    <p className="text-gray-400 mb-0.5">估計單價</p>
+                    <p className="font-bold text-gray-800">{formatWan(val.pricePerPing)} / 坪</p>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-2.5">
-                    <p className="text-gray-400 mb-0.5">RF+SDE 情緒分數</p>
-                    <p className={`font-bold ${val.sentimentScore > 0.15 ? 'text-green-600' : val.sentimentScore < -0.15 ? 'text-red-500' : 'text-gray-800'}`}>
-                      {val.sentimentScore > 0 ? '+' : ''}{val.sentimentScore.toFixed(4)}
-                    </p>
+                    <p className="text-gray-400 mb-0.5">鑑價模型</p>
+                    <p className="font-bold text-tcb-blue">XGBoost</p>
                   </div>
                 </div>
               </div>
-
-              {/* 係數明細（可折疊） */}
-              <details className="card">
-                <summary className="text-xs font-bold text-gray-500 cursor-pointer">係數明細</summary>
-                <div className="mt-3 space-y-1.5">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>基準估值</span>
-                    <span className="font-medium text-gray-700">{formatWan(val.baseValue)}</span>
-                  </div>
-                  {Object.entries(val.breakdown).map(([key, value]) => (
-                    <div key={key} className="flex justify-between text-xs text-gray-400">
-                      <span>{key}</span>
-                      <span>{typeof value === 'number' && value > 10000 ? formatWan(value) : value}</span>
-                    </div>
-                  ))}
-                  <div className="pt-1 border-t border-gray-100 flex justify-between text-xs font-bold text-tcb-blue">
-                    <span>最終鑑估值（P50）</span>
-                    <span>{formatWan(val.estimatedValue)}</span>
-                  </div>
-                </div>
-              </details>
 
               {form.address && (
                 <p className="text-center text-xs text-gray-400">物件地址：{form.address}</p>
