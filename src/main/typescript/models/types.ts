@@ -257,7 +257,7 @@ export interface XGBoostValuationResult {
   ltvRatio:           number;
   riskLevel:          '低風險' | '中風險' | '高風險';
   pricePerPing:       number;
-  model:              'xgboost';
+  model:              'xgboost' | 'demo';
 }
 
 /** 鑑價結果（Python 服務回傳，camelCase 轉換後） */

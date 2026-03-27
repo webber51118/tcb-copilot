@@ -436,7 +436,9 @@ export default function ValuationPage() {
                   </div>
                   <div className="bg-gray-50 rounded-xl p-2.5">
                     <p className="text-gray-400 mb-0.5">鑑價模型</p>
-                    <p className="font-bold text-tcb-blue">XGBoost</p>
+                    <p className={`font-bold ${val.model === 'demo' ? 'text-orange-500' : 'text-tcb-blue'}`}>
+                      {val.model === 'demo' ? 'Demo 查表' : 'XGBoost'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -445,7 +447,10 @@ export default function ValuationPage() {
                 <p className="text-center text-xs text-gray-400">物件地址：{form.address}</p>
               )}
               <p className="text-center text-xs text-gray-400">
-                * 本結果由 AI 四層鑑價引擎估算，僅供參考，實際價格依市場交易為準
+                {val.model === 'demo'
+                  ? '* Demo 模式（XGBoost 模型訓練前）：以行政區查表估算，僅供參考'
+                  : '* 本結果由 XGBoost 實價登錄模型估算，僅供參考，實際價格依市場交易為準'
+                }
               </p>
 
               {/* CTA */}

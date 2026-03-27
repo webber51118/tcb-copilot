@@ -95,7 +95,7 @@ function fromXGBoostSnakeCase(raw: Record<string, unknown>): XGBoostValuationRes
     ltvRatio:           raw.ltv_ratio        as number,
     riskLevel:          raw.risk_level       as XGBoostValuationResult['riskLevel'],
     pricePerPing:       raw.price_per_ping   as number,
-    model:              'xgboost',
+    model:              (raw.model ?? 'xgboost') as XGBoostValuationResult['model'],
   };
 }
 
