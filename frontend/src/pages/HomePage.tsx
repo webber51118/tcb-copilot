@@ -98,7 +98,7 @@ export default function HomePage() {
             <div className="text-left">
               <p className="font-bold text-gray-800">AI 自動鑑價</p>
               <p className="text-xs text-gray-500">上傳謄本 · AI 解析 · 即時鑑估</p>
-              <p className="text-xs text-tcb-blue font-medium mt-0.5">LSTM + RF+SDE 四層引擎</p>
+              <p className="text-xs text-tcb-blue font-medium mt-0.5">XGBoost 實價登錄 + Monte Carlo</p>
             </div>
             <span className="ml-auto text-gray-300 text-lg">›</span>
           </button>

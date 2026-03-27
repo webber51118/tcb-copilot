@@ -49,9 +49,9 @@ class TestValuate:
         expected_ltv = loan / result.estimated_value
         assert abs(result.ltv_ratio - expected_ltv) < 0.0001
 
-    def test_mode_is_demo(self):
+    def test_mode_is_production(self):
         result = valuate(make_request())
-        assert result.mode == "demo"
+        assert result.mode == "production"
 
     def test_region_preserved(self):
         result = valuate(make_request(region="台中市"))

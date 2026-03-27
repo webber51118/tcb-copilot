@@ -8,11 +8,9 @@ POS:    Day 1 推論服務 - 載入 XGBoost 模型，提供個別物件估價
 """
 
 import numpy as np
-import pandas as pd
-import joblib
-import xgboost as xgb
 from pathlib import Path
 from datetime import datetime
+# pandas / xgboost / joblib 在 _load() 中延遲載入，Demo 模式不需要這些套件
 
 from src.main.python.inference.monte_carlo import run_monte_carlo
 from src.main.python.utils.region_price_table import (
@@ -37,6 +35,8 @@ _encoders = None
 def _load():
     global _model, _encoders
     if _model is None:
+        import joblib
+        import xgboost as xgb
         if not MODEL_PATH.exists():
             raise FileNotFoundError(
                 f"找不到模型 {MODEL_PATH}，請先執行 train_xgboost.py"
@@ -112,6 +112,7 @@ def valuate_xgboost(
 
     if MODEL_PATH.exists():
         # ── 正式模式：XGBoost 推論 ──────────────────────────────
+        import pandas as pd
         _load()
         now     = datetime.now()
         year    = now.year
