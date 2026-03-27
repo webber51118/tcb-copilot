@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import StepForm from '../components/StepForm/StepForm';
 import { useValuation } from '../hooks/useValuation';
@@ -42,8 +42,10 @@ function formatWan(n: number): string {
 
 export default function ValuationPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const prefilledLoanAmount = (location.state as { loanAmount?: number | null } | null)?.loanAmount ?? null;
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState<ValuationFormData>(INITIAL);
+  const [form, setForm] = useState<ValuationFormData>({ ...INITIAL, loanAmount: prefilledLoanAmount });
   const [parsed, setParsed] = useState<LandRegistryParsed | null>(null);
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

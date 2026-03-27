@@ -20,8 +20,11 @@ interface ParsedData {
     phone?: string;
   };
   landRegistry?: {
+    region?: string;
+    district?: string;
     buildingType?: string;
     floor?: number;
+    totalFloors?: number;
     areaPing?: number;
     propertyAge?: number;
   };
@@ -273,8 +276,11 @@ export default function UploadDocsPage() {
             <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
               <p className="text-xs text-blue-400 font-bold mb-3">🏡 謄本解析結果</p>
               {[
+                { label: '縣市', value: parsedData.landRegistry.region },
+                { label: '行政區', value: parsedData.landRegistry.district },
                 { label: '建物種類', value: parsedData.landRegistry.buildingType },
                 { label: '所在樓層', value: parsedData.landRegistry.floor ? `${parsedData.landRegistry.floor} 樓` : undefined },
+                { label: '總樓層', value: parsedData.landRegistry.totalFloors ? `${parsedData.landRegistry.totalFloors} 樓` : undefined },
                 { label: '建築面積', value: parsedData.landRegistry.areaPing ? `${parsedData.landRegistry.areaPing} 坪` : undefined },
                 { label: '屋齡', value: parsedData.landRegistry.propertyAge ? `${parsedData.landRegistry.propertyAge} 年` : undefined },
               ].filter((r) => r.value).map((r) => (

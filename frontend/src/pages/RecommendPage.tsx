@@ -103,7 +103,7 @@ export default function RecommendPage() {
           {/* 房貸：提供 AI 鑑價入口 */}
           {loanType === 'mortgage' && (
             <button
-              onClick={() => navigate('/valuate')}
+              onClick={() => navigate('/valuate', { state: { loanAmount: form?.amount ?? null } })}
               className="w-full py-3 rounded-2xl border-2 border-tcb-blue text-tcb-blue font-bold text-sm active:scale-95 transition-transform"
             >
               房屋 AI 鑑價試算
