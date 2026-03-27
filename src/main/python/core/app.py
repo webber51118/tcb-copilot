@@ -21,8 +21,23 @@ if _project_root not in sys.path:
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from pydantic import BaseModel, Field
+
 from src.main.python.models.valuation_schema import ValuationRequest, ValuationResult
 from src.main.python.services.valuationService import valuate
+
+
+class XGBoostValuationRequest(BaseModel):
+    """XGBoost 個別物件鑑價請求（輸入地址行政區 + 物件屬性）"""
+    district:      str   = Field(..., description="行政區（如：信義區、板橋區）")
+    building_type: str   = Field(..., description="建物型態：大樓/華廈/公寓/透天/別墅")
+    area_ping:     float = Field(..., gt=0, description="坪數")
+    property_age:  int   = Field(..., ge=0, le=80, description="屋齡（年）")
+    floor:         int   = Field(..., ge=1, le=99, description="樓層")
+    total_floors:  int   = Field(..., ge=1, le=99, description="總樓層數")
+    has_parking:   bool  = Field(..., description="是否含車位")
+    rooms:         int   = Field(default=3, ge=0, le=10, description="房間數")
+    loan_amount:   float = Field(..., gt=0, description="申請貸款金額（元）")
 
 app = FastAPI(
     title       = "ML 鑑價 SubAgent",
@@ -73,3 +88,43 @@ async def valuate_property(request: ValuationRequest) -> ValuationResult:
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"鑑價計算失敗：{str(e)}")
+
+
+@app.post("/valuate/xgboost")
+async def valuate_xgboost_property(request: XGBoostValuationRequest) -> dict:
+    """
+    XGBoost 個別物件鑑價 API（實價登錄訓練）
+
+    Request Body：
+        - district:      行政區（如：信義區）
+        - building_type: 建物型態（大樓/華廈/公寓/透天/別墅）
+        - area_ping:     坪數
+        - property_age:  屋齡（年）
+        - floor:         樓層
+        - total_floors:  總樓層數
+        - has_parking:   是否含車位
+        - rooms:         房間數（預設 3）
+        - loan_amount:   申請貸款金額（元）
+
+    Returns:
+        { estimated_value, confidence_interval, ltv_ratio, risk_level,
+          price_per_ping, model }
+    """
+    try:
+        from src.main.python.services.xgboostValuationService import valuate_xgboost
+        result = valuate_xgboost(
+            district      = request.district,
+            building_type = request.building_type,
+            area_ping     = request.area_ping,
+            property_age  = request.property_age,
+            floor         = request.floor,
+            total_floors  = request.total_floors,
+            has_parking   = request.has_parking,
+            rooms         = request.rooms,
+            loan_amount   = request.loan_amount,
+        )
+        return result
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"XGBoost 鑑價失敗：{str(e)}")
