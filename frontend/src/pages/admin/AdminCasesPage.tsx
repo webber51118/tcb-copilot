@@ -1,12 +1,13 @@
 /**
  * INPUT: Admin API Key（sessionStorage）
- * OUTPUT: 所有貸款申請案件列表（含狀態過濾）
+ * OUTPUT: 所有貸款申請案件列表（含狀態過濾、搜尋、排序）
  * POS: 後台案件列表頁
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../hooks/useAdminAuth';
+import AdminLayout from '../../components/admin/AdminLayout';
 
 interface BasicInfo {
   age: number | null;
@@ -30,6 +31,8 @@ interface LoanApplication {
 }
 
 type StatusFilter = 'all' | 'pending' | 'reviewing' | 'approved' | 'rejected';
+type SortField = 'appliedAt' | 'amount';
+type SortDir = 'asc' | 'desc';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: '待審核',
@@ -57,11 +60,14 @@ function fmt(n: number | null, unit = '') {
 }
 
 export default function AdminCasesPage() {
-  const { apiKey, logout } = useAdminAuth();
+  const { apiKey } = useAdminAuth();
   const navigate = useNavigate();
   const [cases, setCases] = useState<LoanApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [search, setSearch] = useState('');
+  const [sortField, setSortField] = useState<SortField>('appliedAt');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   // 若未登入則跳回登入頁
   useEffect(() => {
@@ -83,47 +89,59 @@ export default function AdminCasesPage() {
       .finally(() => setLoading(false));
   }, [apiKey]);
 
-  const filtered = filter === 'all'
-    ? cases
-    : cases.filter((c) => c.status === filter);
-
   // 統計各狀態數量
-  const counts = {
+  const counts = useMemo(() => ({
     all: cases.length,
     pending: cases.filter((c) => c.status === 'pending').length,
     reviewing: cases.filter((c) => c.status === 'reviewing').length,
     approved: cases.filter((c) => c.status === 'approved').length,
     rejected: cases.filter((c) => c.status === 'rejected').length,
+  }), [cases]);
+
+  // 搜尋 + 過濾 + 排序
+  const filtered = useMemo(() => {
+    let list = filter === 'all' ? cases : cases.filter((c) => c.status === filter);
+
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((c) =>
+        c.id.toLowerCase().includes(q) ||
+        (c.applicantName || '').toLowerCase().includes(q) ||
+        (c.applicantPhone || '').includes(q)
+      );
+    }
+
+    list = [...list].sort((a, b) => {
+      if (sortField === 'appliedAt') {
+        const diff = new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime();
+        return sortDir === 'asc' ? diff : -diff;
+      } else {
+        const aAmt = a.basicInfo.amount ?? 0;
+        const bAmt = b.basicInfo.amount ?? 0;
+        return sortDir === 'asc' ? aAmt - bAmt : bAmt - aAmt;
+      }
+    });
+
+    return list;
+  }, [cases, filter, search, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir('desc');
+    }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/admin', { replace: true });
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <span className="text-gray-300 ml-1">↕</span>;
+    return <span className="text-[#1B4F8A] ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 頂部導覽 */}
-      <header className="bg-[#1B4F8A] shadow-md">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🏦</span>
-            <div>
-              <span className="text-white font-bold text-sm">個金 Co-Pilot</span>
-              <span className="text-blue-200 text-xs ml-2">行員後台</span>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="text-blue-200 hover:text-white text-xs transition-colors flex items-center gap-1"
-          >
-            <span>登出</span>
-            <span>→</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+    <AdminLayout title="案件管理">
+      <div className="p-6 space-y-5">
         {/* 頁面標題 + 統計 */}
         <div>
           <h1 className="text-gray-800 text-xl font-black mb-4">案件管理</h1>
@@ -153,6 +171,33 @@ export default function AdminCasesPage() {
           </div>
         </div>
 
+        {/* 搜尋欄 */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm">🔍</span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="搜尋申請人姓名、電話或案件 ID…"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700
+                         focus:outline-none focus:ring-2 focus:ring-[#1B4F8A]/30 focus:border-[#1B4F8A]
+                         placeholder-gray-300 bg-white"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-sm"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {search && (
+            <p className="text-xs text-gray-400">找到 {filtered.length} 筆結果</p>
+          )}
+        </div>
+
         {/* 案件表格 */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
           {loading ? (
@@ -163,7 +208,9 @@ export default function AdminCasesPage() {
           ) : filtered.length === 0 ? (
             <div className="text-center py-16 text-gray-300">
               <div className="text-4xl mb-3">📂</div>
-              <p className="text-sm">目前沒有{filter === 'all' ? '' : `「${STATUS_LABEL[filter]}」的`}案件</p>
+              <p className="text-sm">
+                {search ? `找不到「${search}」相關案件` : `目前沒有${filter === 'all' ? '' : `「${STATUS_LABEL[filter]}」的`}案件`}
+              </p>
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -172,8 +219,18 @@ export default function AdminCasesPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 w-36">案件編號</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400">申請人</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400">貸款類型</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400">申貸金額</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400">申請時間</th>
+                  <th
+                    className="text-right px-4 py-3 text-xs font-semibold text-gray-400 cursor-pointer hover:text-gray-600 select-none"
+                    onClick={() => toggleSort('amount')}
+                  >
+                    申貸金額<SortIcon field="amount" />
+                  </th>
+                  <th
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-400 cursor-pointer hover:text-gray-600 select-none"
+                    onClick={() => toggleSort('appliedAt')}
+                  >
+                    申請時間<SortIcon field="appliedAt" />
+                  </th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-gray-400">狀態</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-gray-400">操作</th>
                 </tr>
@@ -226,7 +283,7 @@ export default function AdminCasesPage() {
             </table>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

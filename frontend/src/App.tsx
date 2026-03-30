@@ -7,6 +7,7 @@ import UploadDocsPage from './pages/UploadDocsPage';
 import ApplicationFormPage from './pages/ApplicationFormPage';
 import ValuationPage from './pages/ValuationPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminCasesPage from './pages/admin/AdminCasesPage';
 import AdminCaseDetailPage from './pages/admin/AdminCaseDetailPage';
 
@@ -25,6 +26,7 @@ export default function App() {
 
         {/* 行員後台管理 */}
         <Route path="/admin" element={<AdminLoginPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/cases" element={<AdminCasesPage />} />
         <Route path="/admin/cases/:id" element={<AdminCaseDetailPage />} />
 

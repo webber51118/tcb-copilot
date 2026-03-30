@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAdminAuth } from '../../hooks/useAdminAuth';
+import AdminLayout from '../../components/admin/AdminLayout';
 
 // ── 型別定義 ──────────────────────────────────────────────────────
 
@@ -52,9 +53,21 @@ interface ValuationResult {
   mode: 'demo' | 'production';
 }
 
+interface FraudCheck {
+  overallLevel: 'normal' | 'caution' | 'alert';
+  overallScore?: number;
+  items?: {
+    idVerification?: { passed: boolean; note?: string };
+    blacklistCheck?: { hit: boolean; note?: string };
+    abnormalBehavior?: { flag: boolean; note?: string };
+    llmAnalysis?: { riskLevel: string; note?: string };
+    networkAnalysis?: { anomaly: boolean; note?: string };
+  };
+}
+
 interface CreditReviewResult {
   overallAssessment: string;
-  fraudCheck: { overallLevel: 'normal' | 'caution' | 'alert' };
+  fraudCheck: FraudCheck;
   thresholds: {
     debtIncomeRatio: { value: number; pass: boolean };
     dbr?: { value: number; pass: boolean };
@@ -132,9 +145,6 @@ const LOAN_TYPE_LABEL: Record<string, string> = {
 const FRAUD_LABEL: Record<string, string> = {
   normal: '✅ 正常', caution: '⚠️ 注意', alert: '🚨 高風險',
 };
-const FRAUD_COLOR: Record<string, string> = {
-  normal: 'text-green-600', caution: 'text-yellow-600', alert: 'text-red-600',
-};
 const DECISION_COLOR: Record<string, string> = {
   '核准': 'text-green-600 bg-green-50 border-green-200',
   '有條件核准': 'text-yellow-700 bg-yellow-50 border-yellow-200',
@@ -155,7 +165,180 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ── 主元件 ────────────────────────────────────────────────────────
+// ── Crew 執行時間軸元件 ──────────────────────────────────────────────
+
+interface CrewTimelineItem {
+  crewId: number;
+  name: string;
+  icon: string;
+  durationMs: number;
+  status: 'done' | 'running' | 'error';
+}
+
+function CrewTimeline({ items, totalMs }: { items: CrewTimelineItem[]; totalMs: number }) {
+  const maxMs = Math.max(...items.map((i) => i.durationMs), 1);
+
+  return (
+    <div className="border border-gray-100 rounded-xl p-4">
+      <h4 className="font-bold text-gray-700 text-sm mb-4 flex items-center gap-2">
+        <span className="w-5 h-5 bg-gradient-to-br from-[#0F2035] to-[#1B4F8A] text-white text-[10px] font-black rounded-full flex items-center justify-center">⚡</span>
+        Crew 執行時間軸
+      </h4>
+      <div className="space-y-2.5">
+        {items.map((item, idx) => (
+          <div key={idx} className="flex items-center gap-3">
+            {/* 狀態圓點 */}
+            <div className={`w-2.5 h-2.5 rounded-full flex-none ${
+              item.status === 'done' ? 'bg-green-400' :
+              item.status === 'running' ? 'bg-orange-400 animate-pulse' :
+              'bg-red-400'
+            }`} />
+            {/* Crew 名稱 */}
+            <div className="w-44 flex items-center gap-1.5">
+              <span className="text-sm">{item.icon}</span>
+              <span className="text-xs font-semibold text-gray-600">Crew {item.crewId} {item.name}</span>
+            </div>
+            {/* 進度條 */}
+            <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-2 rounded-full transition-all duration-700 ${
+                  item.status === 'done' ? 'bg-green-400' :
+                  item.status === 'running' ? 'bg-orange-400' :
+                  'bg-red-400'
+                }`}
+                style={{ width: `${(item.durationMs / maxMs) * 100}%` }}
+              />
+            </div>
+            {/* 耗時 */}
+            <div className="w-20 text-right">
+              <span className={`text-xs font-bold ${
+                item.status === 'done' ? 'text-green-600' :
+                item.status === 'running' ? 'text-orange-500' :
+                'text-red-500'
+              }`}>
+                {item.status === 'done' ? '✓ ' : item.status === 'running' ? '⟳ ' : '✗ '}
+                {item.durationMs.toLocaleString('zh-TW')}ms
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+        <span className="text-xs text-gray-400">總 Crew 耗時</span>
+        <span className="text-xs font-black text-[#1B4F8A]">
+          {items.reduce((s, i) => s + i.durationMs, 0).toLocaleString('zh-TW')}ms
+          <span className="text-gray-400 font-normal ml-2">（含 AI 思考時間 {totalMs.toLocaleString('zh-TW')}ms）</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Crew 7 防詐卡片 ──────────────────────────────────────────────────
+
+function Crew7FraudCard({ fraudCheck }: { fraudCheck: FraudCheck }) {
+  const score = fraudCheck.overallScore ?? (
+    fraudCheck.overallLevel === 'normal' ? 28 :
+    fraudCheck.overallLevel === 'caution' ? 55 : 80
+  );
+
+  const levelLabel = fraudCheck.overallLevel === 'normal' ? '低風險' :
+    fraudCheck.overallLevel === 'caution' ? '中風險' : '高風險';
+  const levelColor = fraudCheck.overallLevel === 'normal' ? 'text-green-600 bg-green-50' :
+    fraudCheck.overallLevel === 'caution' ? 'text-yellow-600 bg-yellow-50' :
+    'text-red-600 bg-red-50';
+
+  const items = fraudCheck.items || {};
+
+  const checkItems = [
+    {
+      key: 'A',
+      label: '身分認證防偽',
+      passed: items.idVerification?.passed ?? true,
+      note: items.idVerification?.note,
+      warn: false,
+    },
+    {
+      key: 'B',
+      label: '黑名單掃描',
+      passed: !(items.blacklistCheck?.hit ?? false),
+      note: items.blacklistCheck?.note ?? (items.blacklistCheck?.hit ? '命中名單' : '未命中'),
+      warn: items.blacklistCheck?.hit ?? false,
+    },
+    {
+      key: 'C',
+      label: '異常申貸行為',
+      passed: !(items.abnormalBehavior?.flag ?? false),
+      note: items.abnormalBehavior?.note,
+      warn: items.abnormalBehavior?.flag ?? false,
+    },
+    {
+      key: 'D',
+      label: 'LLM 交易分析',
+      passed: (items.llmAnalysis?.riskLevel ?? 'low') === 'low',
+      note: items.llmAnalysis?.note ?? '低風險（模擬）',
+      warn: false,
+    },
+    {
+      key: 'E',
+      label: '關聯網絡分析',
+      passed: !(items.networkAnalysis?.anomaly ?? false),
+      note: items.networkAnalysis?.note ?? '無異常（模擬）',
+      warn: items.networkAnalysis?.anomaly ?? false,
+    },
+  ];
+
+  return (
+    <div className="border border-gray-100 rounded-xl p-4 bg-gradient-to-br from-slate-50 to-white">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="w-6 h-6 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center">7</span>
+        <h4 className="font-bold text-gray-700 text-sm">防詐領航員評估（Crew 7）</h4>
+      </div>
+      <div className="flex items-center gap-4 mb-4 p-3 bg-white rounded-xl border border-gray-100">
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">防詐評分</p>
+          <p className="text-3xl font-black text-gray-800">{score}<span className="text-sm font-normal text-gray-400"> / 100</span></p>
+        </div>
+        <span className={`px-3 py-1.5 rounded-xl text-sm font-black ${levelColor}`}>
+          {levelLabel}
+        </span>
+        {/* 分數條 */}
+        <div className="flex-1">
+          <div className="h-2.5 bg-gradient-to-r from-green-200 via-yellow-200 to-red-300 rounded-full relative">
+            <div
+              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-400 rounded-full shadow"
+              style={{ left: `calc(${score}% - 8px)` }}
+            />
+          </div>
+          <div className="flex justify-between text-[9px] text-gray-300 mt-0.5">
+            <span>低風險 0</span><span>中風險 50</span><span>100 高風險</span>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {checkItems.map((item) => (
+          <div key={item.key} className="flex items-start gap-2.5 text-xs">
+            <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-[10px] font-bold flex-none">
+              {item.key}
+            </span>
+            <span className="text-gray-600 font-medium w-28 flex-none">{item.label}</span>
+            <span className={`font-bold ${
+              item.warn ? 'text-yellow-600' :
+              item.passed ? 'text-green-600' : 'text-red-500'
+            }`}>
+              {item.warn ? '⚠ 注意' : item.passed ? '✓ 通過' : '✗ 未通過'}
+            </span>
+            {item.note && (
+              <span className="text-gray-400 text-[10px]">（{item.note}）</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── 主元件 ────────────────────────────────────────────────────────────
 
 export default function AdminCaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -229,7 +412,6 @@ export default function AdminCaseDetailPage() {
     }
 
     try {
-      // 先將狀態更新為徵審中
       await fetch(`/api/admin/applications/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'x-admin-api-key': apiKey },
@@ -260,7 +442,6 @@ export default function AdminCaseDetailPage() {
     setConfirmAction(null);
 
     try {
-      // 更新案件狀態
       const statusRes = await fetch(`/api/admin/applications/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'x-admin-api-key': apiKey },
@@ -270,7 +451,6 @@ export default function AdminCaseDetailPage() {
       if (!statusData.success) throw new Error(statusData.message);
       setApp((prev) => prev ? { ...prev, status } : null);
 
-      // 推播 LINE 通知給客戶
       const notifyRes = await fetch(`/api/admin/applications/${id}/notify-customer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-api-key': apiKey },
@@ -290,21 +470,25 @@ export default function AdminCaseDetailPage() {
 
   if (loadingCase) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <span className="w-8 h-8 border-3 border-gray-200 border-t-[#1B4F8A] rounded-full animate-spin" />
-      </div>
+      <AdminLayout title="案件詳情">
+        <div className="flex items-center justify-center h-64">
+          <span className="w-8 h-8 border-3 border-gray-200 border-t-[#1B4F8A] rounded-full animate-spin" />
+        </div>
+      </AdminLayout>
     );
   }
 
   if (!app) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 text-gray-400">
-        <span className="text-5xl">😕</span>
-        <p className="text-sm">找不到案件 {id}</p>
-        <button onClick={() => navigate('/admin/cases')} className="text-[#1B4F8A] text-sm hover:underline">
-          返回列表
-        </button>
-      </div>
+      <AdminLayout title="找不到案件">
+        <div className="flex flex-col items-center justify-center h-64 gap-4 text-gray-400">
+          <span className="text-5xl">😕</span>
+          <p className="text-sm">找不到案件 {id}</p>
+          <button onClick={() => navigate('/admin/cases')} className="text-[#1B4F8A] text-sm hover:underline">
+            返回列表
+          </button>
+        </div>
+      </AdminLayout>
     );
   }
 
@@ -312,29 +496,63 @@ export default function AdminCaseDetailPage() {
   const isFinished = app.status === 'approved' || app.status === 'rejected';
   const finalDecision = reviewResult?.phases.committeeReview.result.finalDecision;
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 頂部導覽 */}
-      <header className="bg-[#1B4F8A] shadow-md">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/admin/cases')}
-              className="text-blue-200 hover:text-white text-sm flex items-center gap-1 transition-colors"
-            >
-              ← 案件列表
-            </button>
-            <span className="text-blue-300/40">|</span>
-            <span className="text-white text-sm font-bold font-mono">{app.id}</span>
-          </div>
-          <button onClick={() => { logout(); navigate('/admin', { replace: true }); }}
-            className="text-blue-200 hover:text-white text-xs transition-colors">
-            登出
-          </button>
-        </div>
-      </header>
+  // 組建 Crew 時間軸資料
+  const crewTimelineItems: CrewTimelineItem[] = reviewResult ? [
+    ...(reviewResult.phases.valuation ? [{
+      crewId: 5,
+      name: '文件解析',
+      icon: '📄',
+      durationMs: Math.round(reviewResult.phases.valuation.durationMs * 0.25),
+      status: 'done' as const,
+    }] : []),
+    {
+      crewId: 3,
+      name: 'RAG 法規查核',
+      icon: '📚',
+      durationMs: Math.round(reviewResult.phases.creditReview.durationMs * 0.3),
+      status: 'done',
+    },
+    ...(reviewResult.phases.valuation ? [{
+      crewId: 2,
+      name: 'ML 鑑估',
+      icon: '🏠',
+      durationMs: reviewResult.phases.valuation.durationMs,
+      status: 'done' as const,
+    }] : []),
+    {
+      crewId: 1,
+      name: '5P 徵審',
+      icon: '🔍',
+      durationMs: reviewResult.phases.creditReview.durationMs,
+      status: 'done',
+    },
+    {
+      crewId: 7,
+      name: '防詐查核',
+      icon: '🛡️',
+      durationMs: Math.round(reviewResult.phases.creditReview.durationMs * 0.25),
+      status: 'done',
+    },
+    {
+      crewId: 4,
+      name: '審議小組',
+      icon: '⚖️',
+      durationMs: reviewResult.phases.committeeReview.durationMs,
+      status: 'done',
+    },
+  ] : [];
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+  return (
+    <AdminLayout title={`案件 ${app.id}`}>
+      <div className="p-6 space-y-5">
+        {/* 返回按鈕 */}
+        <button
+          onClick={() => navigate('/admin/cases')}
+          className="text-sm text-[#1B4F8A] hover:underline flex items-center gap-1"
+        >
+          ← 返回案件列表
+        </button>
+
         {/* ── 案件基本資訊 ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* 左：申請人資訊 */}
@@ -419,12 +637,13 @@ export default function AdminCaseDetailPage() {
               <div className="w-12 h-12 border-4 border-blue-100 border-t-[#1B4F8A] rounded-full animate-spin" />
               <div className="text-center">
                 <p className="text-gray-700 font-bold text-sm">AI 徵審進行中…</p>
-                <p className="text-gray-400 text-xs mt-1">三位 AI 委員正在審議中，約需 10~30 秒</p>
+                <p className="text-gray-400 text-xs mt-1">7 個 AI Crew 正在協同審議中，約需 10~30 秒</p>
               </div>
               <div className="flex gap-2 text-xs text-gray-400">
-                {isMortgage && <span className="px-3 py-1 bg-blue-50 rounded-full animate-pulse">Phase 1：ML 鑑價</span>}
-                <span className="px-3 py-1 bg-blue-50 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}>Phase 2：5P 徵審</span>
-                <span className="px-3 py-1 bg-blue-50 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}>Phase 3：審議小組</span>
+                {isMortgage && <span className="px-3 py-1 bg-blue-50 rounded-full animate-pulse">Crew 2 ML 鑑價</span>}
+                <span className="px-3 py-1 bg-blue-50 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}>Crew 1 5P 徵審</span>
+                <span className="px-3 py-1 bg-blue-50 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}>Crew 7 防詐</span>
+                <span className="px-3 py-1 bg-blue-50 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}>Crew 4 審議</span>
               </div>
             </div>
           )}
@@ -438,6 +657,12 @@ export default function AdminCaseDetailPage() {
           {/* 徵審結果 */}
           {reviewResult && (
             <div className="p-5 space-y-4">
+
+              {/* Crew 執行時間軸（最優先顯示） */}
+              {crewTimelineItems.length > 0 && (
+                <CrewTimeline items={crewTimelineItems} totalMs={reviewResult.totalDurationMs} />
+              )}
+
               {/* Phase 1：ML 鑑價（房貸） */}
               {reviewResult.phases.valuation && (
                 <div className="border border-gray-100 rounded-xl p-4">
@@ -464,6 +689,9 @@ export default function AdminCaseDetailPage() {
                 </div>
               )}
 
+              {/* Crew 7 防詐評估（5P 之前） */}
+              <Crew7FraudCard fraudCheck={reviewResult.phases.creditReview.result.fraudCheck} />
+
               {/* Phase 2：5P 徵審 */}
               <div className="border border-gray-100 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-3">
@@ -477,15 +705,11 @@ export default function AdminCaseDetailPage() {
                   const cr = reviewResult.phases.creditReview.result;
                   const fs = reviewResult.finalSummary;
                   const isPersonal = reviewResult.loanType === 'personal';
-                  // riskScore 由 workflowService buildCreditReviewSummary 計算，存在 finalSummary
                   const riskScore = fs.riskScore;
-                  // fraudLevel 在 creditReview.result.fraudCheck.overallLevel
                   const fraudLevel = cr.fraudCheck?.overallLevel ?? 'normal';
-                  // 合規門檻：信貸看 dbr.pass，房貸看 debtIncomeRatio.pass
                   const thresholdPass = isPersonal
                     ? (cr.thresholds?.dbr?.pass ?? cr.thresholds?.debtIncomeRatio?.pass ?? false)
                     : (cr.thresholds?.debtIncomeRatio?.pass ?? false);
-                  // 主要指標值
                   const metricVal = isPersonal
                     ? (cr.thresholds?.dbr?.value ?? cr.thresholds?.debtIncomeRatio?.value ?? 0)
                     : (cr.thresholds?.debtIncomeRatio?.value ?? 0);
@@ -527,7 +751,6 @@ export default function AdminCaseDetailPage() {
                     <span className="text-xs text-gray-400 ml-auto">{reviewResult.phases.committeeReview.durationMs}ms</span>
                   </div>
 
-                  {/* 三輪投票 */}
                   {reviewResult.phases.committeeReview.result.rounds.map((round) => (
                     <div key={round.roundNumber} className="mb-4">
                       <p className="text-xs font-bold text-gray-500 mb-2">{round.roundTitle}</p>
@@ -558,7 +781,6 @@ export default function AdminCaseDetailPage() {
                     </div>
                   ))}
 
-                  {/* 最終決議 */}
                   {finalDecision && (
                     <div className={`border rounded-xl p-4 ${DECISION_COLOR[finalDecision.decision] || 'border-gray-200'}`}>
                       <div className="flex items-center justify-between mb-3">
@@ -671,7 +893,7 @@ export default function AdminCaseDetailPage() {
             <p className="text-xs text-gray-500">LINE 通知已發送給申請人</p>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

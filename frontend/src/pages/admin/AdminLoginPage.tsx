@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
     const ok = await login(key.trim());
     setLoading(false);
     if (ok) {
-      navigate('/admin/cases', { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     } else {
       setError('API Key 錯誤或伺服器無回應，請確認後重試');
     }
