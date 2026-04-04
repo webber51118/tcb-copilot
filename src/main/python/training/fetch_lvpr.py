@@ -17,9 +17,23 @@ import re
 from pathlib import Path
 
 # ─── 常數 ──────────────────────────────────────────────────
-BASE_URL    = "https://plvr.land.moi.gov.tw/DownloadOpenData"
+BASE_URL    = "https://plvr.land.moi.gov.tw/DownloadHistory"
 DATA_DIR    = Path("data/lvpr/raw")
 OUTPUT_PATH = Path("data/lvpr/cleaned_lvpr.parquet")
+
+# Demo 模式：只保留雙北（台北市 + 新北市）行政區，大幅縮短下載與訓練時間
+# 設為 None 則下載全台
+DEMO_DISTRICTS = {
+    # 台北市 12 區
+    "中正區", "大同區", "中山區", "松山區", "大安區", "萬華區",
+    "信義區", "士林區", "北投區", "內湖區", "南港區", "文山區",
+    # 新北市 29 區
+    "板橋區", "三重區", "中和區", "永和區", "新莊區", "新店區",
+    "樹林區", "鶯歌區", "三峽區", "淡水區", "汐止區", "瑞芳區",
+    "土城區", "蘆洲區", "五股區", "泰山區", "林口區", "深坑區",
+    "石碇區", "坪林區", "三芝區", "石門區", "八里區", "平溪區",
+    "雙溪區", "貢寮區", "金山區", "萬里區", "烏來區",
+}
 
 # 下載近 12 季（民國 112Q1 ~ 114Q4，即 2023~2025）
 QUARTERS = [
@@ -85,11 +99,11 @@ def parse_floor(floor_str: str) -> int:
         return 0
 
 
-def download_quarter(roc_year: str, quarter: str) -> pd.DataFrame | None:
+def download_quarter(roc_year: str, quarter: str) -> "pd.DataFrame | None":
     """下載單季實價登錄 ZIP 並回傳 DataFrame（建物買賣，_a 檔）"""
-    filename = f"{roc_year}S{quarter}_lvr_land_a.zip"
-    url = f"{BASE_URL}?type=zip&fileName={filename}"
-    print(f"  下載 {filename} ...")
+    season_code = f"{roc_year}S{quarter}"
+    url = f"{BASE_URL}?type=season&fileName={season_code}"
+    print(f"  下載 {season_code} ...")
 
     try:
         resp = requests.get(url, timeout=30)
@@ -98,7 +112,12 @@ def download_quarter(roc_year: str, quarter: str) -> pd.DataFrame | None:
             return None
 
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
-            csv_names = [n for n in zf.namelist() if n.endswith(".csv")]
+            # 只取不動產買賣主檔（_a 類型），Demo 模式只取台北市(a) + 新北市(f)
+            all_csv = [n for n in zf.namelist() if n.endswith("_lvr_land_a.csv")]
+            if DEMO_DISTRICTS:
+                csv_names = [n for n in all_csv if n.startswith("a_") or n.startswith("f_")]
+            else:
+                csv_names = all_csv
             if not csv_names:
                 print(f"    ❌ ZIP 內無 CSV，跳過")
                 return None
@@ -115,7 +134,7 @@ def download_quarter(roc_year: str, quarter: str) -> pd.DataFrame | None:
                 return None
             df = pd.concat(dfs, ignore_index=True)
             df["_quarter"] = f"{roc_year}Q{quarter}"
-            print(f"    ✅ {len(df):,} 筆")
+            print(f"    ✅ {len(df):,} 筆 ({len(csv_names)} 檔)")
             return df
 
     except Exception as e:
@@ -215,6 +234,9 @@ def main():
         df_raw = download_quarter(roc_year, quarter)
         if df_raw is not None:
             df_clean = clean(df_raw)
+            # Demo 模式：只保留雙北行政區
+            if DEMO_DISTRICTS and "district" in df_clean.columns:
+                df_clean = df_clean[df_clean["district"].isin(DEMO_DISTRICTS)].copy()
             if len(df_clean) > 0:
                 all_dfs.append(df_clean)
                 print(f"    清洗後：{len(df_clean):,} 筆")
