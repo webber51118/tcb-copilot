@@ -14,6 +14,7 @@ import { ValuationRequest, ValuationResult, XGBoostValuationRequest, XGBoostValu
 const VALUATION_API_URL  = process.env.VALUATION_API_URL || 'http://localhost:8001';
 const VALUATE_ENDPOINT   = `${VALUATION_API_URL}/valuate`;
 const XGBOOST_ENDPOINT   = `${VALUATION_API_URL}/valuate/xgboost`;
+const XGBOOST_EXPLAIN_ENDPOINT = `${VALUATION_API_URL}/valuate/xgboost/explain`;
 
 /** camelCase → snake_case 轉換（傳給 Python） */
 function toSnakeCase(req: ValuationRequest): Record<string, unknown> {
@@ -143,4 +144,48 @@ export async function callXGBoostValuate(request: XGBoostValuationRequest): Prom
 
   const raw = (await response.json()) as Record<string, unknown>;
   return fromXGBoostSnakeCase(raw);
+}
+
+
+export interface XGBoostExplainRequest {
+  district:       string;
+  buildingType:   string;
+  areaPing:       number;
+  propertyAge:    number;
+  floor:          number;
+  pricePerPing:   number;
+  estimatedValue: number;
+  ltvRatio:       number;
+  riskLevel:      string;
+  loanAmount:     number;
+}
+
+/**
+ * 呼叫 Gemma 4 產生 XGBoost 估價白話說明
+ * 失敗時回傳空字串，不拋例外
+ */
+export async function callXGBoostExplain(request: XGBoostExplainRequest): Promise<string> {
+  try {
+    const response = await fetch(XGBOOST_EXPLAIN_ENDPOINT, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        district:        request.district,
+        building_type:   request.buildingType,
+        area_ping:       request.areaPing,
+        property_age:    request.propertyAge,
+        floor:           request.floor,
+        price_per_ping:  request.pricePerPing,
+        estimated_value: request.estimatedValue,
+        ltv_ratio:       request.ltvRatio,
+        risk_level:      request.riskLevel,
+        loan_amount:     request.loanAmount,
+      }),
+    });
+    if (!response.ok) return '';
+    const data = (await response.json()) as { explanation?: string };
+    return data.explanation ?? '';
+  } catch {
+    return '';
+  }
 }

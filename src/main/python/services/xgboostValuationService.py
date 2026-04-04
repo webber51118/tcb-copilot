@@ -162,3 +162,59 @@ def valuate_xgboost(
         "price_per_ping": round(price_per_ping),
         "model":         model_tag,
     }
+
+
+def explain_valuation_zh(
+    district: str,
+    building_type: str,
+    area_ping: float,
+    property_age: int,
+    floor: int,
+    price_per_ping: float,
+    estimated_value: float,
+    ltv_ratio: float,
+    risk_level: str,
+    loan_amount: float,
+    ollama_url: str = "http://127.0.0.1:11434",
+    model: str = "gemma4",
+) -> str:
+    """
+    呼叫本地 Ollama Gemma 4 模型，以白話中文解釋 XGBoost 估價結果。
+
+    Returns:
+        str — 2-3 段白話說明（失敗時回傳空字串，不中斷主流程）
+    """
+    import json as _json
+    import urllib.request as _req
+
+    prompt = f"""你是一位專業的不動產估價師，請用白話中文（2-3 段，共約 150 字）向銀行行員解釋以下估價結果，說明影響價格的主要因素，並評估貸款風險。
+
+物件資訊：
+- 行政區：{district}（{building_type}）
+- 面積：{area_ping:.1f} 坪，屋齡：{property_age} 年，{floor} 樓
+- 估計單價：{price_per_ping:,.0f} 元/坪
+- 估計市值：{estimated_value/10000:.0f} 萬元
+- 申請貸款：{loan_amount/10000:.0f} 萬元（LTV {ltv_ratio*100:.1f}%）
+- 風險評級：{risk_level}
+
+請直接輸出說明文字，不需標題或條列格式。"""
+
+    payload = _json.dumps({
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "think": False,
+        "options": {"temperature": 0.3, "num_predict": 350},
+    }).encode()
+
+    try:
+        req = _req.Request(
+            f"{ollama_url}/api/chat",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with _req.urlopen(req, timeout=45) as resp:
+            result = _json.loads(resp.read())
+            return result.get("message", {}).get("content", "").strip()
+    except Exception:
+        return ""

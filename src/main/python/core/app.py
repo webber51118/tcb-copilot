@@ -27,6 +27,20 @@ from src.main.python.models.valuation_schema import ValuationRequest, ValuationR
 from src.main.python.services.valuationService import valuate
 
 
+class XGBoostExplainRequest(BaseModel):
+    """XGBoost 估價白話解釋請求"""
+    district:       str   = Field(..., description="行政區")
+    building_type:  str   = Field(..., description="建物型態")
+    area_ping:      float = Field(..., gt=0)
+    property_age:   int   = Field(..., ge=0)
+    floor:          int   = Field(..., ge=1)
+    price_per_ping: float = Field(..., gt=0, description="估計單價（元/坪）")
+    estimated_value: float = Field(..., gt=0, description="估計市值（元）")
+    ltv_ratio:      float = Field(..., ge=0, description="LTV 比率")
+    risk_level:     str   = Field(..., description="風險評級")
+    loan_amount:    float = Field(..., gt=0, description="申請貸款金額（元）")
+
+
 class XGBoostValuationRequest(BaseModel):
     """XGBoost 個別物件鑑價請求（輸入地址行政區 + 物件屬性）"""
     district:      str   = Field(..., description="行政區（如：信義區、板橋區）")
@@ -128,3 +142,27 @@ async def valuate_xgboost_property(request: XGBoostValuationRequest) -> dict:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"XGBoost 鑑價失敗：{str(e)}")
+
+
+@app.post("/valuate/xgboost/explain")
+async def explain_xgboost_valuation(request: XGBoostExplainRequest) -> dict:
+    """
+    Gemma 4 白話解釋 XGBoost 估價結果
+
+    呼叫本地 Ollama Gemma 4 模型，產生 2-3 段中文說明。
+    若 Ollama 未啟動，回傳 explanation: ""（不中斷主流程）。
+    """
+    from src.main.python.services.xgboostValuationService import explain_valuation_zh
+    explanation = explain_valuation_zh(
+        district        = request.district,
+        building_type   = request.building_type,
+        area_ping       = request.area_ping,
+        property_age    = request.property_age,
+        floor           = request.floor,
+        price_per_ping  = request.price_per_ping,
+        estimated_value = request.estimated_value,
+        ltv_ratio       = request.ltv_ratio,
+        risk_level      = request.risk_level,
+        loan_amount     = request.loan_amount,
+    )
+    return {"explanation": explanation}

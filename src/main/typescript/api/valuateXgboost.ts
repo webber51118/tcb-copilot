@@ -8,7 +8,7 @@
 
 import { Router, Request, Response } from 'express';
 import { parseLandRegistryDoc } from '../services/documentParser';
-import { callXGBoostValuate } from '../services/valuationClient';
+import { callXGBoostValuate, callXGBoostExplain, XGBoostExplainRequest } from '../services/valuationClient';
 import { XGBoostValuationRequest } from '../models/types';
 
 export const valuateXgboostRouter = Router();
@@ -131,4 +131,19 @@ valuateXgboostRouter.post('/valuate/xgboost', async (req: Request, res: Response
     console.error('[valuateXgboost] 鑑價引擎錯誤:', err);
     res.status(500).json({ success: false, message: 'XGBoost 鑑價計算發生錯誤' });
   }
+});
+
+
+valuateXgboostRouter.post('/valuate/xgboost/explain', async (req: Request, res: Response): Promise<void> => {
+  const body = req.body as XGBoostExplainRequest;
+  const required = ['district', 'buildingType', 'areaPing', 'propertyAge', 'floor',
+                    'pricePerPing', 'estimatedValue', 'ltvRatio', 'riskLevel', 'loanAmount'] as const;
+  for (const field of required) {
+    if (body[field] === undefined || body[field] === null || body[field] === '') {
+      res.status(400).json({ success: false, message: `缺少必填欄位：${field}` });
+      return;
+    }
+  }
+  const explanation = await callXGBoostExplain(body);
+  res.json({ success: true, explanation });
 });

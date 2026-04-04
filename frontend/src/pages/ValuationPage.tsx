@@ -50,6 +50,8 @@ export default function ValuationPage() {
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { loading, loadingStep, error, runXGBoostValuation, reset } = useValuation();
+  const [aiExplanation, setAiExplanation] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   // ── Step 1：圖片上傳 ──────────────────────────────────────
   const handleFile = useCallback((file: File) => {
@@ -94,6 +96,30 @@ export default function ValuationPage() {
       setParsed(result.parsed);
       setForm((f) => ({ ...f, valuationResult: result.valuation }));
       setStep(3);
+
+      // 非同步呼叫 Gemma 4 說明（失敗不影響主流程）
+      const v = result.valuation;
+      setAiLoading(true);
+      fetch('/api/valuate/xgboost/explain', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          district:       district || '',
+          buildingType:   buildingType || '',
+          areaPing:       areaPing ?? 0,
+          propertyAge:    propertyAge ?? 0,
+          floor:          floor ?? 0,
+          pricePerPing:   v.pricePerPing,
+          estimatedValue: v.estimatedValue,
+          ltvRatio:       v.ltvRatio,
+          riskLevel:      v.riskLevel,
+          loanAmount:     loanAmount ?? 0,
+        }),
+      })
+        .then((r) => r.ok ? r.json() : { explanation: '' })
+        .then((d: { explanation?: string }) => setAiExplanation(d.explanation ?? ''))
+        .catch(() => setAiExplanation(''))
+        .finally(() => setAiLoading(false));
     }
   };
 
@@ -103,6 +129,7 @@ export default function ValuationPage() {
       reset();
     } else if (step === 3) {
       setStep(2);
+      setAiExplanation('');
       reset();
     }
   };
@@ -479,6 +506,21 @@ export default function ValuationPage() {
                 </div>
               </div>
 
+              {/* Gemma 4 AI 白話說明 */}
+              {(aiLoading || aiExplanation) && (
+                <div className="card border border-purple-100 bg-purple-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-bold text-purple-700">AI 估價說明</span>
+                    <span className="text-xs text-purple-400 bg-purple-100 px-1.5 py-0.5 rounded-full">Gemma 4</span>
+                  </div>
+                  {aiLoading ? (
+                    <p className="text-xs text-purple-400 animate-pulse">AI 分析中...</p>
+                  ) : (
+                    <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">{aiExplanation}</p>
+                  )}
+                </div>
+              )}
+
               {form.address && (
                 <p className="text-center text-xs text-gray-400">物件地址：{form.address}</p>
               )}
@@ -502,6 +544,7 @@ export default function ValuationPage() {
                   setForm(INITIAL);
                   setThumbUrl(null);
                   setParsed(null);
+                  setAiExplanation('');
                   reset();
                 }}
                 className="btn-secondary"
