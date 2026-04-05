@@ -14,6 +14,7 @@ import { parseMyDataDoc, parseLandRegistryDoc } from '../services/documentParser
 import { lineClient } from '../core/lineClient';
 import { transition } from '../core/conversationStateMachine';
 import { LoanType, BuildingType, ConversationState } from '../models/enums';
+import { recordAgentCall } from '../config/agentMonitorStore';
 
 export const parseDocumentRouter = Router();
 
@@ -43,6 +44,7 @@ parseDocumentRouter.post('/parse-document', async (req: Request, res: Response) 
 
   const session = getSession(userId);
 
+  const t0 = Date.now();
   try {
     let result;
     if (docType === 'mydata') {
@@ -125,8 +127,10 @@ parseDocumentRouter.post('/parse-document', async (req: Request, res: Response) 
       }
     }
 
+    recordAgentCall('文件解析AI', !!(result as { success?: boolean })?.success, Date.now() - t0);
     res.json({ success: true, data: result, allDocsReady });
   } catch (err) {
+    recordAgentCall('文件解析AI', false);
     console.error('[parseDocument] 解析失敗:', err);
     res.status(500).json({ success: false, message: '文件解析失敗，請重試' });
   }

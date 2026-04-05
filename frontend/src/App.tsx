@@ -6,6 +6,7 @@ import PosterPage from './pages/PosterPage';
 import UploadDocsPage from './pages/UploadDocsPage';
 import ApplicationFormPage from './pages/ApplicationFormPage';
 import ValuationPage from './pages/ValuationPage';
+import AgentMonitorPage from './pages/AgentMonitorPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminCasesPage from './pages/admin/AdminCasesPage';
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/valuate" element={<ValuationPage />} />
 
         {/* 行員後台管理 */}
+        <Route path="/admin/monitor" element={<AgentMonitorPage />} />
         <Route path="/admin" element={<AdminLoginPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/cases" element={<AdminCasesPage />} />

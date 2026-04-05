@@ -13,6 +13,7 @@ import {
 import { callValuationEngine } from './valuationClient';
 import { performCreditReview } from './creditReviewService';
 import { runCommitteeReview } from './committeeReviewService';
+import { recordAgentCall } from '../config/agentMonitorStore';
 import { ValuationResult } from '../models/types';
 import { CreditReviewResult } from '../models/creditReview';
 import {
@@ -123,10 +124,12 @@ export async function runFullReview(req: FullReviewRequest): Promise<FullReviewR
           region: req.property.region,
           loanAmount: req.loanAmount,
         });
+        recordAgentCall('ML鑑價引擎', true, Date.now() - p1Start);
       } catch {
         // Python 服務不可用 → Demo 估算
         mode = 'demo';
         valuationResult = buildDemoValuation(req);
+        recordAgentCall('ML鑑價引擎', false);
       }
     } else {
       // 未提供鑑價輸入 → Demo 估算
@@ -152,6 +155,7 @@ export async function runFullReview(req: FullReviewRequest): Promise<FullReviewR
     property: req.property,
     valuation: valuationResult,
   });
+  recordAgentCall('5P徵審引擎', true, Date.now() - p2Start);
   const creditPhase = {
     result: creditResult,
     durationMs: Date.now() - p2Start,
@@ -185,6 +189,7 @@ export async function runFullReview(req: FullReviewRequest): Promise<FullReviewR
   };
 
   const committeeResult = await runCommitteeReview(committeeReq);
+  recordAgentCall('委員會審議', true, Date.now() - p3Start);
   const committeePhase = {
     result: committeeResult,
     durationMs: Date.now() - p3Start,

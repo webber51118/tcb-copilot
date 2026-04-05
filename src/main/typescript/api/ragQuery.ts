@@ -7,6 +7,7 @@
 import { Router, Request, Response } from 'express';
 import { RagQueryRequest, RagQueryErrorResponse } from '../models/rag';
 import { ragQuery } from '../services/ragService';
+import { recordAgentCall } from '../config/agentMonitorStore';
 
 export const ragQueryRouter = Router();
 
@@ -53,10 +54,13 @@ ragQueryRouter.post('/rag-query', async (req: Request, res: Response): Promise<v
     return;
   }
 
+  const t0 = Date.now();
   try {
     const result = await ragQuery(validation.req);
+    recordAgentCall('RAG法規問答', true, Date.now() - t0);
     res.json(result);
   } catch (err) {
+    recordAgentCall('RAG法規問答', false);
     console.error('[ragQuery] RAG 問答執行錯誤:', err);
     const errResp: RagQueryErrorResponse = {
       success: false,

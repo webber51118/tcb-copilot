@@ -10,6 +10,7 @@ import { Router, Request, Response } from 'express';
 import { parseLandRegistryDoc } from '../services/documentParser';
 import { callXGBoostValuate, callXGBoostExplain, XGBoostExplainRequest } from '../services/valuationClient';
 import { XGBoostValuationRequest } from '../models/types';
+import { recordAgentCall } from '../config/agentMonitorStore';
 
 export const valuateXgboostRouter = Router();
 
@@ -113,8 +114,11 @@ valuateXgboostRouter.post('/valuate/xgboost', async (req: Request, res: Response
   }
 
   // Step 2：呼叫 XGBoost 鑑價引擎
+  const t0 = Date.now();
   try {
     const valuation = await callXGBoostValuate(xgboostParams);
+    recordAgentCall('XGBoost鑑價', true, Date.now() - t0);
+    if (hasImage) recordAgentCall('文件解析AI', parseSuccess, undefined);
     res.json({
       success: true,
       data: { parsed, parseSuccess, valuation },
@@ -144,6 +148,8 @@ valuateXgboostRouter.post('/valuate/xgboost/explain', async (req: Request, res: 
       return;
     }
   }
+  const t1 = Date.now();
   const explanation = await callXGBoostExplain(body);
+  recordAgentCall('Gemma4本地AI', explanation !== '', Date.now() - t1);
   res.json({ success: true, explanation });
 });

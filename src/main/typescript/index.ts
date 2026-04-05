@@ -34,6 +34,7 @@ import { posterUploadRouter } from './api/posterUpload';
 import lineTestRouter from './api/lineTest';
 import { autoValuateRouter } from './api/autoValuate';
 import { valuateXgboostRouter } from './api/valuateXgboost';
+import { agentMonitorRouter } from './api/agentMonitor';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -66,9 +67,10 @@ app.use('/api', (_req, res, next) => {
 });
 app.options('/api/*', (_req, res) => res.sendStatus(200));
 
-// 後台管理 API（活動 + 申請案件）
+// 後台管理 API（活動 + 申請案件 + Agent 監控）
 app.use('/api/admin', adminAuth, promotionAdminRouter);
 app.use('/api/admin', adminAuth, applicationAdminRouter);
+app.use('/api/admin', adminAuth, agentMonitorRouter);
 app.use('/api/admin', adminAuth, lineTestRouter);
 app.use('/api', recommendRouter);
 app.use('/api', parseDocumentRouter);
