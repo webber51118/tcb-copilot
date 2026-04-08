@@ -203,7 +203,6 @@ def explain_valuation_zh(
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "stream": False,
-        "think": False,
         "options": {"temperature": 0.3, "num_predict": 350},
     }).encode()
 

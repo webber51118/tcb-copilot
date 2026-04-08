@@ -18,8 +18,8 @@ agentMonitorRouter.get('/agents/status', (_req: Request, res: Response) => {
   // 最近 10 筆申請摘要（供看板下方表格顯示）
   const recentWorkflows = getAllApplications()
     .sort((a, b) => {
-      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const ta = a.appliedAt ? new Date(a.appliedAt).getTime() : 0;
+      const tb = b.appliedAt ? new Date(b.appliedAt).getTime() : 0;
       return tb - ta;
     })
     .slice(0, 10)
@@ -27,8 +27,8 @@ agentMonitorRouter.get('/agents/status', (_req: Request, res: Response) => {
       appId:    app.id,
       loanType: app.loanType === 'mortgage' ? '房貸' : '信貸',
       status:   app.status,
-      amount:   app.amount,
-      createdAt: app.createdAt,
+      amount:   app.basicInfo.amount ?? 0,
+      createdAt: app.appliedAt,
     }));
 
   // 今日整體統計
