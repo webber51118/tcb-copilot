@@ -10,7 +10,7 @@ export type AgentName =
   | '5P徵審引擎'
   | '委員會審議'
   | 'RAG法規問答'
-  | 'Gemma4本地AI'
+  | 'Qwen2.5本地AI'
   | 'XGBoost鑑價'
   | '文件解析AI'
   | '對話推薦引擎';
@@ -39,7 +39,7 @@ const ONLINE_THRESHOLD_MS = 30 * 1000;       // 30 秒內有呼叫 → online
 
 const ALL_AGENTS: AgentName[] = [
   'ML鑑價引擎', 'XGBoost鑑價', '5P徵審引擎', '委員會審議',
-  'RAG法規問答', 'Gemma4本地AI', '文件解析AI', '對話推薦引擎',
+  'RAG法規問答', 'Qwen2.5本地AI', '文件解析AI', '對話推薦引擎',
 ];
 
 /** 記錄一次 Agent 呼叫 */

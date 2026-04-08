@@ -150,6 +150,6 @@ valuateXgboostRouter.post('/valuate/xgboost/explain', async (req: Request, res: 
   }
   const t1 = Date.now();
   const explanation = await callXGBoostExplain(body);
-  recordAgentCall('Gemma4本地AI', explanation !== '', Date.now() - t1);
+  recordAgentCall('Qwen2.5本地AI', explanation !== '', Date.now() - t1);
   res.json({ success: true, explanation });
 });

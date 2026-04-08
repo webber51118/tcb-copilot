@@ -147,9 +147,9 @@ async def valuate_xgboost_property(request: XGBoostValuationRequest) -> dict:
 @app.post("/valuate/xgboost/explain")
 async def explain_xgboost_valuation(request: XGBoostExplainRequest) -> dict:
     """
-    Gemma 4 白話解釋 XGBoost 估價結果
+    Qwen2.5 白話解釋 XGBoost 估價結果
 
-    呼叫本地 Ollama Gemma 4 模型，產生 2-3 段中文說明。
+    呼叫本地 Ollama Qwen2.5 模型，產生 2-3 段中文說明。
     若 Ollama 未啟動，回傳 explanation: ""（不中斷主流程）。
     """
     from src.main.python.services.xgboostValuationService import explain_valuation_zh

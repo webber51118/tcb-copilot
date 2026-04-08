@@ -176,10 +176,10 @@ def explain_valuation_zh(
     risk_level: str,
     loan_amount: float,
     ollama_url: str = "http://127.0.0.1:11434",
-    model: str = "gemma4",
+    model: str = "qwen2.5:14b",
 ) -> str:
     """
-    呼叫本地 Ollama Gemma 4 模型，以白話中文解釋 XGBoost 估價結果。
+    呼叫本地 Ollama Qwen2.5 模型，以白話中文解釋 XGBoost 估價結果。
 
     Returns:
         str — 2-3 段白話說明（失敗時回傳空字串，不中斷主流程）

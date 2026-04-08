@@ -161,7 +161,7 @@ export interface XGBoostExplainRequest {
 }
 
 /**
- * 呼叫 Gemma 4 產生 XGBoost 估價白話說明
+ * 呼叫 Qwen2.5 產生 XGBoost 估價白話說明
  * 失敗時回傳空字串，不拋例外
  */
 export async function callXGBoostExplain(request: XGBoostExplainRequest): Promise<string> {
