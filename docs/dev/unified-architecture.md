@@ -257,6 +257,96 @@ Power BI Dashboard
 
 ---
 
-*文件版本 1.1 — 2026-04-09*
+---
+
+## 八、Hierarchical Agent Architecture — 三層 Agent 話術
+
+> **對應框架**：在 Harness Engineering 護欄下，六大 Pilot Crew 實作了標準的「Hierarchical Agent Architecture」三層結構。
+
+### 三層對應關係
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Layer 1：策略調度層（Planner / Architect）                      │
+│  → 個金 Co-Pilot 指揮艙（workflowService.ts）                   │
+│  · 接收貸款申請，判斷類型（房貸 / 信貸）                         │
+│  · 分解任務為 Phase 1 → 2 → 3 的 DAG 執行圖                    │
+│  · State Tracker：追蹤每個 Phase 完成狀態，決定下一步召集誰      │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 2：邏輯管理層（Manager / Controller）                     │
+│  → 六大 Pilot Crew 機長角色                                      │
+│  · Crew 1 機長：協調五個 5P 評分器的執行順序與結果整合           │
+│  · Crew 2 機長：XGBoost 估價 → Monte Carlo → Qwen2.5 說明      │
+│  · Crew 3 機長：向量搜尋 → Claude 合成法規答案                  │
+│  · Crew 4 機長：召集三委員、收集投票、形成最終決議               │
+│  · 各 Crew 負責 Context 壓縮（只傳必要資訊給下層 Worker）        │
+│  · 具備 Retry Policy：Worker 失敗時降級或重試                   │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 3：原子執行層（Worker / Executor）                        │
+│  → 各 Crew 內的單一職責執行單元                                  │
+│  · 5P 評分器（六個）：Purpose / Payment / Protection 各自獨立   │
+│  · XGBoost 推論引擎：單一物件 → 單價預測                        │
+│  · Monte Carlo GBM：1,000 路徑風險模擬                          │
+│  · Azure AI Search：法規向量語義搜尋                             │
+│  · Claude Vision：謄本 OCR 解析                                  │
+│  · 每個 Worker 有工具沙盒（Tool RBAC）：只能呼叫被授權的 API     │
+│  · 輸出格式：PilotCrewResponse 統一結構化 Handoff               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 關鍵機制對應
+
+| Hierarchical Agent 概念 | 個金 Co-Pilot 實作 | 檔案 |
+|------------------------|-----------------|------|
+| **Planner / DAG** | Phase 1→2→3 流程圖，依貸款類型動態決定 | `workflowService.ts` |
+| **State Tracker** | Phase 狀態機（pending → running → done） | `workflowService.ts` |
+| **Manager Context 壓縮** | 各 Crew 只傳摘要結果給指揮艙，不傳原始資料 | `PilotCrewResponse` |
+| **Worker Sandboxing** | 各 Python Worker 獨立程序，不共享狀態 | `xgboostValuationService.py` |
+| **Critic Agent** | Crew 4 三委員交叉驗證（Inferential Sensor） | `committeeReviewService.ts` |
+| **Structured Handoff** | `PilotCrewResponse`：result + confidence + rationale | 各 Crew 輸出介面 |
+| **Harness 護欄** | DBR/LTV 紅線（Planner 層過濾）+ 監控埋點（Worker 層記錄）| `thresholdChecker.ts` |
+
+### Critic Agent 詳解 — 委員會三委員
+
+```
+Worker 層產出（5P 評分 + 鑑估結果 + 法規確認）
+        ↓
+Critic Agent（Crew 4 委員會）
+   委員 A — 風控立場：是否超過合規閾值？
+   委員 B — 業務立場：客戶還款能力是否充分？
+   委員 C — 法規立場：法規紅線是否符合？
+        ↓
+投票結果 → 核准 / 婉拒 / 待補件（REWORK）
+```
+
+> **為什麼需要 Critic Agent？**
+> Worker 各自是局部最優，但可能彼此矛盾。
+> 例如：信用評分通過，但鑑估 LTV 偏高——需要跨領域裁量，這正是 Critic Agent 的職責。
+
+### 4/22 Demo 說法（Hierarchical Agent 話術）
+
+> 「個金 Co-Pilot 實作了標準的三層 Hierarchical Agent 架構：
+>
+> 第一層是『指揮艙』——它是策略調度層（Planner），
+> 接到申請後把任務拆解成 Phase 1 鑑估、Phase 2 徵審、Phase 3 委員會的 DAG 執行圖，
+> 並追蹤每個 Phase 的完成狀態。
+>
+> 第二層是『六大 Pilot Crew 機長』——邏輯管理層（Manager），
+> 每位機長負責協調旗下的 Worker、壓縮 Context、處理 Retry，
+> 只把摘要結果 Handoff 給指揮艙。
+>
+> 第三層是各 Crew 內的原子執行單元——Worker，
+> 每個 Worker 只做一件事：XGBoost 估一個房價、搜一條法規、跑一次 Monte Carlo，
+> 輸出統一的 PilotCrewResponse 結構。
+>
+> 最後由 Crew 4 委員會擔任 Critic Agent，
+> 三位 AI 委員交叉驗證所有 Worker 結果，投票形成最終決議。
+>
+> 整套架構在 Harness Engineering 護欄下運行：
+> 合規紅線在 Planner 層前置過濾，監控埋點在 Worker 層全程記錄。」
+
+---
+
+*文件版本 1.2 — 2026-04-09*
 *本文件為架構敘事層，不改變任何現有命名或程式碼。*
 *詳細技術實作請參考 `pilot-crew-architecture.md`。*
