@@ -52,6 +52,7 @@ export default function ValuationPage() {
   const { loading, loadingStep, error, runXGBoostValuation, reset } = useValuation();
   const [aiExplanation, setAiExplanation] = useState<string>('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiAttempted, setAiAttempted] = useState(false);
 
   // ── Step 1：圖片上傳 ──────────────────────────────────────
   const handleFile = useCallback((file: File) => {
@@ -119,7 +120,7 @@ export default function ValuationPage() {
         .then((r) => r.ok ? r.json() : { explanation: '' })
         .then((d: { explanation?: string }) => setAiExplanation(d.explanation ?? ''))
         .catch(() => setAiExplanation(''))
-        .finally(() => setAiLoading(false));
+        .finally(() => { setAiLoading(false); setAiAttempted(true); });
     }
   };
 
@@ -130,6 +131,7 @@ export default function ValuationPage() {
     } else if (step === 3) {
       setStep(2);
       setAiExplanation('');
+      setAiAttempted(false);
       reset();
     }
   };
@@ -507,7 +509,7 @@ export default function ValuationPage() {
               </div>
 
               {/* Qwen2.5 AI 白話說明 */}
-              {(aiLoading || aiExplanation) && (
+              {(aiLoading || aiAttempted) && (
                 <div className="card border border-purple-100 bg-purple-50">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-bold text-purple-700">AI 估價說明</span>
@@ -515,8 +517,10 @@ export default function ValuationPage() {
                   </div>
                   {aiLoading ? (
                     <p className="text-xs text-purple-400 animate-pulse">AI 分析中...</p>
-                  ) : (
+                  ) : aiExplanation ? (
                     <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">{aiExplanation}</p>
+                  ) : (
+                    <p className="text-xs text-purple-300">AI 本地模型目前離線，估價數據由 XGBoost 量化模型提供。</p>
                   )}
                 </div>
               )}
