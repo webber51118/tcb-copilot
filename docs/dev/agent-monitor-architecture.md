@@ -43,7 +43,7 @@ AgentMonitorPage.tsx         GET /api/admin/agents/status
 | 5P 徵審引擎 | `creditReviewService.ts` | `workflowService.ts` Phase2 |
 | 委員會審議 | `committeeReviewService.ts` (Claude) | `workflowService.ts` Phase3 |
 | RAG 法規問答 | `ragService.ts` (Azure AI Search) | `ragQuery.ts` |
-| Gemma4 本地AI | Ollama `/api/chat` | `valuateXgboost.ts` explain 端點 |
+| Qwen2.5 本地AI | Ollama `/api/chat` | `valuateXgboost.ts` explain 端點 |
 | 文件解析AI | `documentParser.ts` (Claude Vision) | `parseDocument.ts` |
 | 對話推薦引擎 | `recommendationEngine.ts` | *(預留，尚未記錄)* |
 
@@ -129,7 +129,7 @@ try {
 │ ● 5P徵審引擎    12次  3秒前  運行中│
 │ ● 委員會審議    11次  8秒前  運行中│
 │ ○ RAG法規問答    5次  2分前  閒置  │
-│ ○ Gemma4本地AI   8次  5分前  閒置  │
+│ ○ Qwen2.5本地AI  8次  5分前  閒置  │
 ├─────────────────────────────────┤
 │ 近期申請案件                    │
 │ APP-001  房貸·1000萬  [核准]    │

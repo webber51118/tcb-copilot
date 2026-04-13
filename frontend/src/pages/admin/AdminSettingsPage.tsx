@@ -36,14 +36,14 @@ export default function AdminSettingsPage() {
     { label: '系統名稱',    value: '個金 Co-Pilot 領航員' },
     { label: '版本',        value: 'v1.0.0 (Hackathon Demo)' },
     { label: '後端服務',    value: 'Node.js 20 + TypeScript' },
-    { label: 'AI 模型',     value: 'Claude claude-sonnet-4-6 (Anthropic)' },
+    { label: 'AI 模型',     value: 'Claude Sonnet 4.6 (Anthropic)' },
     { label: 'ML 鑑價',     value: 'XGBoost + Monte Carlo GBM' },
     { label: 'RAG 知識庫',  value: '三層架構（央行 / 政策 / 授信）' },
     { label: '資料庫',      value: 'JSON File Store (Demo Mode)' },
   ];
 
   const CREW_ROWS = [
-    { id: 1, name: '5P 徵審引擎',   desc: 'Claude claude-sonnet-4-6 分析借款人風險' },
+    { id: 1, name: '5P 徵審引擎',   desc: 'Claude Sonnet 4.6 分析借款人風險' },
     { id: 2, name: 'ML 鑑估引擎',   desc: 'XGBoost + Monte Carlo 房屋估價' },
     { id: 3, name: 'RAG 法規引擎',  desc: '三層知識庫 × Claude 合成答案' },
     { id: 4, name: '審議小組',       desc: '多 Agent 委員會投票決議' },

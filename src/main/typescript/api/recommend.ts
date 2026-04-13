@@ -14,6 +14,7 @@ import { UserSession, BasicInfo, PropertyInfo } from '../models/types';
 import { ConversationState } from '../models/enums';
 import { recommendProducts } from '../services/recommendationEngine';
 import { getActivePromotions } from '../config/promotionStore';
+import { recordAgentCall } from '../config/agentMonitorStore';
 
 export const recommendRouter = Router();
 
@@ -82,7 +83,9 @@ recommendRouter.post('/recommend', (req: Request, res: Response) => {
     updatedAt: Date.now(),
   };
 
+  const t0 = Date.now();
   const result = recommendProducts(session);
+  recordAgentCall('對話推薦引擎', true, Date.now() - t0);
   const activePromotions = getActivePromotions();
 
   res.json({
