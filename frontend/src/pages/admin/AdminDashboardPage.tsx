@@ -23,16 +23,24 @@ interface LoanApplication {
   appliedAt: string;
 }
 
+interface AgentStatus {
+  name: string;
+  status: 'online' | 'idle' | 'error';
+  callsToday: number;
+  errorsToday: number;
+  avgDurationMs: number | null;
+}
+
 // ── Crew 設定 ─────────────────────────────────────────────────────────
 
 const CREWS = [
-  { id: 1, name: '5P 徵審', icon: '🔍', color: '#1B4F8A' },
-  { id: 2, name: 'ML 鑑估', icon: '🏠', color: '#7C3AED' },
-  { id: 3, name: 'RAG 法規', icon: '📚', color: '#0891B2' },
-  { id: 4, name: '審議小組', icon: '⚖️', color: '#D97706' },
-  { id: 5, name: '文件解析', icon: '📄', color: '#059669' },
-  { id: 6, name: '產品推薦', icon: '💡', color: '#DB2777' },
-  { id: 7, name: '防詐領航', icon: '🛡️', color: '#DC2626' },
+  { id: 1, name: '5P 徵審', icon: '🔍', color: '#1B4F8A', agentName: '5P徵審引擎' },
+  { id: 2, name: 'ML 鑑估', icon: '🏠', color: '#7C3AED', agentName: 'XGBoost鑑價' },
+  { id: 3, name: 'RAG 法規', icon: '📚', color: '#0891B2', agentName: 'RAG法規問答' },
+  { id: 4, name: '審議小組', icon: '⚖️', color: '#D97706', agentName: '委員會審議' },
+  { id: 5, name: '文件解析', icon: '📄', color: '#059669', agentName: '文件解析AI' },
+  { id: 6, name: '產品推薦', icon: '💡', color: '#DB2777', agentName: '對話推薦引擎' },
+  { id: 7, name: '防詐領航', icon: '🛡️', color: '#DC2626', agentName: 'ML鑑價引擎' },
 ];
 
 const STATUS_LABEL: Record<string, string> = {
@@ -103,6 +111,7 @@ export default function AdminDashboardPage() {
   const navigate = useNavigate();
   const [cases, setCases] = useState<LoanApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [agentMap, setAgentMap] = useState<Record<string, AgentStatus>>({});
 
   useEffect(() => {
     if (!apiKey) { navigate('/admin', { replace: true }); return; }
@@ -111,6 +120,17 @@ export default function AdminDashboardPage() {
       .then((d) => { if (d.success) setCases(d.data as LoanApplication[]); })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    fetch('/api/admin/agents/status', { headers: { 'x-admin-api-key': apiKey } })
+      .then((r) => r.json())
+      .then((d: { success: boolean; agents?: AgentStatus[] }) => {
+        if (d.success && d.agents) {
+          const map: Record<string, AgentStatus> = {};
+          d.agents.forEach((a) => { map[a.name] = a; });
+          setAgentMap(map);
+        }
+      })
+      .catch(() => {/* 無監控資料，沿用模擬值 */});
   }, [apiKey, navigate]);
 
   // ── 計算 KPI ──────────────────────────────────────────────────────
@@ -163,13 +183,24 @@ export default function AdminDashboardPage() {
     [cases]
   );
 
-  // ── Crew 模擬狀態（基於案件數量） ─────────────────────────────────
-  const crewStats = useMemo(() => CREWS.map((crew) => ({
-    ...crew,
-    todayCount: Math.floor(kpi.total * 0.6 + crew.id * 2),
-    avgMs: 300 + crew.id * 150,
-    status: kpi.reviewing > 0 ? 'running' : 'idle',
-  })), [kpi.total, kpi.reviewing]);
+  // ── Crew 即時狀態（優先取 Agent Monitor 真實資料，無則模擬） ─────
+  const crewStats = useMemo(() => CREWS.map((crew) => {
+    const agent = agentMap[crew.agentName];
+    if (agent) {
+      return {
+        ...crew,
+        todayCount: agent.callsToday,
+        avgMs: agent.avgDurationMs ?? 0,
+        status: agent.status === 'online' ? 'running' : agent.status === 'error' ? 'error' : 'idle',
+      };
+    }
+    return {
+      ...crew,
+      todayCount: Math.floor(kpi.total * 0.6 + crew.id * 2),
+      avgMs: 300 + crew.id * 150,
+      status: kpi.reviewing > 0 ? 'running' : 'idle',
+    };
+  }), [agentMap, kpi.total, kpi.reviewing]);
 
   return (
     <AdminLayout title="儀表板">
@@ -302,6 +333,8 @@ export default function AdminDashboardPage() {
                     className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
                       crew.status === 'running'
                         ? 'bg-orange-400 animate-pulse'
+                        : crew.status === 'error'
+                        ? 'bg-red-400'
                         : 'bg-green-400'
                     }`}
                   />
