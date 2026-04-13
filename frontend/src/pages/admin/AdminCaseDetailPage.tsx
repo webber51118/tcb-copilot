@@ -373,10 +373,14 @@ export default function AdminCaseDetailPage() {
     setReviewError('');
 
     const isMortgage = app.loanType === 'mortgage' || app.loanType === 'reverse_annuity';
-    const isPublicServant = ['軍人', '公務員', '教師'].includes(app.basicInfo.occupation || '');
+    const occupation = app.basicInfo.occupation || '上班族';
+    const isPublicServant = ['軍人', '公務員', '教師'].includes(occupation);
+    const isRetired = occupation === '其他' && (app.basicInfo.age || 0) >= 55;
+    const yearsEmployed = isRetired ? 0 : isPublicServant ? 10 : occupation === '自營商' ? 5 : 3;
+    const isFirstHome = (app.basicInfo.purpose || '').includes('首購');
 
     const purposeMap: Record<string, '購屋' | '週轉金' | '其他'> = {
-      '購屋': '購屋', '週轉金': '週轉金', '資金週轉': '週轉金',
+      '購屋': '購屋', '週轉金': '週轉金', '資金週轉': '週轉金', '首購自住': '購屋',
     };
 
     const body: Record<string, unknown> = {
@@ -387,9 +391,9 @@ export default function AdminCaseDetailPage() {
       borrower: {
         name: app.applicantName || '申請人',
         age: app.basicInfo.age || 35,
-        occupation: app.basicInfo.occupation || '上班族',
+        occupation,
         isPublicServant,
-        yearsEmployed: 3,
+        yearsEmployed,
         hasMyData: app.mydataReady,
         monthlyIncome: app.basicInfo.income || 50000,
       },
@@ -398,7 +402,7 @@ export default function AdminCaseDetailPage() {
     if (isMortgage && app.propertyInfo) {
       body['property'] = {
         region: '台北市',
-        isFirstHome: true,
+        isFirstHome,
         isOwnerOccupied: true,
         purpose: purposeMap[app.basicInfo.purpose || ''] || '購屋',
       };
