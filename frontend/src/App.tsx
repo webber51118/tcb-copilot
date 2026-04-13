@@ -11,6 +11,7 @@ import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminCasesPage from './pages/admin/AdminCasesPage';
 import AdminCaseDetailPage from './pages/admin/AdminCaseDetailPage';
+import AdminRagPage from './pages/admin/AdminRagPage';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/cases" element={<AdminCasesPage />} />
         <Route path="/admin/cases/:id" element={<AdminCaseDetailPage />} />
+        <Route path="/admin/rag" element={<AdminRagPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

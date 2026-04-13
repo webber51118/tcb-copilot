@@ -13,9 +13,10 @@ interface AdminLayoutProps {
 }
 
 const NAV_ITEMS = [
-  { path: '/admin/dashboard', label: '儀表板', icon: '📊' },
-  { path: '/admin/cases', label: '案件管理', icon: '📋' },
-  { path: '/admin/rag', label: 'RAG 法規', icon: '📚' },
+  { path: '/admin/dashboard', label: '儀表板',   icon: '📊' },
+  { path: '/admin/cases',     label: '案件管理', icon: '📋' },
+  { path: '/admin/rag',       label: 'RAG 法規', icon: '📚' },
+  { path: '/admin/monitor',   label: '軍機處',   icon: '🎯' },
 ];
 
 const NAV_BOTTOM = [
