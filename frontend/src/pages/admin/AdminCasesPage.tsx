@@ -247,7 +247,7 @@ export default function AdminCasesPage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="font-semibold text-gray-800">{c.applicantName || '—'}</div>
-                      <div className="text-xs text-gray-400">{c.applicantPhone || ''}</div>
+                      <div className="text-xs text-gray-400">{c.basicInfo.occupation || c.applicantPhone || ''}</div>
                     </td>
                     <td className="px-4 py-3.5 text-gray-600 text-xs">
                       {LOAN_TYPE_LABEL[c.loanType] || c.loanType}
