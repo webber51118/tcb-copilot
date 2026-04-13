@@ -12,6 +12,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 interface BasicInfo {
   age: number | null;
   occupation: string | null;
+  jobTitle: string | null;
   income: number | null;
   purpose: string | null;
   termYears: number | null;
@@ -247,7 +248,7 @@ export default function AdminCasesPage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="font-semibold text-gray-800">{c.applicantName || '—'}</div>
-                      <div className="text-xs text-gray-400">{c.basicInfo.occupation || c.applicantPhone || ''}</div>
+                      <div className="text-xs text-gray-400">{c.basicInfo.jobTitle || c.basicInfo.occupation || ''}</div>
                     </td>
                     <td className="px-4 py-3.5 text-gray-600 text-xs">
                       {LOAN_TYPE_LABEL[c.loanType] || c.loanType}

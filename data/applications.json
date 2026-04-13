@@ -8,6 +8,7 @@
     "basicInfo": {
       "age": 33,
       "occupation": "公務員",
+      "jobTitle": "公務員",
       "income": 85542,
       "purpose": "首購自住",
       "termYears": 40,
@@ -36,6 +37,7 @@
     "basicInfo": {
       "age": 35,
       "occupation": "上班族",
+      "jobTitle": "上班族",
       "income": 85542,
       "purpose": "投資理財",
       "termYears": 7,
@@ -63,7 +65,8 @@
     "loanType": "mortgage",
     "basicInfo": {
       "age": 35,
-      "occupation": "上班族",
+      "occupation": "自營商",
+      "jobTitle": "診所醫師",
       "income": 350000,
       "purpose": "首購自住",
       "termYears": 27,
@@ -92,6 +95,7 @@
     "basicInfo": {
       "age": 32,
       "occupation": "上班族",
+      "jobTitle": "護理師",
       "income": 110000,
       "purpose": "首購自住",
       "termYears": 25,
@@ -120,6 +124,7 @@
     "basicInfo": {
       "age": 62,
       "occupation": "其他",
+      "jobTitle": "退休人士",
       "income": 40000,
       "purpose": "資金週轉",
       "termYears": 3,
@@ -148,6 +153,7 @@
     "basicInfo": {
       "age": 38,
       "occupation": "軍人",
+      "jobTitle": "現役軍人",
       "income": 72000,
       "purpose": "首購自住",
       "termYears": 30,
@@ -176,6 +182,7 @@
     "basicInfo": {
       "age": 42,
       "occupation": "自營商",
+      "jobTitle": "自營業主",
       "income": 45000,
       "purpose": "資金週轉",
       "termYears": 2,
