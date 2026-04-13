@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import Header from '../components/Header';
+import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../components/admin/AdminLayout';
+import { useAdminAuth } from '../hooks/useAdminAuth';
 
 // ── 型別定義 ──────────────────────────────────────────────────────────
 interface AgentStatus {
@@ -68,18 +70,20 @@ function workflowStatusBadge(status: string) {
 
 // ── 主頁面 ────────────────────────────────────────────────────────────
 
-const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY ?? '';
-const POLL_MS   = 5000;
+const POLL_MS = 5000;
 
 export default function AgentMonitorPage() {
-  const [data, setData]         = useState<MonitorData | null>(null);
-  const [error, setError]       = useState<string>('');
+  const { apiKey } = useAdminAuth();
+  const navigate   = useNavigate();
+  const [data, setData]               = useState<MonitorData | null>(null);
+  const [error, setError]             = useState<string>('');
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
   const fetchStatus = useCallback(async () => {
+    if (!apiKey) return;
     try {
       const res = await fetch('/api/admin/agents/status', {
-        headers: { 'x-admin-api-key': ADMIN_KEY },
+        headers: { 'x-admin-api-key': apiKey },
       });
       if (!res.ok) {
         setError(`HTTP ${res.status}：請確認 VITE_ADMIN_API_KEY 設定`);
@@ -97,25 +101,25 @@ export default function AgentMonitorPage() {
   }, []);
 
   useEffect(() => {
+    if (!apiKey) { navigate('/admin', { replace: true }); return; }
     fetchStatus();
     const timer = setInterval(fetchStatus, POLL_MS);
     return () => clearInterval(timer);
-  }, [fetchStatus]);
+  }, [fetchStatus, apiKey, navigate]);
 
   return (
-    <div className="min-h-screen bg-tcb-gray flex flex-col">
-      <Header />
+    <AdminLayout title="軍機處">
+      <div className="p-6 space-y-5 max-w-4xl">
 
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-10 space-y-4">
         {/* 標題列 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-black text-tcb-blue">軍機處 · Agent 監控看板</h1>
-            <p className="text-xs text-gray-400">每 5 秒自動更新 · 最後更新：{lastUpdated || '—'}</p>
+            <h1 className="text-gray-800 text-xl font-black">🎯 軍機處 · Agent 監控看板</h1>
+            <p className="text-xs text-gray-400 mt-0.5">每 5 秒自動更新 · 最後更新：{lastUpdated || '—'}</p>
           </div>
           <button
             onClick={fetchStatus}
-            className="text-xs text-tcb-blue border border-tcb-blue rounded-lg px-3 py-1.5 active:bg-blue-50"
+            className="text-xs text-[#1B4F8A] border border-[#1B4F8A] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition-colors"
           >
             手動刷新
           </button>
@@ -126,48 +130,59 @@ export default function AgentMonitorPage() {
         )}
 
         {/* 今日統計卡 */}
-        {data && (
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Agent 總數',    value: data.summary.totalAgents,     sub: `${data.summary.onlineNow} 個運行中`, color: 'text-tcb-blue' },
-              { label: '今日呼叫',      value: data.summary.totalCallsToday, sub: `${data.summary.totalErrorsToday} 次錯誤`, color: 'text-gray-800' },
-            ].map((item) => (
-              <div key={item.label} className="card text-center">
-                <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>
-                <p className="text-xs font-bold text-gray-600 mt-0.5">{item.label}</p>
-                <p className="text-xs text-gray-400">{item.sub}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {data ? [
+            { label: 'Agent 總數',  value: data.summary.totalAgents,      sub: `${data.summary.onlineNow} 個運行中`,       color: 'text-[#1B4F8A]', bg: 'bg-blue-50' },
+            { label: '今日呼叫',    value: data.summary.totalCallsToday,  sub: `累計呼叫次數`,                              color: 'text-gray-800',  bg: 'bg-white' },
+            { label: '今日錯誤',    value: data.summary.totalErrorsToday, sub: `錯誤次數`,                                  color: data.summary.totalErrorsToday > 0 ? 'text-red-500' : 'text-green-600', bg: 'bg-white' },
+            { label: '運行中',      value: data.summary.onlineNow,        sub: `/ ${data.summary.totalAgents} 個 Agent`, color: 'text-green-600', bg: 'bg-green-50' },
+          ].map((item) => (
+            <div key={item.label} className={`${item.bg} rounded-2xl border border-gray-100 p-4 text-center shadow-sm`}>
+              <p className={`text-3xl font-black ${item.color}`}>{item.value}</p>
+              <p className="text-xs font-bold text-gray-600 mt-0.5">{item.label}</p>
+              <p className="text-[10px] text-gray-400">{item.sub}</p>
+            </div>
+          )) : [1,2,3,4].map((i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 text-center animate-pulse">
+              <div className="h-8 bg-gray-100 rounded mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-2/3 mx-auto" />
+            </div>
+          ))}
+        </div>
 
         {/* Agent 狀態列表 */}
-        <div className="card">
-          <p className="text-xs font-bold text-gray-500 mb-3">Agent 即時狀態</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+            <p className="text-xs font-bold text-gray-500">Agent 即時狀態</p>
+          </div>
           {!data ? (
-            <p className="text-xs text-gray-400 animate-pulse text-center py-4">載入中...</p>
+            <p className="text-xs text-gray-400 animate-pulse text-center py-8">載入中...</p>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y divide-gray-50">
               {data.agents.map((agent) => (
-                <div key={agent.name} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                  <div className="flex items-center gap-2 min-w-0">
+                <div key={agent.name} className="flex items-center justify-between px-5 py-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <StatusDot status={agent.status} />
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-gray-800 truncate">{agent.name}</p>
                       <p className="text-xs text-gray-400">{agent.lastCallAgo}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 text-right shrink-0">
+                  <div className="flex items-center gap-4 text-right shrink-0">
                     <div>
                       <p className="text-xs font-bold text-gray-700">{agent.callsToday} 次</p>
                       {agent.errorsToday > 0 && (
                         <p className="text-xs text-red-400">{agent.errorsToday} 錯誤</p>
                       )}
                       {agent.avgDurationMs && (
-                        <p className="text-xs text-gray-400">{agent.avgDurationMs}ms</p>
+                        <p className="text-xs text-gray-400">均 {agent.avgDurationMs}ms</p>
                       )}
                     </div>
-                    <span className={`text-xs font-bold w-14 text-right ${statusTextColor(agent.status)}`}>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                      agent.status === 'online' ? 'bg-green-100 text-green-700' :
+                      agent.status === 'error'  ? 'bg-red-100 text-red-600' :
+                      'bg-gray-100 text-gray-500'
+                    }`}>
                       {statusLabel(agent.status)}
                     </span>
                   </div>
@@ -178,16 +193,18 @@ export default function AgentMonitorPage() {
         </div>
 
         {/* 近期工作流 */}
-        <div className="card">
-          <p className="text-xs font-bold text-gray-500 mb-3">近期申請案件</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+            <p className="text-xs font-bold text-gray-500">近期申請案件</p>
+          </div>
           {!data || data.recentWorkflows.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-4">尚無申請紀錄</p>
+            <p className="text-xs text-gray-400 text-center py-8">尚無申請紀錄</p>
           ) : (
-            <div className="space-y-2">
+            <div className="divide-y divide-gray-50">
               {data.recentWorkflows.map((wf) => (
-                <div key={wf.appId} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                <div key={wf.appId} className="flex items-center justify-between px-5 py-3">
                   <div>
-                    <p className="text-xs font-bold text-gray-700">{wf.appId}</p>
+                    <p className="text-xs font-bold text-[#1B4F8A] font-mono">{wf.appId}</p>
                     <p className="text-xs text-gray-400">{wf.loanType} · {formatWan(wf.amount)}</p>
                   </div>
                   {workflowStatusBadge(wf.status)}
@@ -198,9 +215,9 @@ export default function AgentMonitorPage() {
         </div>
 
         <p className="text-center text-xs text-gray-300">
-          軍機處 Kanban · 概念借鑑自 Edict 三省六部架構
+          軍機處 Kanban · Harness Engineering Sensor 層
         </p>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

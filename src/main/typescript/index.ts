@@ -87,6 +87,9 @@ app.use('/api', valuateXgboostRouter);
 // 海報暫存圖片靜態服務（在 SPA fallback 之前註冊）
 app.use('/posters', express.static(path.join(process.cwd(), 'data', 'posters')));
 
+// 批覆書 PDF 靜態服務
+app.use('/credit-reviews', express.static(path.join(process.cwd(), 'data', 'credit-reviews')));
+
 // 健康檢查
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: '個金Co-Pilot領航員' });

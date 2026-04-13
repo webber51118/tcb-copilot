@@ -1,7 +1,7 @@
 # Agent 監控看板架構設計
 
 > **建立日期**：2026-04-05  
-> **靈感來源**：Edict 三省六部（github.com/cft0808/edict）軍機處 Kanban 設計  
+> **設計框架**：Harness Engineering Sensor 層（Martin Fowler）
 > **路由**：`/admin/monitor`（行員後台，需 Admin API Key）
 
 ---
@@ -139,17 +139,15 @@ try {
 
 ---
 
-## 與 Edict 設計的對比
+## 技術選型說明
 
-| 特性 | Edict 軍機處 | TCB 監控看板 |
-|------|-------------|-------------|
-| 狀態心跳 | Redis TTL + WebSocket | In-Memory + Polling |
-| 更新方式 | 推播（WebSocket） | 拉取（5秒 polling） |
-| Agent 數量 | 12 個（三省六部） | 8 個（MAF 6 領航員變體）|
-| 部署複雜度 | Redis 依賴 | 零額外依賴 |
-| 任務干預 | 支援叫停/取消 | *(未來擴充)* |
-
-TCB 選擇 Polling 而非 WebSocket，因為 Hackathon Demo 環境不保證長連線穩定性。
+| 特性 | 方案 | 原因 |
+|------|------|------|
+| 狀態心跳 | In-Memory + Polling | 零額外依賴，Hackathon Demo 環境適用 |
+| 更新方式 | 拉取（5秒 polling） | Demo 環境不保證長連線穩定性 |
+| Agent 數量 | 8 個 | 對應六大 Pilot Crew + 輔助 Agent |
+| 部署複雜度 | 零額外依賴 | 不需 Redis，直接啟動 |
+| 任務干預 | *(未來擴充)* | Hackathon 後可加叫停/取消功能 |
 
 ---
 

@@ -80,6 +80,7 @@ interface CreditReviewResult {
     liquidityRatio: { level: number };
     debtRatio: { level: number };
   };
+  reportPdfPath?: string;
 }
 
 interface AgentOpinion {
@@ -893,6 +894,31 @@ export default function AdminCaseDetailPage() {
             <p className="text-xs text-gray-500">LINE 通知已發送給申請人</p>
           </div>
         )}
+
+        {/* 批覆書 PDF 下載 */}
+        {reviewResult?.phases.creditReview.result.reportPdfPath && (() => {
+          const rawPath = reviewResult.phases.creditReview.result.reportPdfPath!;
+          const filename = rawPath.split(/[/\\]/).pop() ?? '';
+          const pdfUrl = `/credit-reviews/${filename}`;
+          return (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-gray-800 text-sm">📄 批覆書 PDF</p>
+                <p className="text-xs text-gray-400 mt-0.5 font-mono">{filename}</p>
+              </div>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={filename}
+                className="flex items-center gap-2 px-4 py-2 bg-[#1B4F8A] text-white text-sm font-bold rounded-xl
+                           hover:bg-[#163F70] transition-colors"
+              >
+                ⬇️ 下載批覆書
+              </a>
+            </div>
+          );
+        })()}
       </div>
     </AdminLayout>
   );
