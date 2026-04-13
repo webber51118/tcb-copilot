@@ -1,0 +1,198 @@
+[
+  {
+    "id": "TCB-20260301-0001",
+    "lineUserId": "Ue802e36259cbadd70256a15622097254",
+    "applicantName": "俞佑龍",
+    "applicantPhone": "",
+    "loanType": "mortgage",
+    "basicInfo": {
+      "age": 33,
+      "occupation": "公務員",
+      "income": 85542,
+      "purpose": "首購自住",
+      "termYears": 40,
+      "amount": 10000000
+    },
+    "propertyInfo": {
+      "propertyAge": 46,
+      "areaPing": 26.62,
+      "hasParking": false,
+      "layout": "3房2廳2衛",
+      "floor": 1,
+      "buildingType": "公寓"
+    },
+    "recommendedProductId": "young-safe-home",
+    "mydataReady": true,
+    "landRegistryReady": true,
+    "status": "approved",
+    "appliedAt": "2026-03-01T02:16:16.984Z"
+  },
+  {
+    "id": "TCB-20260301-0002",
+    "lineUserId": "Ue802e36259cbadd70256a15622097254",
+    "applicantName": "俞佑龍",
+    "applicantPhone": "",
+    "loanType": "personal",
+    "basicInfo": {
+      "age": 35,
+      "occupation": "上班族",
+      "income": 85542,
+      "purpose": "投資理財",
+      "termYears": 7,
+      "amount": 500000
+    },
+    "propertyInfo": {
+      "propertyAge": null,
+      "areaPing": null,
+      "hasParking": null,
+      "layout": null,
+      "floor": null,
+      "buildingType": null
+    },
+    "recommendedProductId": "elite-loan",
+    "mydataReady": true,
+    "landRegistryReady": null,
+    "status": "reviewing",
+    "appliedAt": "2026-03-01T07:51:15.936Z"
+  },
+  {
+    "id": "TCB-20260413-0001",
+    "lineUserId": "demo-doctor-001",
+    "applicantName": "林冠宇",
+    "applicantPhone": "0912-345-678",
+    "loanType": "mortgage",
+    "basicInfo": {
+      "age": 35,
+      "occupation": "上班族",
+      "income": 350000,
+      "purpose": "首購自住",
+      "termYears": 27,
+      "amount": 56000000
+    },
+    "propertyInfo": {
+      "propertyAge": 3,
+      "areaPing": 52,
+      "hasParking": true,
+      "layout": "4房2廳2衛",
+      "floor": 12,
+      "buildingType": "大樓"
+    },
+    "recommendedProductId": "next-loan",
+    "mydataReady": true,
+    "landRegistryReady": true,
+    "status": "pending",
+    "appliedAt": "2026-04-13T08:30:00.000Z"
+  },
+  {
+    "id": "TCB-20260413-0002",
+    "lineUserId": "demo-nurse-001",
+    "applicantName": "陳雅慧",
+    "applicantPhone": "0923-456-789",
+    "loanType": "mortgage",
+    "basicInfo": {
+      "age": 32,
+      "occupation": "上班族",
+      "income": 110000,
+      "purpose": "首購自住",
+      "termYears": 25,
+      "amount": 10000000
+    },
+    "propertyInfo": {
+      "propertyAge": 2,
+      "areaPing": 28,
+      "hasParking": false,
+      "layout": "3房2廳1衛",
+      "floor": 8,
+      "buildingType": "大樓"
+    },
+    "recommendedProductId": "young-safe-home",
+    "mydataReady": true,
+    "landRegistryReady": true,
+    "status": "pending",
+    "appliedAt": "2026-04-13T09:15:00.000Z"
+  },
+  {
+    "id": "TCB-20260413-0003",
+    "lineUserId": "demo-retired-001",
+    "applicantName": "吳建民",
+    "applicantPhone": "0934-567-890",
+    "loanType": "personal",
+    "basicInfo": {
+      "age": 62,
+      "occupation": "其他",
+      "income": 40000,
+      "purpose": "資金週轉",
+      "termYears": 3,
+      "amount": 500000
+    },
+    "propertyInfo": {
+      "propertyAge": null,
+      "areaPing": null,
+      "hasParking": null,
+      "layout": null,
+      "floor": null,
+      "buildingType": null
+    },
+    "recommendedProductId": "elite-loan",
+    "mydataReady": true,
+    "landRegistryReady": null,
+    "status": "pending",
+    "appliedAt": "2026-04-13T10:00:00.000Z"
+  },
+  {
+    "id": "TCB-20260409-0001",
+    "lineUserId": "demo-military-001",
+    "applicantName": "王建志",
+    "applicantPhone": "0945-678-901",
+    "loanType": "mortgage",
+    "basicInfo": {
+      "age": 38,
+      "occupation": "軍人",
+      "income": 72000,
+      "purpose": "首購自住",
+      "termYears": 30,
+      "amount": 7000000
+    },
+    "propertyInfo": {
+      "propertyAge": 8,
+      "areaPing": 35,
+      "hasParking": true,
+      "layout": "3房2廳2衛",
+      "floor": 5,
+      "buildingType": "大樓"
+    },
+    "recommendedProductId": "military-housing",
+    "mydataReady": true,
+    "landRegistryReady": true,
+    "status": "approved",
+    "appliedAt": "2026-04-09T14:20:00.000Z"
+  },
+  {
+    "id": "TCB-20260405-0001",
+    "lineUserId": "demo-selfemploy-001",
+    "applicantName": "蘇雅玲",
+    "applicantPhone": "0956-789-012",
+    "loanType": "personal",
+    "basicInfo": {
+      "age": 42,
+      "occupation": "自營商",
+      "income": 45000,
+      "purpose": "資金週轉",
+      "termYears": 2,
+      "amount": 300000
+    },
+    "propertyInfo": {
+      "propertyAge": null,
+      "areaPing": null,
+      "hasParking": null,
+      "layout": null,
+      "floor": null,
+      "buildingType": null
+    },
+    "recommendedProductId": "elite-loan",
+    "mydataReady": false,
+    "landRegistryReady": null,
+    "status": "rejected",
+    "appliedAt": "2026-04-05T11:30:00.000Z"
+  }
+]
