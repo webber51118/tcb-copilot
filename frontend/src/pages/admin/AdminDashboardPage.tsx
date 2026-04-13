@@ -40,7 +40,7 @@ const CREWS = [
   { id: 4, name: '審議小組', icon: '⚖️', color: '#D97706', agentName: '委員會審議' },
   { id: 5, name: '文件解析', icon: '📄', color: '#059669', agentName: '文件解析AI' },
   { id: 6, name: '產品推薦', icon: '💡', color: '#DB2777', agentName: '對話推薦引擎' },
-  { id: 7, name: '防詐領航', icon: '🛡️', color: '#DC2626', agentName: 'ML鑑價引擎' },
+  { id: 7, name: '防詐領航', icon: '🛡️', color: '#DC2626', agentName: '' },   // 內嵌於 5P 徵審，無獨立埋點
 ];
 
 const STATUS_LABEL: Record<string, string> = {
