@@ -675,8 +675,8 @@ export default function AdminCaseDetailPage() {
                     <span className="w-6 h-6 bg-[#1B4F8A] text-white text-xs font-bold rounded-full flex items-center justify-center">1</span>
                     <h4 className="font-bold text-gray-700 text-sm">ML 鑑價分析</h4>
                     <span className="text-xs text-gray-400 ml-auto">{reviewResult.phases.valuation.durationMs}ms</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${reviewResult.phases.valuation.mode === 'demo' ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'}`}>
-                      {reviewResult.phases.valuation.mode === 'demo' ? 'Demo 模式' : 'Live'}
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${reviewResult.phases.valuation.mode === 'demo' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+                      {reviewResult.phases.valuation.mode === 'demo' ? '規則備援' : 'XGBoost'}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-3">

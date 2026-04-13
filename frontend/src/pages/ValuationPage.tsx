@@ -530,7 +530,7 @@ export default function ValuationPage() {
               )}
               <p className="text-center text-xs text-gray-400">
                 {val.model === 'demo'
-                  ? '* Demo 模式（XGBoost 模型訓練前）：以行政區查表估算，僅供參考'
+                  ? '* 規則備援模式：XGBoost 模型離線，以行政區查表估算，僅供參考'
                   : '* 本結果由 XGBoost 實價登錄模型估算，僅供參考，實際價格依市場交易為準'
                 }
               </p>
