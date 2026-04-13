@@ -174,6 +174,64 @@
     "appliedAt": "2026-04-09T14:20:00.000Z"
   },
   {
+    "id": "TCB-20260418-0001",
+    "lineUserId": "demo-teacher-001",
+    "applicantName": "陳偉殷",
+    "applicantPhone": "0967-890-123",
+    "loanType": "mortgage",
+    "basicInfo": {
+      "age": 36,
+      "occupation": "教師",
+      "jobTitle": "國中教師",
+      "income": 90000,
+      "purpose": "首購自住",
+      "termYears": 30,
+      "amount": 12000000
+    },
+    "propertyInfo": {
+      "propertyAge": 5,
+      "areaPing": 32,
+      "hasParking": true,
+      "layout": "3房2廳2衛",
+      "floor": 10,
+      "buildingType": "大樓"
+    },
+    "recommendedProductId": "young-safe-home",
+    "mydataReady": true,
+    "landRegistryReady": true,
+    "status": "pending",
+    "appliedAt": "2026-04-18T09:00:00.000Z"
+  },
+  {
+    "id": "TCB-20260420-0001",
+    "lineUserId": "demo-engineer-001",
+    "applicantName": "林哲瑄",
+    "applicantPhone": "0978-901-234",
+    "loanType": "personal",
+    "basicInfo": {
+      "age": 29,
+      "occupation": "上班族",
+      "jobTitle": "軟體工程師",
+      "income": 120000,
+      "purpose": "資金週轉",
+      "termYears": 5,
+      "amount": 800000
+    },
+    "propertyInfo": {
+      "propertyAge": null,
+      "areaPing": null,
+      "hasParking": null,
+      "layout": null,
+      "floor": null,
+      "buildingType": null
+    },
+    "recommendedProductId": "elite-loan",
+    "mydataReady": true,
+    "landRegistryReady": null,
+    "status": "pending",
+    "appliedAt": "2026-04-20T14:30:00.000Z"
+  },
+  {
     "id": "TCB-20260405-0001",
     "lineUserId": "demo-selfemploy-001",
     "applicantName": "古林睿煬",

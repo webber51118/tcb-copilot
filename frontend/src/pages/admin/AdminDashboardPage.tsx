@@ -150,10 +150,10 @@ export default function AdminDashboardPage() {
     return { total, pending, reviewing, approved, rejected, rate, todayCount };
   }, [cases]);
 
-  // ── 近 7 天趨勢 ───────────────────────────────────────────────────
+  // ── 近 14 天趨勢 ──────────────────────────────────────────────────
   const trendData = useMemo(() => {
     const days: { date: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = 13; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const label = `${d.getMonth() + 1}/${d.getDate()}`;
@@ -252,7 +252,7 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* 折線圖 */}
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-700 text-sm mb-4">📈 近 7 天申請趨勢</h3>
+            <h3 className="font-bold text-gray-700 text-sm mb-4">📈 近 14 天申請趨勢</h3>
             {loading ? (
               <div className="h-48 flex items-center justify-center text-gray-300 text-sm">載入中…</div>
             ) : (
