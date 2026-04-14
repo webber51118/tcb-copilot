@@ -3,7 +3,7 @@
  * OUTPUT: { agents: AgentStatus[], recentWorkflows, summary }
  * POS:    Admin API — Agent 即時監控看板資料端點
  *
- * 前端每 5 秒 polling 此端點，渲染軍機處 Kanban 看板
+ * 前端每 5 秒 polling 此端點，渲染監控中心 Agent 看板
  */
 
 import { Router, Request, Response } from 'express';

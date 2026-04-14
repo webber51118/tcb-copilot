@@ -108,13 +108,13 @@ export default function AgentMonitorPage() {
   }, [fetchStatus, apiKey, navigate]);
 
   return (
-    <AdminLayout title="軍機處">
+    <AdminLayout title="監控中心">
       <div className="p-6 space-y-5 max-w-4xl">
 
         {/* 標題列 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-gray-800 text-xl font-black">🎯 軍機處 · Agent 監控看板</h1>
+            <h1 className="text-gray-800 text-xl font-black">🎯 監控中心 · Agent 監控看板</h1>
             <p className="text-xs text-gray-400 mt-0.5">每 5 秒自動更新 · 最後更新：{lastUpdated || '—'}</p>
           </div>
           <button
@@ -215,7 +215,7 @@ export default function AgentMonitorPage() {
         </div>
 
         <p className="text-center text-xs text-gray-300">
-          軍機處 Kanban · Harness Engineering Sensor 層
+          監控中心 · Harness Engineering Sensor 層
         </p>
       </div>
     </AdminLayout>
