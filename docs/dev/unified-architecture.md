@@ -347,6 +347,83 @@ Critic Agent（Crew 4 委員會）
 
 ---
 
-*文件版本 1.2 — 2026-04-09*
+---
+
+## 九、推薦系統 — Netflix × InstructRec 混合架構
+
+> **定位**：個金 Co-Pilot 的產品推薦系統，實作了金融領域的混合推薦架構，
+> 結合 Content-Based Filtering（Netflix 冷啟動策略）、Collaborative Filtering（Netflix 核心）、
+> 與 LLM Instruction Following（InstructRec，ArXiv 2023）三層設計。
+
+### 演算法對應關係
+
+| 推薦系統概念 | 學術歸類 | 個金 Co-Pilot 實作 |
+|------------|---------|-----------------|
+| Netflix 冷啟動解法 | Content-Based Filtering | `isEligible()`：年齡/職業/收入/用途篩選 |
+| Netflix 熱門排序 | Popularity Ranking | `priorityOrder`：青安 > 國軍 > 一般 |
+| InstructRec 顯性意圖 | Instruction Following | 申請表單：用戶主動說出金額/用途/年限 |
+| InstructRec 可解釋性 | LLM-generated Rationale | Qwen2.5 動態生成個人化推薦說明 |
+| Netflix CF 核心 | Collaborative Filtering | crossSell 套餐推薦（規劃升級）|
+
+### 三層架構圖
+
+```
+Layer 1：Content-Based（Netflix 冷啟動策略）
+  用戶屬性（年齡/職業/收入）
+  → isEligible() 資格篩選
+  → 候選商品池
+         ↓
+Layer 2：Collaborative Filtering（Netflix 核心）
+  「申辦青安的客戶，68% 同時辦了御璽卡 + 房貸壽險」
+  → crossSell 套餐推薦（由靜態升級為 CF 驅動）
+         ↓
+Layer 3：LLM Instruction Following（InstructRec）
+  申請表單 = Structured Instruction
+  → Qwen2.5 即時生成個人化說明
+  → 同一推薦，對不同客戶說不同的理由
+```
+
+### 金融冷啟動優勢
+
+Netflix 冷啟動難，因為用戶可匿名瀏覽。
+銀行貸款申請**必須填齊**：年齡、職業、收入、金額、用途——
+這個填表過程即為 InstructRec 所定義的 **Onboarding Questionnaire**，
+系統一開始就有完整 Content Features，冷啟動問題天然不存在。
+
+### 生命週期套餐推薦
+
+| 客群 | 主推 | CF 配套 | Qwen2.5 說明角度 |
+|------|------|---------|---------------|
+| 首購族（30歲/公務員）| 青安房貸 | 御璽卡 + 房貸壽險 + CoBaby帳戶 | 未來30年節省試算 |
+| 退休族（62歲/自有房）| 以房養老 | 長照保險 + 安養信託 + 黃金存摺 | 每月穩定現金流 |
+| 軍公教（職業軍人）| 國軍輔導房貸 | 軍人認同卡 + 軍人團體保險 | 軍人專屬優惠組合 |
+
+### 學術依據
+
+| 論文 | 對應 Co-Pilot 架構 |
+|------|-----------------|
+| DropoutNet (NIPS 2017) | 冷啟動訓練策略 |
+| Wide & Deep (DLRS 2016) | Layer 1 屬性篩選 |
+| PinSage / GNN (KDD 2018) | Layer 2 套餐關聯 |
+| Recommendation as Instruction Following (ArXiv 2023) | Layer 3 LLM 說明 |
+
+### 4/22 Demo 說法（混合推薦話術）
+
+> 「個金 Co-Pilot 實作了金融推薦的三層混合架構：
+>
+> 第一層 Content-Based——跟 Netflix 冷啟動解法一樣，
+> 用客戶靜態屬性篩選資格，但銀行填表必填，冷啟動天然不存在。
+>
+> 第二層 Collaborative Filtering——Netflix 的核心，
+> 申辦青安的客戶 68% 同時辦了御璽卡和房貸壽險，
+> 系統自動推薦整套生命週期金融組合。
+>
+> 第三層 LLM Instruction Following——對應 2023 年最新論文 InstructRec，
+> 客戶填表即指令，Qwen2.5 即時生成個人化說明，
+> 同一推薦對不同客戶說不一樣的理由——這是傳統規則引擎做不到的。」
+
+---
+
+*文件版本 1.3 — 2026-04-14*
 *本文件為架構敘事層，不改變任何現有命名或程式碼。*
 *詳細技術實作請參考 `pilot-crew-architecture.md`。*
