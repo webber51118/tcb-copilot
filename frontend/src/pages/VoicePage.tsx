@@ -1,10 +1,14 @@
 /**
  * VoicePage — 台語借款諮詢語音服務
  * 5 狀態 UI：idle → recording → recognizing → parsing → result
+ * 確認後直接呼叫推薦 API → 跳至 /recommend（繞過表單步驟）
  */
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceRecognition, VoiceState } from '../hooks/useVoiceRecognition';
+import { fetchRecommendation } from '../services/api';
+import type { OccupationType, LoanType } from '../types';
 
 // ── 貸款類型標籤 ───────────────────────────────────────────────────
 const LOAN_TYPE_LABEL: Record<string, string> = {
@@ -22,6 +26,30 @@ const STATE_LABELS: Record<VoiceState, string> = {
   result: '解析完成',
 };
 
+// ── 職業對應（Claude NLU → OccupationType） ───────────────────────
+function mapOccupation(raw: string | null): OccupationType | '' {
+  if (!raw) return '';
+  const s = raw.trim();
+  if (/軍人|現役|士官|軍/.test(s)) return '軍人';
+  if (/公務員|警察|消防|海巡|行政院|公職/.test(s)) return '公務員';
+  if (/教師|老師|教授|教員|講師/.test(s)) return '教師';
+  if (/自營商|老闆|負責人|老闆|創業|商號/.test(s)) return '自營商';
+  if (/退休/.test(s)) return '其他';
+  return '上班族'; // 護理師、醫師、工程師等一律歸上班族
+}
+
+// ── purpose 對應 ───────────────────────────────────────────────────
+function mapPurpose(raw: string | null, loanType: LoanType): string {
+  if (!raw) return loanType === 'mortgage' ? '首購自住' : '資金周轉';
+  const s = raw.trim();
+  if (/首購|第一間|買房/.test(s)) return '首購自住';
+  if (/自住|自己住/.test(s)) return '自住';
+  if (/週轉|周轉/.test(s)) return '資金周轉';
+  if (/裝潢|修繕/.test(s)) return '裝潢修繕';
+  if (/投資/.test(s)) return '投資理財';
+  return s;
+}
+
 // ── 格式化金額 ────────────────────────────────────────────────────
 function fmtAmount(n: number | null): string {
   if (n == null) return '—';
@@ -33,25 +61,49 @@ export default function VoicePage() {
   const navigate = useNavigate();
   const { state, result, error, startRecording, stopRecording, runDemo, reset } =
     useVoiceRecognition();
+  const [recommending, setRecommending] = useState(false);
+  const [recommendError, setRecommendError] = useState('');
 
   const isProcessing = state === 'recognizing' || state === 'parsing';
 
-  // 確認後帶入欄位跳至推薦頁
-  const handleConfirm = () => {
+  // 確認後直接呼叫推薦 API → navigate to /recommend
+  const handleConfirm = async () => {
     if (!result) return;
-    const params = new URLSearchParams();
-    params.set('type', result.fields.loanType);
-    if (result.fields.basicInfo.occupation)
-      params.set('occupation', result.fields.basicInfo.occupation);
-    if (result.fields.basicInfo.income)
-      params.set('income', String(result.fields.basicInfo.income));
-    if (result.fields.basicInfo.amount)
-      params.set('amount', String(result.fields.basicInfo.amount));
-    if (result.fields.basicInfo.purpose)
-      params.set('purpose', result.fields.basicInfo.purpose);
-    if (result.fields.basicInfo.termYears)
-      params.set('termYears', String(result.fields.basicInfo.termYears));
-    navigate(`/apply?${params.toString()}`);
+    setRecommending(true);
+    setRecommendError('');
+
+    const loanType = result.fields.loanType;
+    const occupation = mapOccupation(result.fields.basicInfo.occupation);
+    const purpose = mapPurpose(result.fields.basicInfo.purpose, loanType);
+    const income = result.fields.basicInfo.income ?? 50000;
+    const amount = result.fields.basicInfo.amount ?? 5_000_000;
+    const termYears = result.fields.basicInfo.termYears ?? (loanType === 'personal' ? 5 : 30);
+    const age = loanType === 'reverse_annuity' ? 65 : 35;
+
+    const form = {
+      occupation: result.fields.basicInfo.occupation || occupation,
+      income,
+      amount,
+      purpose,
+      termYears,
+      age,
+    };
+
+    try {
+      const recommendResult = await fetchRecommendation({
+        loanType,
+        age,
+        occupation,
+        income,
+        purpose,
+        termYears,
+        amount,
+      });
+      navigate('/recommend', { state: { result: recommendResult, loanType, form } });
+    } catch (err) {
+      setRecommendError('推薦服務暫時無法使用，請稍後再試');
+      setRecommending(false);
+    }
   };
 
   return (
@@ -81,15 +133,13 @@ export default function VoicePage() {
             &nbsp;想借五百萬，買第一間厝」
           </div>
           <p className="text-[10px] text-gray-400 mt-2">
-            說完所有需求後放開按鈕，AI 自動填寫申請表單
+            說完所有需求後放開按鈕，AI 自動填寫並直接產生推薦方案
           </p>
         </div>
 
         {/* 錄音按鈕區 */}
         <div className="flex flex-col items-center gap-4">
-          {/* 主按鈕 */}
           <div className="relative">
-            {/* 錄音動畫環 */}
             {state === 'recording' && (
               <span className="absolute inset-0 rounded-full border-4 border-red-400 animate-ping opacity-50" />
             )}
@@ -98,29 +148,28 @@ export default function VoicePage() {
               onMouseUp={stopRecording}
               onTouchStart={(e) => { e.preventDefault(); startRecording(); }}
               onTouchEnd={(e) => { e.preventDefault(); stopRecording(); }}
-              disabled={isProcessing}
+              disabled={isProcessing || recommending}
               className={`w-32 h-32 rounded-full flex flex-col items-center justify-center gap-2 font-bold text-sm
                           shadow-xl transition-all select-none
                           ${state === 'recording'
                             ? 'bg-red-500 text-white scale-110 shadow-red-200'
                             : state === 'result'
                             ? 'bg-green-500 text-white'
-                            : isProcessing
+                            : isProcessing || recommending
                             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             : 'bg-[#1B4F8A] text-white hover:bg-[#163F70] active:scale-95'
                           }`}
             >
               <span className="text-3xl">
-                {isProcessing ? '⟳' : state === 'result' ? '✓' : '🎤'}
+                {isProcessing || recommending ? '⟳' : state === 'result' ? '✓' : '🎤'}
               </span>
               <span className="text-xs text-center px-2 leading-tight">
-                {STATE_LABELS[state]}
+                {recommending ? 'AI 推薦中…' : STATE_LABELS[state]}
               </span>
             </button>
           </div>
 
-          {/* Demo 按鈕（供黑客松展示） */}
-          {(state === 'idle' || state === 'result') && (
+          {(state === 'idle' || state === 'result') && !recommending && (
             <button
               onClick={state === 'result' ? reset : runDemo}
               className="text-xs text-[#1B4F8A] border border-[#1B4F8A]/30 px-4 py-2 rounded-xl
@@ -132,29 +181,37 @@ export default function VoicePage() {
         </div>
 
         {/* 錯誤訊息 */}
-        {error && (
+        {(error || recommendError) && (
           <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-600 flex gap-2">
-            <span>⚠️</span><span>{error}</span>
+            <span>⚠️</span><span>{error || recommendError}</span>
           </div>
         )}
 
         {/* 處理中提示 */}
-        {isProcessing && (
+        {(isProcessing || recommending) && (
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
             <div className="flex justify-center mb-2">
               <span className="w-6 h-6 border-2 border-blue-200 border-t-[#1B4F8A] rounded-full animate-spin" />
             </div>
             <p className="text-sm font-bold text-[#1B4F8A]">
-              {state === 'recognizing' ? '台語語音辨識中…' : 'Claude AI 解析中…'}
+              {recommending
+                ? '🤖 AI 產生推薦方案中…'
+                : state === 'recognizing'
+                ? '台語語音辨識中…'
+                : 'Claude AI 解析中…'}
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              {state === 'recognizing' ? 'Breeze-ASR-26 正在轉換語音' : '提取貸款需求欄位'}
+              {recommending
+                ? '根據您的條件比對最適合的貸款方案'
+                : state === 'recognizing'
+                ? 'Breeze-ASR-26 正在轉換語音'
+                : '提取貸款需求欄位'}
             </p>
           </div>
         )}
 
         {/* 辨識結果 */}
-        {result && state === 'result' && (
+        {result && state === 'result' && !recommending && (
           <div className="space-y-4">
             {/* 台語原文 */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -179,7 +236,6 @@ export default function VoicePage() {
             {/* Claude AI 解析結果 */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
               <p className="text-xs font-bold text-gray-400 mb-3">🤖 Claude AI 解析</p>
-
               <div className="space-y-2">
                 <ParseRow
                   label="貸款類型"
@@ -229,7 +285,7 @@ export default function VoicePage() {
               </button>
               <button
                 onClick={handleConfirm}
-                className="flex-2 flex-[2] py-3 bg-[#1B4F8A] text-white rounded-xl text-sm font-bold
+                className="flex-[2] py-3 bg-[#1B4F8A] text-white rounded-xl text-sm font-bold
                            hover:bg-[#163F70] active:scale-95 transition-all shadow-lg shadow-blue-900/20"
               >
                 確認，查看推薦方案 →
@@ -238,7 +294,6 @@ export default function VoicePage() {
           </div>
         )}
 
-        {/* 底部說明 */}
         {state === 'idle' && (
           <p className="text-center text-xs text-gray-400 mt-4">
             支援台語、台灣國語 ｜ 最長錄音 30 秒
