@@ -102,6 +102,21 @@ export default function HomePage() {
             </div>
             <span className="ml-auto text-gray-300 text-lg">›</span>
           </button>
+
+          <button
+            onClick={() => navigate('/voice')}
+            className="w-full card flex items-center gap-4 active:scale-95 transition-transform border-2 border-tcb-blue/20 bg-gradient-to-r from-blue-50 to-white"
+          >
+            <div className="w-14 h-14 bg-[#1B4F8A] rounded-2xl flex items-center justify-center text-2xl shrink-0">
+              🎤
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-gray-800">台語服務</p>
+              <p className="text-xs text-gray-500">講台語也通！一句話說清楚需求</p>
+              <p className="text-xs text-tcb-blue font-medium mt-0.5">Breeze-ASR-26 台語語音辨識</p>
+            </div>
+            <span className="ml-auto text-gray-300 text-lg">›</span>
+          </button>
         </div>
 
         {/* 底部說明 */}

@@ -7,6 +7,7 @@ import UploadDocsPage from './pages/UploadDocsPage';
 import ApplicationFormPage from './pages/ApplicationFormPage';
 import ValuationPage from './pages/ValuationPage';
 import AgentMonitorPage from './pages/AgentMonitorPage';
+import VoicePage from './pages/VoicePage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminCasesPage from './pages/admin/AdminCasesPage';
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/upload-docs" element={<UploadDocsPage />} />
         <Route path="/application-form" element={<ApplicationFormPage />} />
         <Route path="/valuate" element={<ValuationPage />} />
+        <Route path="/voice" element={<VoicePage />} />
 
         {/* 行員後台管理 */}
         <Route path="/admin/monitor" element={<AgentMonitorPage />} />
