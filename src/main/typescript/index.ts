@@ -36,6 +36,8 @@ import { autoValuateRouter } from './api/autoValuate';
 import { valuateXgboostRouter } from './api/valuateXgboost';
 import { agentMonitorRouter } from './api/agentMonitor';
 import { voiceRouter } from './api/voice';
+import { demoSeedRouter } from './api/demoSeed';
+import { seedDemoData } from './config/agentMonitorStore';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,6 +74,7 @@ app.options('/api/*', (_req, res) => res.sendStatus(200));
 app.use('/api/admin', adminAuth, promotionAdminRouter);
 app.use('/api/admin', adminAuth, applicationAdminRouter);
 app.use('/api/admin', adminAuth, agentMonitorRouter);
+app.use('/api/admin', adminAuth, demoSeedRouter);
 app.use('/api/admin', adminAuth, lineTestRouter);
 app.use('/api', recommendRouter);
 app.use('/api', parseDocumentRouter);
@@ -105,6 +108,9 @@ if (fs.existsSync(FRONTEND_DIST)) {
     res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
   });
 }
+
+// 啟動時預填 Demo 種子資料
+seedDemoData();
 
 // 啟動伺服器
 app.listen(PORT, () => {

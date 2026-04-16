@@ -9,6 +9,7 @@ interface LocationState {
   result: RecommendResponse;
   loanType: LoanType;
   form: any;
+  fromVoice?: boolean;
 }
 
 /** 取得適用於主推產品的 Overlay 活動（若有） */
@@ -28,7 +29,7 @@ export default function RecommendPage() {
     return null;
   }
 
-  const { result, loanType, form } = state;
+  const { result, loanType, form, fromVoice } = state;
   const { primary, alternatives, activePromotions } = result;
   const overlay = findOverlay(activePromotions, primary.id);
   const isReverseAnnuity = loanType === 'reverse_annuity';
@@ -38,6 +39,15 @@ export default function RecommendPage() {
       <Header title="推薦結果" onBack={() => navigate('/apply')} />
 
       <div className="flex-1 overflow-y-auto pb-8">
+        {/* 台語服務來源提示 */}
+        {fromVoice && (
+          <div className="bg-gradient-to-r from-[#0F2035] to-[#1B4F8A] text-white px-4 py-2 flex items-center gap-2 text-xs">
+            <span>🎤</span>
+            <span className="font-medium">台語語音辨識</span>
+            <span className="opacity-70">｜ Breeze-ASR-26 + Claude AI 解析完成</span>
+          </div>
+        )}
+
         {/* 頂部說明 */}
         <div className="bg-tcb-blue text-white px-4 py-4">
           <p className="text-sm opacity-80">根據您的條件，為您主推</p>

@@ -4,7 +4,7 @@
  * 確認後直接呼叫推薦 API → 跳至 /recommend（繞過表單步驟）
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceRecognition, VoiceState } from '../hooks/useVoiceRecognition';
 import { fetchRecommendation } from '../services/api';
@@ -63,6 +63,14 @@ export default function VoicePage() {
     useVoiceRecognition();
   const [recommending, setRecommending] = useState(false);
   const [recommendError, setRecommendError] = useState('');
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+
+  // 錄音計時器
+  useEffect(() => {
+    if (state !== 'recording') { setRecordingSeconds(0); return; }
+    const id = setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [state]);
 
   const isProcessing = state === 'recognizing' || state === 'parsing';
 
@@ -99,7 +107,7 @@ export default function VoicePage() {
         termYears,
         amount,
       });
-      navigate('/recommend', { state: { result: recommendResult, loanType, form } });
+      navigate('/recommend', { state: { result: recommendResult, loanType, form, fromVoice: true } });
     } catch (err) {
       setRecommendError('推薦服務暫時無法使用，請稍後再試');
       setRecommending(false);
@@ -164,7 +172,11 @@ export default function VoicePage() {
                 {isProcessing || recommending ? '⟳' : state === 'result' ? '✓' : '🎤'}
               </span>
               <span className="text-xs text-center px-2 leading-tight">
-                {recommending ? 'AI 推薦中…' : STATE_LABELS[state]}
+                {recommending
+                  ? 'AI 推薦中…'
+                  : state === 'recording'
+                  ? `🔴 ${recordingSeconds}s`
+                  : STATE_LABELS[state]}
               </span>
             </button>
           </div>
