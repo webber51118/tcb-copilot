@@ -211,11 +211,15 @@ Layer 1：Content-Based Filtering — 資格過濾（規則層，快速排除不
 Layer 2：Collaborative Filtering — 生命週期套餐（Netflix 演算法）
   「申辦青安的客戶 68% 同時辦了御璽卡 + 房貸壽險」→ 套餐自動組合
 Layer 3：LLM Instruction Following — Qwen2.5 個人化說明
-  學術依據：InstructRec（ArXiv 2023）；每個客戶看到不同的推薦說明
+  學術依據：InstructRec（Zhang et al., arXiv:2305.07001, 2023）
+  核心框架：LINE Bot 填表 = Structured Instruction
+    P（偏好）× I（意圖）× T（任務形式）× C（情境）四個維度
+    → LLM 依四維指令直接推理最適產品，不需任何歷史資料
+  升級路徑：InstructRec（現在）→ +Implicit CF 信心加權 → SASRec（Phase 3）
 
 新舊客戶分流：
 舊客戶 → Collaborative Filtering（有歷史資料，精準套餐推薦）
-新客戶 → InstructRec Cold Start（填表即下指令，不需歷史資料，冷啟動天然不卡關）
+新客戶 → InstructRec Cold Start（填表即下指令，P×I×T×C 四維指令，冷啟動天然不卡關）
 
 全產品線覆蓋（組合數量）：
 房貸（4種）× 信貸（3種）× 信用卡（4種）× 保險（6種）× 財富管理（3種）× 信託（3種）
