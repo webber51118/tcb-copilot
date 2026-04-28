@@ -111,6 +111,25 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     return replyMessages(event.replyToken, result.messages);
   }
 
+  // 月還款互動試算（P2-A）
+  if (userText.startsWith('試算:')) {
+    const parts = userText.split(':');           // ['試算', '年限'/'金額', 值]
+    const kind  = parts[1];
+    const val   = Number(parts[2]);
+    if (kind === '年限' && [20, 30, 40].includes(val)) {
+      session.basicInfo.termYears = val;
+      updateSession(session);
+    } else if (kind === '金額' && !isNaN(val)) {
+      const delta  = val * 10_000;               // 萬元 → 元
+      const newAmt = (session.basicInfo.amount ?? 5_000_000) + delta;
+      if (newAmt >= 500_000) {
+        session.basicInfo.amount = newAmt;
+        updateSession(session);
+      }
+    }
+    return replyMessages(event.replyToken, [buildTrialCalcFlex(session)]);
+  }
+
   // 語音確認：語音辨識結果確認後觸發推薦流程
   if (userText === '語音確認') {
     session.state = ConversationState.RECOMMEND;
@@ -229,6 +248,9 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     });
 
     await replyMessages(event.replyToken, messages);
+
+    // P2-A：推送月還款互動試算卡（reply token 已用完，改用 push）
+    await pushMessages(userId, [buildTrialCalcFlex(session)]);
 
     // 轉入 CONFIRM_APPLY，由狀態機產生 LIFF 連結 Flex
     session.state = ConversationState.CONFIRM_APPLY;
@@ -1235,6 +1257,99 @@ function buildApplicationStatusFlex(
         ],
       },
     } as unknown as Record<string, unknown>,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 月還款互動試算（P2-A）
+// ─────────────────────────────────────────────────────────────
+
+/** 等額攤還月付金（PMT 公式） */
+function calcMonthlyPayment(amount: number, termYears: number, annualRate: number): number {
+  const r = annualRate / 12;
+  const n = termYears * 12;
+  if (r === 0) return Math.round(amount / n);
+  return Math.round(amount * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
+}
+
+/** 依貸款類型取預設年利率 */
+function defaultRate(loanType: LoanType | null): number {
+  return loanType === LoanType.PERSONAL ? 0.055 : 0.025;
+}
+
+/** 月還款互動試算 Flex 卡（附 Quick Reply 調整年限/金額） */
+function buildTrialCalcFlex(session: UserSession): LineReplyMessage {
+  const BLUE = '#1B4F8A'; const LIGHT = '#F0F6FF'; const ACCENT = '#0077B6';
+  const amount    = session.basicInfo.amount    ?? 5_000_000;
+  const termYears = session.basicInfo.termYears ?? 20;
+  const rate      = defaultRate(session.loanType);
+  const monthly   = calcMonthlyPayment(amount, termYears, rate);
+  const isMortgage = session.loanType !== LoanType.PERSONAL;
+  const loanLabel  = isMortgage ? '房屋貸款' : '個人信用貸款';
+  const rateLabel  = `${(rate * 100).toFixed(2)}%（試算用，非核定利率）`;
+
+  // 新金額不得低於 50 萬
+  const canDecrease = amount - 500_000 >= 500_000;
+  const canIncrease = amount + 500_000 <= (isMortgage ? 30_000_000 : 3_000_000);
+
+  const quickItems: import('../models/types').QuickReplyItem[] = [
+    { type: 'action', action: { type: 'message', label: '📅 20年', text: '試算:年限:20' } },
+    { type: 'action', action: { type: 'message', label: '📅 30年', text: '試算:年限:30' } },
+    { type: 'action', action: { type: 'message', label: '📅 40年', text: '試算:年限:40' } },
+    ...(canDecrease ? [{ type: 'action', action: { type: 'message', label: '💰 -50萬', text: '試算:金額:-50' } } as import('../models/types').QuickReplyItem] : []),
+    ...(canIncrease ? [{ type: 'action', action: { type: 'message', label: '💰 +50萬', text: '試算:金額:+50' } } as import('../models/types').QuickReplyItem] : []),
+    { type: 'action', action: { type: 'message', label: '✅ 採用此方案', text: '繼續' } },
+  ];
+
+  return {
+    type: 'flex',
+    altText: `💰 月付金試算：NT$ ${monthly.toLocaleString()}／月`,
+    contents: {
+      type: 'bubble', size: 'mega',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: BLUE, paddingAll: '14px', spacing: 'xs',
+        contents: [
+          { type: 'text', text: '💰 月還款互動試算', weight: 'bold', size: 'md', color: '#FFFFFF' },
+          { type: 'text', text: `${loanLabel} — 調整年限或金額即時試算`, size: 'xxs', color: '#BDD5F0' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'md', backgroundColor: '#FFFFFF',
+        contents: [
+          // 月付金主要數字
+          {
+            type: 'box', layout: 'vertical', paddingAll: '14px', backgroundColor: LIGHT,
+            cornerRadius: '8px', alignItems: 'center',
+            contents: [
+              { type: 'text', text: `NT$ ${monthly.toLocaleString()}`, weight: 'bold', size: 'xxl', color: BLUE, align: 'center' },
+              { type: 'text', text: '預估每月還款金額', size: 'xs', color: '#64748B', align: 'center' },
+            ],
+          },
+          // 試算條件明細
+          ...([
+            { label: '貸款金額', value: `NT$ ${amount.toLocaleString()}` },
+            { label: '貸款年限', value: `${termYears} 年（共 ${termYears * 12} 期）` },
+            { label: '試算利率', value: rateLabel },
+            { label: '還款方式', value: '本利均攤（等額攤還）' },
+          ].map((r) => ({
+            type: 'box', layout: 'horizontal',
+            contents: [
+              { type: 'text', text: r.label, size: 'sm', color: '#64748B', flex: 4 },
+              { type: 'text', text: r.value, size: 'sm', color: '#1E293B', flex: 6, wrap: true },
+            ],
+          }))),
+          { type: 'text', text: '👇 點選下方按鈕調整條件', size: 'xs', color: ACCENT, align: 'center', margin: 'md' },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '10px', backgroundColor: LIGHT,
+        contents: [
+          { type: 'text', wrap: true, size: 'xxs', color: '#94A3B8',
+            text: '本試算結果不構成貸款承諾。實際利率依核貸當日指標利率＋加碼為準。' },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+    quickReply: { items: quickItems },
   };
 }
 
