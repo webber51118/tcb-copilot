@@ -37,6 +37,7 @@ import { valuateXgboostRouter } from './api/valuateXgboost';
 import { agentMonitorRouter } from './api/agentMonitor';
 import { voiceRouter } from './api/voice';
 import { demoSeedRouter } from './api/demoSeed';
+import { pilotCrewRouter } from './api/pilotCrew';
 import { seedDemoData } from './config/agentMonitorStore';
 
 const app = express();
@@ -88,6 +89,7 @@ app.use('/api', posterUploadRouter);
 app.use('/api', autoValuateRouter);
 app.use('/api', valuateXgboostRouter);
 app.use('/api', voiceRouter);
+app.use('/api', pilotCrewRouter);
 
 // 海報暫存圖片靜態服務（在 SPA fallback 之前註冊）
 app.use('/posters', express.static(path.join(process.cwd(), 'data', 'posters')));
