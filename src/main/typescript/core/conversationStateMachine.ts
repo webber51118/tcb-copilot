@@ -1577,6 +1577,206 @@ const handleApplyDone: StateHandler = (_session, _input) => ({
   messages: [textMsg('您的申請已完成。')],
 });
 
+// ─────────────────────────────────────────────────────────────
+// 以房養老獨立流程（RA Flow）
+// ─────────────────────────────────────────────────────────────
+
+const RA_GOLD  = '#92400E';
+const RA_LIGHT = '#FEF3C7';
+
+/** RA_INTRO：顯示以房養老介紹卡（由 conversationHandler 直接呼叫） */
+export function buildRaIntroFlex(): LineReplyMessage {
+  return {
+    type: 'flex',
+    altText: '🌸 以房養老幸福滿袋 — 讓房子養您一輩子',
+    contents: {
+      type: 'bubble', size: 'mega',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: RA_GOLD, paddingAll: '20px', spacing: 'sm',
+        contents: [
+          { type: 'text', text: '🌸 以房養老', weight: 'bold', size: 'xxl', color: '#FFFFFF' },
+          { type: 'text', text: '幸福滿袋 — 讓房子每月幫您賺生活費', size: 'sm', color: '#FDE68A', wrap: true },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'lg', backgroundColor: '#FFFBEB',
+        contents: [
+          { type: 'text', text: '什麼是以房養老？', weight: 'bold', size: 'lg', color: RA_GOLD },
+          { type: 'text', size: 'md', color: '#374151', wrap: true,
+            text: '您繼續住在自己的房子裡\n銀行每個月把錢匯給您\n不需要償還，讓房子成為您的退休收入' },
+          { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#FCD34D', margin: 'md', contents: [{ type: 'filler' }] },
+          ...([
+            { icon: '🏠', text: '房子繼續住，安心有保障' },
+            { icon: '💰', text: '每月固定撥付，安排生活費' },
+            { icon: '📅', text: '最長 35 年，彈性選擇年限' },
+          ].map((item) => ({
+            type: 'box', layout: 'horizontal', spacing: 'md', alignItems: 'center',
+            contents: [
+              { type: 'text', text: item.icon, size: 'xl', flex: 0 },
+              { type: 'text', text: item.text, size: 'md', color: '#374151', flex: 1, wrap: true },
+            ],
+          }))),
+          { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#FCD34D', margin: 'md', contents: [{ type: 'filler' }] },
+          { type: 'text', text: '申請資格', weight: 'bold', size: 'md', color: RA_GOLD },
+          { type: 'text', size: 'sm', color: '#374151', wrap: true,
+            text: '✓ 年滿 60 歲以上\n✓ 名下有自有不動產\n✓ 房屋無查封或其他限制' },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm', backgroundColor: RA_LIGHT,
+        contents: [
+          { type: 'button', style: 'primary', color: RA_GOLD, height: 'md',
+            action: { type: 'message', label: '🌸 開始試算', text: 'RA:開始申請' } },
+          { type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
+
+/** RA_INTRO handler：等待「開始申請」指令 */
+const handleRaIntro: StateHandler = (session, input) => {
+  if (input.trim() === 'RA:開始申請') {
+    return {
+      nextState: ConversationState.RA_COLLECT_AGE,
+      messages: [textMsg('🌸 好的，讓我們開始試算！\n\n請問您目前幾歲？\n\n（請直接輸入數字，例如：68）')],
+    };
+  }
+  return { nextState: ConversationState.RA_INTRO, messages: [buildRaIntroFlex()] };
+};
+
+/** RA_COLLECT_AGE handler：確認 60~85 歲 */
+const handleRaCollectAge: StateHandler = (session, input) => {
+  const age = parseInt(input.trim(), 10);
+  if (isNaN(age)) {
+    return {
+      nextState: ConversationState.RA_COLLECT_AGE,
+      messages: [textMsg('請輸入您的年齡（例如：68）')],
+    };
+  }
+  if (age < 60) {
+    return {
+      nextState: ConversationState.CHOOSE_LOAN_TYPE,
+      messages: [textMsg(
+        `您目前 ${age} 歲，以房養老申請資格為年滿 60 歲。\n\n如有需要，歡迎繼續試算房貸或信貸方案！`,
+        { items: [
+          { type: 'action', action: { type: 'message', label: '房貸試算', text: '房貸' } },
+          { type: 'action', action: { type: 'message', label: '信貸試算', text: '信貸' } },
+        ]},
+      )],
+    };
+  }
+  if (age > 85) {
+    return {
+      nextState: ConversationState.CHOOSE_LOAN_TYPE,
+      messages: [textMsg(
+        `您目前 ${age} 歲，建議您親洽合庫分行，由行員為您提供個別評估與建議。\n\n📞 客服：0800-054-599（週一至週五 09:00~17:30）`,
+        { items: [
+          { type: 'action', action: { type: 'message', label: '我想洽詢', text: '我想洽詢' } },
+          { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
+        ]},
+      )],
+    };
+  }
+  session.basicInfo.age = age;
+  return {
+    nextState: ConversationState.RA_COLLECT_AREA,
+    messages: [textMsg(
+      `✅ ${age} 歲，符合申請資格！\n\n請問您的房屋大約幾坪？`,
+      { items: [
+        { type: 'action', action: { type: 'message', label: '20坪以下', text: 'RA:坪數:15' } },
+        { type: 'action', action: { type: 'message', label: '20～40坪', text: 'RA:坪數:30' } },
+        { type: 'action', action: { type: 'message', label: '40～60坪', text: 'RA:坪數:50' } },
+        { type: 'action', action: { type: 'message', label: '60坪以上', text: 'RA:坪數:70' } },
+      ]},
+    )],
+  };
+};
+
+/** RA_COLLECT_AREA handler：收集坪數 */
+const handleRaCollectArea: StateHandler = (session, input) => {
+  const t = input.trim();
+  let areaPing: number | null = null;
+  if (t.startsWith('RA:坪數:')) areaPing = parseInt(t.slice('RA:坪數:'.length), 10);
+  else { const n = parseFloat(t); if (!isNaN(n) && n > 0) areaPing = n; }
+
+  if (!areaPing) {
+    return {
+      nextState: ConversationState.RA_COLLECT_AREA,
+      messages: [textMsg('請選擇或輸入房屋坪數：',
+        { items: [
+          { type: 'action', action: { type: 'message', label: '20坪以下', text: 'RA:坪數:15' } },
+          { type: 'action', action: { type: 'message', label: '20～40坪', text: 'RA:坪數:30' } },
+          { type: 'action', action: { type: 'message', label: '40～60坪', text: 'RA:坪數:50' } },
+          { type: 'action', action: { type: 'message', label: '60坪以上', text: 'RA:坪數:70' } },
+        ]},
+      )],
+    };
+  }
+  session.propertyInfo.areaPing = areaPing;
+  return {
+    nextState: ConversationState.RA_COLLECT_PROP_AGE,
+    messages: [textMsg('謝謝！\n\n請問房屋的屋齡大約幾年？',
+      { items: [
+        { type: 'action', action: { type: 'message', label: '10年以內', text: 'RA:屋齡:5' } },
+        { type: 'action', action: { type: 'message', label: '10～20年', text: 'RA:屋齡:15' } },
+        { type: 'action', action: { type: 'message', label: '20～30年', text: 'RA:屋齡:25' } },
+        { type: 'action', action: { type: 'message', label: '30年以上', text: 'RA:屋齡:35' } },
+      ]},
+    )],
+  };
+};
+
+/** RA_COLLECT_PROP_AGE handler：收集屋齡 */
+const handleRaCollectPropAge: StateHandler = (session, input) => {
+  const t = input.trim();
+  let propAge: number | null = null;
+  if (t.startsWith('RA:屋齡:')) propAge = parseInt(t.slice('RA:屋齡:'.length), 10);
+  else { const n = parseInt(t, 10); if (!isNaN(n) && n >= 0) propAge = n; }
+
+  if (propAge === null) {
+    return {
+      nextState: ConversationState.RA_COLLECT_PROP_AGE,
+      messages: [textMsg('請選擇房屋屋齡：',
+        { items: [
+          { type: 'action', action: { type: 'message', label: '10年以內', text: 'RA:屋齡:5' } },
+          { type: 'action', action: { type: 'message', label: '10～20年', text: 'RA:屋齡:15' } },
+          { type: 'action', action: { type: 'message', label: '20～30年', text: 'RA:屋齡:25' } },
+          { type: 'action', action: { type: 'message', label: '30年以上', text: 'RA:屋齡:35' } },
+        ]},
+      )],
+    };
+  }
+  session.propertyInfo.propertyAge = propAge;
+  return {
+    nextState: ConversationState.RA_MONTHLY_WISH,
+    messages: [textMsg(
+      '最後一個問題 🌸\n\n您希望每個月大約領多少生活費？\n\n（不確定可以選「讓銀行幫我算」）',
+      { items: [
+        { type: 'action', action: { type: 'message', label: '3萬左右', text: 'RA:月領:30000' } },
+        { type: 'action', action: { type: 'message', label: '5萬左右', text: 'RA:月領:50000' } },
+        { type: 'action', action: { type: 'message', label: '8萬左右', text: 'RA:月領:80000' } },
+        { type: 'action', action: { type: 'message', label: '讓銀行幫我算', text: 'RA:月領:0' } },
+      ]},
+    )],
+  };
+};
+
+/** RA_MONTHLY_WISH handler：收集期望月領金額後進入推薦 */
+const handleRaMonthlyWish: StateHandler = (session, input) => {
+  const t = input.trim();
+  if (t.startsWith('RA:月領:')) {
+    const v = parseInt(t.slice('RA:月領:'.length), 10);
+    if (v > 0) session.basicInfo.amount = v;
+  }
+  session.loanType = LoanType.REVERSE_ANNUITY;
+  return {
+    nextState: ConversationState.RECOMMEND,
+    messages: [textMsg('🌸 資料收集完成！\n\n正在為您計算最適合的以房養老方案，請稍候...')],
+  };
+};
+
 /** 狀態處理函數對照表 */
 const stateHandlers: Record<ConversationState, StateHandler> = {
   [ConversationState.IDLE]: handleIdle,
@@ -1607,6 +1807,12 @@ const stateHandlers: Record<ConversationState, StateHandler> = {
   [ConversationState.COLLECT_NAME]: handleCollectName,
   [ConversationState.COLLECT_PHONE]: handleCollectPhone,
   [ConversationState.APPLY_DONE]: handleApplyDone,
+  // ── 以房養老獨立流程 ──
+  [ConversationState.RA_INTRO]:           handleRaIntro,
+  [ConversationState.RA_COLLECT_AGE]:     handleRaCollectAge,
+  [ConversationState.RA_COLLECT_AREA]:    handleRaCollectArea,
+  [ConversationState.RA_COLLECT_PROP_AGE]: handleRaCollectPropAge,
+  [ConversationState.RA_MONTHLY_WISH]:    handleRaMonthlyWish,
 };
 
 /** 執行狀態轉移 */

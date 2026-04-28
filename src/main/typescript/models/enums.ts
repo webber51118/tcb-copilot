@@ -62,6 +62,17 @@ export enum ConversationState {
   UPLOAD_DOCS = 'UPLOAD_DOCS',
   /** 文件解析完成，等待使用者確認資料正確性 */
   DOC_REVIEW = 'DOC_REVIEW',
+  // ── 以房養老獨立流程 ──────────────────────────────────────
+  /** 以房養老入口介紹 */
+  RA_INTRO = 'RA_INTRO',
+  /** 以房養老：收集年齡（60-85歲） */
+  RA_COLLECT_AGE = 'RA_COLLECT_AGE',
+  /** 以房養老：收集房屋坪數 */
+  RA_COLLECT_AREA = 'RA_COLLECT_AREA',
+  /** 以房養老：收集屋齡 */
+  RA_COLLECT_PROP_AGE = 'RA_COLLECT_PROP_AGE',
+  /** 以房養老：期望每月撥付金額（選填） */
+  RA_MONTHLY_WISH = 'RA_MONTHLY_WISH',
 }
 
 /** 貸款類型 */

@@ -7,7 +7,7 @@
 import { WebhookEvent, messagingApi } from '@line/bot-sdk';
 import { lineClient } from '../core/lineClient';
 import { getSession, updateSession, resetSession } from '../core/sessionStore';
-import { transition } from '../core/conversationStateMachine';
+import { transition, buildRaIntroFlex } from '../core/conversationStateMachine';
 import { ConversationState, LoanType, BuildingType, OccupationType } from '../models/enums';
 import { LineReplyMessage, RecommendedProduct, UserSession, DocumentParseResult } from '../models/types';
 import { recommendProducts } from './recommendationEngine';
@@ -109,6 +109,14 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     freshSession.state = result.nextState;
     updateSession(freshSession);
     return replyMessages(event.replyToken, result.messages);
+  }
+
+  // 以房養老獨立流程入口（任意狀態均可觸發）
+  if (userText === '以房養老' || userText === '申請以房養老') {
+    session.loanType = LoanType.REVERSE_ANNUITY;
+    session.state = ConversationState.RA_INTRO;
+    updateSession(session);
+    return replyMessages(event.replyToken, [buildRaIntroFlex()]);
   }
 
   // 月還款互動試算（P2-A）
