@@ -32,7 +32,7 @@ let demoIndex = 0;
 
 // ── Claude NLU 解析 ────────────────────────────────────────────────
 
-interface ParsedFields {
+export interface ParsedVoiceFields {
   loanType: 'mortgage' | 'personal' | 'reverse_annuity';
   basicInfo: {
     occupation: string | null;
@@ -43,7 +43,7 @@ interface ParsedFields {
   };
 }
 
-async function parseWithClaude(transcript: string): Promise<ParsedFields> {
+export async function parseVoiceWithClaude(transcript: string): Promise<ParsedVoiceFields> {
   const prompt = `你是台灣銀行的貸款申請助理。
 以下是客戶說的台語轉錄文字（繁體中文）：
 "${transcript}"
@@ -76,7 +76,7 @@ async function parseWithClaude(transcript: string): Promise<ParsedFields> {
   const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
 
   try {
-    const parsed = JSON.parse(text.trim()) as ParsedFields;
+    const parsed = JSON.parse(text.trim()) as ParsedVoiceFields;
     return parsed;
   } catch {
     return {
@@ -136,7 +136,7 @@ voiceRouter.post('/voice/process', async (req: Request, res: Response) => {
   }
 
   // Claude NLU 解析（Demo/Real 都執行）
-  const fields = await parseWithClaude(transcript);
+  const fields = await parseVoiceWithClaude(transcript);
 
   res.json({
     success: true,

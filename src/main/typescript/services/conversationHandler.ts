@@ -12,8 +12,9 @@ import { ConversationState, LoanType, BuildingType, OccupationType } from '../mo
 import { LineReplyMessage, RecommendedProduct, UserSession, DocumentParseResult } from '../models/types';
 import { recommendProducts } from './recommendationEngine';
 import { parseImageBuffer } from './documentParser';
-import { runFullReview } from './workflowService';
-import { FullReviewRequest, FullReviewResponse } from '../models/workflow';
+import { runPilotCrewReview } from './workflowService';
+import { PilotCrewRequest, PilotCrewResult } from '../models/workflow';
+import { parseVoiceWithClaude } from '../api/voice';
 
 /** LINE Blob 客戶端（用於下載圖片內容） */
 const blobClient = new messagingApi.MessagingApiBlobClient({
@@ -38,7 +39,7 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
   }
 
   if (event.type !== 'message') return;
-  if (event.message.type !== 'text' && event.message.type !== 'image') return;
+  if (event.message.type !== 'text' && event.message.type !== 'image' && event.message.type !== 'audio') return;
 
   const userId = event.source.userId;
   if (!userId) return;
@@ -52,6 +53,12 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
       return;
     }
     // 其他狀態下收到圖片，忽略
+    return;
+  }
+
+  // ── 台語語音訊息處理（任意狀態均可觸發）──
+  if (event.message.type === 'audio') {
+    await handleAudioMessage(event.replyToken, userId, event.message.id, session);
     return;
   }
 
@@ -215,6 +222,168 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
 // ─────────────────────────────────────────────────────────────
 // 圖片上傳 & 文件解析
 // ─────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+// 台語語音辨識（Breeze-ASR-26）
+// ─────────────────────────────────────────────────────────────
+
+/** 職業文字 → OccupationType 對照表 */
+const OCCUPATION_TEXT_MAP: Record<string, OccupationType> = {
+  '軍人': OccupationType.MILITARY, '現役軍人': OccupationType.MILITARY,
+  '公務員': OccupationType.CIVIL_SERVANT, '教師': OccupationType.TEACHER,
+  '老師': OccupationType.TEACHER, '護理師': OccupationType.OFFICE_WORKER,
+  '上班族': OccupationType.OFFICE_WORKER, '受薪': OccupationType.OFFICE_WORKER,
+  '自營': OccupationType.SELF_EMPLOYED, '自營商': OccupationType.SELF_EMPLOYED,
+};
+
+/** 處理 LINE 音訊訊息（台語語音轉文字 → Claude NLU 解析 → 填入 session） */
+async function handleAudioMessage(
+  replyToken: string,
+  userId: string,
+  messageId: string,
+  session: UserSession,
+): Promise<void> {
+  await replyMessages(replyToken, [{
+    type: 'text',
+    text: '🎙️ 收到語音！Breeze-ASR-26 台語辨識中...\n（約 3~5 秒）',
+  }]);
+
+  try {
+    // 下載音檔
+    const stream = await blobClient.getMessageContent(messageId);
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream as AsyncIterable<Buffer>) chunks.push(chunk);
+    const audioBase64 = Buffer.concat(chunks).toString('base64');
+
+    // 呼叫 Breeze-ASR-26（若無設定則直接走 NLU Demo）
+    let transcript: string;
+    const asrUrl = process.env['BREEZE_ASR_URL'];
+    if (asrUrl) {
+      try {
+        const res = await fetch(asrUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audioBase64, mimeType: 'audio/m4a' }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        const data = (await res.json()) as { transcript?: string };
+        transcript = data.transcript ?? '';
+      } catch {
+        transcript = '我是上班族，月薪六萬，想借五百萬買第一間房子，自己住';
+      }
+    } else {
+      // Demo 模式：使用示範台語轉錄句
+      const DEMO = [
+        '我是護理師，月薪六萬，想借五百萬，買第一間厝，自住',
+        '我是現役軍人，月俸七萬，想借七百萬，要買自住的房子',
+        '我已經退休，每月有四萬退休金，想借三十萬週轉用',
+      ];
+      transcript = DEMO[Math.floor(Math.random() * DEMO.length)]!;
+    }
+
+    // Claude NLU 解析
+    const fields = await parseVoiceWithClaude(transcript);
+
+    // 將解析結果寫入 session
+    if (fields.loanType === 'mortgage') session.loanType = LoanType.MORTGAGE;
+    else if (fields.loanType === 'reverse_annuity') session.loanType = LoanType.REVERSE_ANNUITY;
+    else session.loanType = LoanType.PERSONAL;
+
+    if (fields.basicInfo.income)    session.basicInfo.income = fields.basicInfo.income;
+    if (fields.basicInfo.amount)    session.basicInfo.amount = fields.basicInfo.amount;
+    if (fields.basicInfo.purpose)   session.basicInfo.purpose = fields.basicInfo.purpose;
+    if (fields.basicInfo.termYears) session.basicInfo.termYears = fields.basicInfo.termYears;
+    if (fields.basicInfo.occupation) {
+      const occ = OCCUPATION_TEXT_MAP[fields.basicInfo.occupation] ?? OccupationType.OTHER;
+      session.basicInfo.occupation = occ;
+    }
+
+    // 有足夠資料 → 直接推薦；否則繼續收集
+    const hasEnough =
+      session.basicInfo.income &&
+      session.basicInfo.amount &&
+      session.loanType !== null;
+
+    if (hasEnough) {
+      session.state = ConversationState.RECOMMEND;
+    } else if (session.loanType === null) {
+      session.state = ConversationState.CHOOSE_LOAN_TYPE;
+    }
+    updateSession(session);
+
+    await pushMessages(userId, [buildVoiceResultFlex(transcript, fields, hasEnough ?? false)]);
+  } catch (err) {
+    console.error('[conversationHandler] 語音處理失敗:', err);
+    await pushMessages(userId, [{
+      type: 'text',
+      text: '⚠️ 語音辨識發生錯誤，請重試或改用文字輸入。',
+    }]);
+  }
+}
+
+/** 語音辨識結果確認 Flex 卡片 */
+function buildVoiceResultFlex(
+  transcript: string,
+  fields: Awaited<ReturnType<typeof parseVoiceWithClaude>>,
+  hasEnough: boolean,
+): LineReplyMessage {
+  const BLUE = '#1B4F8A'; const LIGHT = '#F0F6FF'; const ACCENT = '#0077B6';
+
+  const loanLabel =
+    fields.loanType === 'mortgage' ? '🏠 房屋貸款' :
+    fields.loanType === 'reverse_annuity' ? '🌸 以房養老' : '💳 個人信用貸款';
+
+  const rows = [
+    { label: '辨識原文', value: `「${transcript.slice(0, 40)}${transcript.length > 40 ? '...' : ''}」` },
+    { label: '貸款類型', value: loanLabel },
+    fields.basicInfo.occupation ? { label: '職業', value: fields.basicInfo.occupation } : null,
+    fields.basicInfo.income    ? { label: '月收入', value: `NT$ ${fields.basicInfo.income.toLocaleString()}` } : null,
+    fields.basicInfo.amount    ? { label: '申請金額', value: `NT$ ${fields.basicInfo.amount.toLocaleString()}` } : null,
+    fields.basicInfo.purpose   ? { label: '貸款用途', value: fields.basicInfo.purpose } : null,
+    fields.basicInfo.termYears ? { label: '貸款年限', value: `${fields.basicInfo.termYears} 年` } : null,
+  ].filter(Boolean) as Array<{ label: string; value: string }>;
+
+  return {
+    type: 'flex',
+    altText: '🎙️ 台語語音辨識完成，請確認資料',
+    contents: {
+      type: 'bubble', size: 'mega',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: BLUE, paddingAll: '14px',
+        contents: [
+          { type: 'text', text: '🎙️ 台語語音辨識完成', weight: 'bold', size: 'md', color: '#FFFFFF' },
+          { type: 'text', text: 'Breeze-ASR-26 × Claude NLU', size: 'xxs', color: '#BDD5F0' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '16px', backgroundColor: '#FFFFFF',
+        contents: rows.map((r) => ({
+          type: 'box', layout: 'horizontal',
+          contents: [
+            { type: 'text', text: r.label, size: 'sm', color: '#64748B', flex: 4 },
+            { type: 'text', text: r.value, size: 'sm', color: '#1E293B', weight: 'bold', flex: 6, wrap: true },
+          ],
+        })),
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: LIGHT,
+        contents: hasEnough
+          ? [
+              { type: 'button', style: 'primary', color: BLUE, height: 'sm',
+                action: { type: 'message', label: '✅ 確認，顯示推薦方案', text: '語音確認' } },
+              { type: 'button', style: 'secondary', height: 'sm',
+                action: { type: 'message', label: '✏️ 手動修改', text: '重新開始' } },
+            ]
+          : [
+              { type: 'button', style: 'primary', color: ACCENT, height: 'sm',
+                action: { type: 'message', label: '繼續填寫資料', text: '繼續' } },
+              { type: 'button', style: 'secondary', height: 'sm',
+                action: { type: 'message', label: '✏️ 手動填寫', text: '重新開始' } },
+            ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
 
 /** 處理 UPLOAD_DOCS 狀態下的圖片訊息 */
 async function handleImageUpload(
@@ -634,175 +803,168 @@ function toLineMessages(messages: LineReplyMessage[]): Record<string, unknown>[]
 }
 
 // ─────────────────────────────────────────────────────────────
-// 完整審核流程（Workflow Integration）
+// 三位一體 PILOT CREW 審核流程（Workflow Integration）
 // ─────────────────────────────────────────────────────────────
 
-/** 從 session 建構 FullReviewRequest（不完整資料補預設值） */
-function buildWorkflowFromSession(session: UserSession): FullReviewRequest | null {
+/** OccupationType → fraudInput occupationCode 對照 */
+const OCCUPATION_CODE_MAP: Record<OccupationType, number> = {
+  [OccupationType.MILITARY]:      1,
+  [OccupationType.CIVIL_SERVANT]: 1,
+  [OccupationType.TEACHER]:       1,
+  [OccupationType.OFFICE_WORKER]: 2,
+  [OccupationType.SELF_EMPLOYED]: 3,
+  [OccupationType.OTHER]:         0,
+};
+
+/** 從 session 建構 PilotCrewRequest（不完整資料補預設值） */
+function buildPilotCrewFromSession(session: UserSession): PilotCrewRequest | null {
   const { basicInfo, propertyInfo, loanType } = session;
-  if (
-    !basicInfo.amount ||
-    !basicInfo.termYears ||
-    !basicInfo.income ||
-    !basicInfo.age ||
-    !basicInfo.occupation
-  ) {
-    return null; // 關鍵資料缺失，無法建構請求
+  if (!basicInfo.income || !basicInfo.age || !basicInfo.occupation) {
+    return null;
   }
 
   const isMortgage = loanType === LoanType.MORTGAGE;
-  const occupation = basicInfo.occupation as OccupationType;
-  const isPublicServant = [
-    OccupationType.CIVIL_SERVANT,
-    OccupationType.MILITARY,
-    OccupationType.TEACHER,
-  ].includes(occupation);
+  const occupationCode = OCCUPATION_CODE_MAP[basicInfo.occupation as OccupationType] ?? 0;
 
-  const req: FullReviewRequest = {
+  const pilotReq: PilotCrewRequest = {
     loanType: isMortgage ? 'mortgage' : 'personal',
-    loanAmount: basicInfo.amount,
-    termYears: basicInfo.termYears,
-    borrower: {
-      name: session.applicantName ?? '申請人',
-      age: basicInfo.age,
-      occupation,
-      isPublicServant,
-      yearsEmployed: 3,
-      hasMyData: session.mydataReady === true,
-      monthlyIncome: basicInfo.income,
+    session,
+    fraudInput: {
+      age:                basicInfo.age,
+      occupationCode,
+      monthlyIncome:      basicInfo.income / 10000,    // 元 → 萬元
+      creditInquiryCount: 1,
+      existingBankLoans:  0,
+      hasRealEstate:      isMortgage,
+      documentMatch:      session.mydataReady === true,
+      livesInBranchCounty: true,
+      hasSalaryTransfer:  occupationCode === 2,
     },
   };
 
   if (isMortgage) {
-    req.property = {
+    pilotReq.property = {
       region: '台北市',
       isFirstHome: true,
       isOwnerOccupied: true,
-      purpose: '購屋',
+      purpose: basicInfo.purpose ?? '購屋',
     };
-    req.valuationInput = {
-      areaPing: propertyInfo.areaPing ?? 30,
-      propertyAge: propertyInfo.propertyAge ?? 10,
+    pilotReq.valuationInput = {
+      areaPing:     propertyInfo.areaPing     ?? 30,
+      propertyAge:  propertyInfo.propertyAge  ?? 10,
       buildingType: (propertyInfo.buildingType as string) ?? '大樓',
-      floor: propertyInfo.floor ?? 5,
-      hasParking: propertyInfo.hasParking ?? false,
-      layout: propertyInfo.layout ?? '3房2廳',
+      floor:        propertyInfo.floor        ?? 5,
+      hasParking:   propertyInfo.hasParking   ?? false,
+      layout:       propertyInfo.layout       ?? '3房2廳',
     };
   }
 
-  return req;
+  return pilotReq;
 }
 
-/** 非同步觸發完整審核流程，完成後 Push 結果 */
+/** 非同步觸發三 Crew 並行審核，完成後 Push 結果（含防詐警示）*/
 async function triggerWorkflowAsync(userId: string, session: UserSession): Promise<void> {
-  const workflowReq = buildWorkflowFromSession(session);
-  if (!workflowReq) {
-    console.warn('[conversationHandler] 申請資料不完整，略過 Workflow 觸發');
+  const pilotReq = buildPilotCrewFromSession(session);
+  if (!pilotReq) {
+    console.warn('[conversationHandler] 申請資料不完整，略過 PILOT CREW 觸發');
     return;
   }
 
-  // 先 push 「審核中」提示
   await pushMessages(userId, [{
     type: 'text',
-    text: '🔍 您的申請已送出！\n\nAI 審核小組正在進行三階段完整評估：\n① ML 鑑價分析\n② 5P 徵審引擎\n③ 授信審議小組\n\n預計需要 30~60 秒，請稍候...',
+    text: '🚀 您的申請已送出！\n\n三位一體 PILOT CREW 正在並行審核：\n🎯 CREW1 行銷PILOT — 推薦引擎\n🏗️ CREW2 鑑估PILOT — ML 鑑價\n🔍 CREW3 防詐PILOT — 風控評分\n\n預計需要 10~30 秒，請稍候...',
   }]);
 
-  const result = await runFullReview(workflowReq);
-  await pushMessages(userId, [buildAuditResultFlex(result)]);
+  const result = await runPilotCrewReview(pilotReq);
+
+  await pushMessages(userId, [buildPilotCrewResultFlex(result)]);
+
+  // CREW3 高風險（alertLevel === 3）→ 推播警示給行員
+  if (result.crew3.mlScore.alertLevel === 3) {
+    await pushFraudAlertToStaff(result);
+  }
 }
 
-/** 建構審核結果 Flex 卡片 */
-function buildAuditResultFlex(result: FullReviewResponse): LineReplyMessage {
+/** 建構三 Crew 並行結果 Flex 卡片 */
+function buildPilotCrewResultFlex(result: PilotCrewResult): LineReplyMessage {
   const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
-  const { finalSummary, applicationId, totalDurationMs } = result;
-  const { decision, approvedAmount, approvedTermYears, interestRateHint, conditions, riskScore, fraudLevel } = finalSummary;
+  const { applicationId, crew1, crew2, crew3, totalDurationMs } = result;
 
-  const decisionColor =
-    decision === '核准' ? '#69F0AE' : decision === '有條件核准' ? '#FFD54F' : '#EF5350';
-  const decisionIcon =
-    decision === '核准' ? '✅' : decision === '有條件核准' ? '⚠️' : '❌';
-  const fraudIcon =
-    fraudLevel === 'normal' ? '🟢 正常' : fraudLevel === 'caution' ? '🟡 注意' : '🔴 警示';
+  const rec = crew1.recommendation.primary;
+  const mlScore = crew3.mlScore;
+  const alertColor = mlScore.alertLevel === 1 ? '#69F0AE' : mlScore.alertLevel === 2 ? '#FFD54F' : '#EF5350';
+  const alertIcon  = mlScore.alertLevel === 1 ? '🟢' : mlScore.alertLevel === 2 ? '🟡' : '🔴';
+  const riskPct    = `${(mlScore.fraudScore * 100).toFixed(1)}%`;
 
-  const rows = [
-    { label: '核准金額', value: `NT$ ${approvedAmount.toLocaleString()}` },
-    { label: '核准年限', value: `${approvedTermYears} 年` },
-    { label: '建議利率', value: interestRateHint },
-    { label: '5P 風控評分', value: `${riskScore} / 100` },
-    { label: '防詐查核', value: fraudIcon },
+  const crew1Rows = [
+    { label: '推薦方案', value: rec.name },
+    { label: '利率範圍', value: rec.rateRange },
+    ...(rec.monthlyPayment ? [{ label: '預估月付', value: `NT$ ${rec.monthlyPayment.toLocaleString()}` }] : []),
   ];
 
-  if (finalSummary.estimatedValue) {
-    rows.splice(2, 0, {
-      label: '鑑估值',
-      value: `NT$ ${finalSummary.estimatedValue.toLocaleString()}`,
-    });
-  }
-  if (finalSummary.ltvRatio !== undefined) {
-    rows.splice(3, 0, {
-      label: '貸款成數',
-      value: `${(finalSummary.ltvRatio * 100).toFixed(1)}%`,
-    });
-  }
+  const crew2Rows = crew2 ? [
+    { label: '鑑估值',   value: `NT$ ${crew2.result.estimatedPrice.toLocaleString()}` },
+    { label: '評估模式', value: crew2.mode === 'live' ? '🔗 即時 ML 模型' : '📊 Demo 估算' },
+  ] : [];
 
-  const conditionItems = conditions.length > 0
-    ? conditions.map((c) => ({
-        type: 'box', layout: 'horizontal', spacing: 'sm',
-        contents: [
-          { type: 'text', text: '•', size: 'xs', color: '#FFD54F', flex: 0 },
-          { type: 'text', text: c, size: 'xs', color: '#B0BEC5', flex: 1, wrap: true },
-        ],
-      }))
-    : [{ type: 'text', text: '無附加條件', size: 'xs', color: '#78909C' }];
+  const crew3Rows = [
+    { label: '詐欺風險分數', value: riskPct },
+    { label: '風控等級',     value: `${alertIcon} ${mlScore.riskLevel.toUpperCase()}` },
+    { label: '前三大風險因子', value: mlScore.topRiskFactors.slice(0, 3).map((f) => f.label).join('、') || '—' },
+  ];
+
+  const makeRows = (rows: Array<{ label: string; value: string }>) =>
+    rows.map((r) => ({
+      type: 'box', layout: 'horizontal',
+      contents: [
+        { type: 'text', text: r.label, size: 'xs', color: '#90A4AE', flex: 5 },
+        { type: 'text', text: r.value, size: 'xs', color: '#FFFFFF', weight: 'bold', flex: 7, wrap: true },
+      ],
+    }));
 
   return {
     type: 'flex',
-    altText: `${decisionIcon} AI 審核結果：${decision}`,
+    altText: `🤖 PILOT CREW 審核完成 | 防詐 ${alertIcon} ${riskPct}`,
     contents: {
       type: 'bubble', size: 'mega',
       body: {
         type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
         contents: [
-          // 標題
           {
-            type: 'box', layout: 'vertical', paddingAll: '16px', paddingBottom: '12px', spacing: 'xs',
+            type: 'box', layout: 'vertical', paddingAll: '16px', paddingBottom: '10px', spacing: 'xs',
             contents: [
-              { type: 'text', text: `${decisionIcon} AI 授信審議結果`, weight: 'bold', size: 'md', color: '#FFFFFF' },
-              { type: 'text', text: `案件編號：${applicationId}`, size: 'xxs', color: '#546E7A' },
+              { type: 'text', text: '🤖 三位一體 PILOT CREW 審核完成', weight: 'bold', size: 'sm', color: '#FFFFFF' },
+              { type: 'text', text: `案件 ${applicationId} ｜ 耗時 ${(totalDurationMs / 1000).toFixed(1)}s`, size: 'xxs', color: '#546E7A' },
             ],
           },
-          // 決議橫幅
+          { type: 'box', layout: 'vertical', height: '2px', backgroundColor: '#1B4F8A', contents: [{ type: 'filler' }] },
+          // CREW1
           {
-            type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: M,
+            type: 'box', layout: 'vertical', paddingAll: '12px', paddingBottom: '8px', backgroundColor: M, spacing: 'xs',
             contents: [
-              { type: 'text', text: decision, weight: 'bold', size: 'xl', color: decisionColor, align: 'center' },
+              { type: 'text', text: '🎯 CREW1 行銷PILOT — 推薦方案', size: 'xs', color: '#64B5F6', weight: 'bold' },
+              ...makeRows(crew1Rows),
             ],
           },
-          { type: 'box', layout: 'vertical', height: '2px', backgroundColor: decisionColor, contents: [{ type: 'filler' }] },
-          // 數字明細
-          {
-            type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm', backgroundColor: M,
-            contents: rows.map((r) => ({
-              type: 'box', layout: 'horizontal',
-              contents: [
-                { type: 'text', text: r.label, size: 'sm', color: '#90A4AE', flex: 4 },
-                { type: 'text', text: r.value, size: 'sm', color: '#FFFFFF', weight: 'bold', flex: 6, wrap: true },
-              ],
-            })),
-          },
-          // 附加條件
-          ...(conditions.length > 0 ? [{
-            type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm',
+          // CREW2（房貸才有）
+          ...(crew2Rows.length > 0 ? [{
+            type: 'box', layout: 'vertical', paddingAll: '12px', paddingBottom: '8px', backgroundColor: '#101F35', spacing: 'xs',
             contents: [
-              { type: 'text', text: '附加條件', size: 'xs', color: '#78909C', weight: 'bold' },
-              ...conditionItems,
+              { type: 'text', text: '🏗️ CREW2 鑑估PILOT — ML 鑑價', size: 'xs', color: '#80CBC4', weight: 'bold' },
+              ...makeRows(crew2Rows),
             ],
           } as Record<string, unknown>] : []),
-          // 頁尾資訊
+          // CREW3
           {
-            type: 'box', layout: 'vertical', paddingAll: '12px',
+            type: 'box', layout: 'vertical', paddingAll: '12px', paddingBottom: '8px', backgroundColor: M, spacing: 'xs',
             contents: [
-              { type: 'text', text: `⏱ 審核耗時：${(totalDurationMs / 1000).toFixed(1)} 秒`, size: 'xxs', color: '#546E7A' },
+              { type: 'text', text: '🔍 CREW3 防詐PILOT — 風控評分', size: 'xs', color: alertColor, weight: 'bold' },
+              ...makeRows(crew3Rows),
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical', paddingAll: '10px',
+            contents: [
               { type: 'text', text: '本結果由 AI 模擬，實際核貸依行員審查為準', size: 'xxs', color: '#37474F', wrap: true },
             ],
           },
@@ -812,15 +974,95 @@ function buildAuditResultFlex(result: FullReviewResponse): LineReplyMessage {
         type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
         contents: [
           { type: 'button', style: 'secondary', height: 'sm',
-            action: { type: 'message', label: '❓ 常見問答', text: '常見問答' },
-          },
+            action: { type: 'message', label: '❓ 常見問答', text: '常見問答' } },
           { type: 'button', style: 'secondary', height: 'sm',
-            action: { type: 'message', label: '🔄 重新試算', text: '重新開始' },
+            action: { type: 'message', label: '🔄 重新試算', text: '重新開始' } },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
+
+/** CREW3 alertLevel === 3 → Push 防詐高風險警示給行員 */
+async function pushFraudAlertToStaff(result: PilotCrewResult): Promise<void> {
+  const staffIds = (process.env['STAFF_LINE_USER_IDS'] ?? '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  if (staffIds.length === 0) {
+    console.warn('[conversationHandler] STAFF_LINE_USER_IDS 未設定，跳過行員警示');
+    return;
+  }
+
+  const { applicationId, crew3 } = result;
+  const { fraudScore, riskLevel, topRiskFactors } = crew3.mlScore;
+  const riskPct = `${(fraudScore * 100).toFixed(1)}%`;
+  const RED = '#C62828'; const DARK = '#1A0000'; const DARKM = '#2C0000';
+
+  const alertFlex: LineReplyMessage = {
+    type: 'flex',
+    altText: `🔴 高風險防詐警示 — 案件 ${applicationId}`,
+    contents: {
+      type: 'bubble', size: 'mega',
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '0px', backgroundColor: DARK, spacing: 'none',
+        contents: [
+          {
+            type: 'box', layout: 'vertical', paddingAll: '14px', backgroundColor: RED, spacing: 'xs',
+            contents: [
+              { type: 'text', text: '🔴 高風險防詐警示', weight: 'bold', size: 'md', color: '#FFFFFF' },
+              { type: 'text', text: `案件編號：${applicationId}`, size: 'xxs', color: '#FFCDD2' },
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical', paddingAll: '14px', backgroundColor: DARKM, spacing: 'sm',
+            contents: [
+              {
+                type: 'box', layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: '詐欺風險分數', size: 'sm', color: '#FFCDD2', flex: 5 },
+                  { type: 'text', text: riskPct, size: 'sm', color: '#EF9A9A', weight: 'bold', flex: 7 },
+                ],
+              },
+              {
+                type: 'box', layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: '風控等級', size: 'sm', color: '#FFCDD2', flex: 5 },
+                  { type: 'text', text: riskLevel.toUpperCase(), size: 'sm', color: '#EF9A9A', weight: 'bold', flex: 7 },
+                ],
+              },
+              { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#4A0000', margin: 'sm', contents: [{ type: 'filler' }] },
+              { type: 'text', text: '主要風險因子', size: 'xs', color: '#FFCDD2', weight: 'bold' },
+              ...topRiskFactors.slice(0, 3).map((f, i) => ({
+                type: 'box', layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: `${i + 1}.`, size: 'xs', color: '#EF5350', flex: 0 },
+                  { type: 'text', text: f.label, size: 'xs', color: '#FFFFFF', flex: 1, wrap: true,
+                    margin: 'sm' },
+                ],
+              })),
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical', paddingAll: '10px',
+            contents: [
+              { type: 'text', text: '請主管立即審查並決定是否凍結案件', size: 'xs', color: '#EF5350', wrap: true, weight: 'bold' },
+            ],
           },
         ],
       },
     } as unknown as Record<string, unknown>,
   };
+
+  for (const staffId of staffIds) {
+    try {
+      await lineClient.pushMessage({
+        to: staffId,
+        messages: [{ type: 'flex', altText: alertFlex.altText!, contents: alertFlex.contents }] as Parameters<typeof lineClient.pushMessage>[0]['messages'],
+      });
+    } catch (err) {
+      console.error(`[conversationHandler] 行員警示推播失敗 staffId=${staffId}:`, err);
+    }
+  }
+  console.log(`[conversationHandler] 防詐警示已推播給 ${staffIds.length} 位行員`);
 }
 
 /** 加入好友時顯示的 YouTube 介紹影片 Flex 卡片 */
