@@ -46,6 +46,7 @@ function createEmptySession(userId: string): UserSession {
     annualIncome: null,
     parsedFromDoc: false,
     docReviewConfirmed: false,
+    applicationId: null,
     createdAt: now,
     updatedAt: now,
   };

@@ -15,6 +15,7 @@ import { parseImageBuffer } from './documentParser';
 import { runPilotCrewReview } from './workflowService';
 import { PilotCrewRequest, PilotCrewResult } from '../models/workflow';
 import { parseVoiceWithClaude } from '../api/voice';
+import { getApplicationById } from '../config/applicationStore';
 
 /** LINE Blob 客戶端（用於下載圖片內容） */
 const blobClient = new messagingApi.MessagingApiBlobClient({
@@ -74,21 +75,22 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     return replyMessages(event.replyToken, result.messages);
   }
 
-  // 申請進度查詢（P0-C 對應指令）
+  // 申請進度查詢（P1-A）
   if (userText === '查詢申請進度') {
-    const appId = session.state === ConversationState.APPLY_DONE
-      ? '請至合庫各分行或撥打客服 0800-054-599 查詢'
-      : '您尚未完成申請，如需重新試算請輸入「重新開始」';
-    return replyMessages(event.replyToken, [{
-      type: 'text',
-      text: `📋 申請進度查詢\n\n${appId}\n\n合庫客服服務時間：週一至週五 09:00~17:30`,
-      quickReply: {
-        items: [
-          { type: 'action', action: { type: 'message', label: '常見問答', text: '常見問答' } },
-          { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
-        ],
-      },
-    }]);
+    if (!session.applicationId) {
+      return replyMessages(event.replyToken, [{
+        type: 'text',
+        text: '您目前尚無進行中的申請案件。\n\n如需試算，請輸入「房貸」或「信貸」重新開始。',
+        quickReply: {
+          items: [
+            { type: 'action', action: { type: 'message', label: '房貸試算', text: '房貸' } },
+            { type: 'action', action: { type: 'message', label: '信貸試算', text: '信貸' } },
+          ],
+        },
+      }]);
+    }
+    const app = getApplicationById(session.applicationId);
+    return replyMessages(event.replyToken, [buildApplicationStatusFlex(session.applicationId, app)]);
   }
 
   // 洽詢指令
@@ -695,7 +697,10 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
       footer: {
         type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
         contents: [
-          { type: 'button', style: 'secondary',
+          { type: 'button', style: 'primary', color: ACCENT, height: 'sm',
+            action: { type: 'uri', label: '📍 預約最近分行', uri: 'https://www.tcb-bank.com.tw/branch_info/Pages/branch_map.aspx' },
+          },
+          { type: 'button', style: 'secondary', height: 'sm',
             action: { type: 'message', label: '重新試算', text: '重新開始' },
           },
           { type: 'text', wrap: true, size: 'xxs', color: '#94A3B8',
@@ -902,6 +907,11 @@ async function triggerWorkflowAsync(userId: string, session: UserSession): Promi
   }]);
 
   const result = await runPilotCrewReview(pilotReq);
+
+  // 寫回案件編號供後續進度查詢使用
+  const latestSession = getSession(userId);
+  latestSession.applicationId = result.applicationId;
+  updateSession(latestSession);
 
   await pushMessages(userId, [buildPilotCrewResultFlex(result)]);
 
@@ -1156,6 +1166,76 @@ async function pushFraudAlertToStaff(result: PilotCrewResult): Promise<void> {
     }
   }
   console.log(`[conversationHandler] 防詐警示已推播給 ${staffIds.length} 位行員`);
+}
+
+/** 申請進度狀態卡（P1-A） */
+function buildApplicationStatusFlex(
+  applicationId: string,
+  app: import('../models/types').LoanApplication | null,
+): LineReplyMessage {
+  const BLUE = '#1B4F8A'; const LIGHT = '#F0F6FF';
+
+  const STATUS_MAP: Record<string, { label: string; color: string; icon: string }> = {
+    pending:   { label: '待審核', color: '#F59E0B', icon: '⏳' },
+    reviewing: { label: '審核中', color: '#3B82F6', icon: '🔍' },
+    approved:  { label: '已核准', color: '#16A34A', icon: '✅' },
+    rejected:  { label: '婉拒',   color: '#DC2626', icon: '❌' },
+  };
+
+  if (!app) {
+    return {
+      type: 'text',
+      text: `查無案件編號 ${applicationId}，請確認編號是否正確。\n\n如需協助，請撥打客服 0800-054-599（週一至週五 09:00~17:30）。`,
+    };
+  }
+
+  const s = STATUS_MAP[app.status] ?? { label: app.status, color: '#64748B', icon: '❓' };
+  const loanLabel = app.loanType === 'mortgage' ? '房屋貸款' : '個人信用貸款';
+
+  return {
+    type: 'flex',
+    altText: `${s.icon} 案件 ${applicationId} — ${s.label}`,
+    contents: {
+      type: 'bubble', size: 'mega',
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'md', backgroundColor: '#FFFFFF',
+        contents: [
+          { type: 'text', text: '📋 申請案件查詢結果', weight: 'bold', size: 'sm', color: BLUE },
+          { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#E2E8F0', contents: [{ type: 'filler' }] },
+          ...[
+            { label: '案件編號', value: app.id },
+            { label: '申請人',   value: app.applicantName },
+            { label: '貸款類型', value: loanLabel },
+            { label: '申請日期', value: app.appliedAt.slice(0, 10) },
+          ].map((r) => ({
+            type: 'box', layout: 'horizontal', spacing: 'sm',
+            contents: [
+              { type: 'text', text: r.label, size: 'sm', color: '#64748B', flex: 4 },
+              { type: 'text', text: r.value, size: 'sm', color: '#1E293B', weight: 'bold', flex: 6, wrap: true },
+            ],
+          })),
+          // 狀態橫幅
+          {
+            type: 'box', layout: 'vertical', paddingAll: '10px', cornerRadius: '6px',
+            backgroundColor: s.color + '18',
+            contents: [{
+              type: 'text', text: `${s.icon} 目前狀態：${s.label}`,
+              weight: 'bold', size: 'md', color: s.color, align: 'center',
+            }],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: LIGHT,
+        contents: [
+          { type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '🔄 重新查詢', text: '查詢申請進度' } },
+          { type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
 }
 
 /** 加入好友時顯示的 YouTube 介紹影片 Flex 卡片 */

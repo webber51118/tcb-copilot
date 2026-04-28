@@ -74,6 +74,8 @@ export interface UserSession {
   parsedFromDoc: boolean;
   /** 文件解析摘要是否已確認 */
   docReviewConfirmed: boolean;
+  /** PILOT CREW 審核完成後的案件編號（用於進度查詢） */
+  applicationId: string | null;
   createdAt: number;
   updatedAt: number;
 }
