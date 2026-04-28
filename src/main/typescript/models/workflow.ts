@@ -4,7 +4,7 @@
  * POS: 型別層，供 workflowService / workflow API 共用
  */
 
-import { ValuationResult } from './types';
+import { ValuationResult, UserSession, RecommendationResult } from './types';
 import { CreditReviewRequest, CreditReviewResult } from './creditReview';
 import { CommitteeReviewResponse } from './committeeReview';
 
@@ -99,4 +99,62 @@ export interface FullReviewErrorResponse {
   success: false;
   message: string;
   phase?: 'valuation' | 'creditReview' | 'committeeReview';
+}
+
+// ─── 三位一體 PILOT CREW（並行架構）────────────────────────────────
+
+/** PILOT CREW 請求：整合三 Crew 所需輸入 */
+export interface PilotCrewRequest {
+  applicationId?: string;
+  loanType: 'mortgage' | 'personal';
+  /** CREW 1 行銷 PILOT：使用者對話 Session（含 basicInfo / propertyInfo / loanType）*/
+  session: UserSession;
+  /** CREW 2 鑑估 PILOT：房貸鑑價輸入（房貸必填） */
+  valuationInput?: FullReviewRequest['valuationInput'];
+  /** CREW 2 房貸標的物資訊（房貸必填） */
+  property?: FullReviewRequest['property'];
+  /** CREW 3 防詐 PILOT：ML 評分輸入 */
+  fraudInput: {
+    age: number;
+    /** 職業代碼：0=其他/1=軍公教/2=受薪/3=自營/4=退休 */
+    occupationCode: number;
+    monthlyIncome: number;
+    creditInquiryCount: number;
+    existingBankLoans: number;
+    hasRealEstate: boolean;
+    documentMatch: boolean;
+    livesInBranchCounty: boolean;
+    hasSalaryTransfer: boolean;
+  };
+}
+
+/** CREW 3 ML 評分結果 */
+export interface FraudMlScore {
+  fraudScore: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  topRiskFactors: Array<{ feature: string; label: string; contribution: number }>;
+  alertLevel: 1 | 2 | 3;
+  mode: 'live' | 'demo';
+}
+
+/** PILOT CREW 各 Crew 結果 */
+export interface PilotCrewResult {
+  success: true;
+  applicationId: string;
+  loanType: 'mortgage' | 'personal';
+  crew1: {
+    recommendation: RecommendationResult;
+    durationMs: number;
+  };
+  crew2?: {
+    mode: 'live' | 'demo';
+    result: ValuationResult;
+    durationMs: number;
+  };
+  crew3: {
+    mlScore: FraudMlScore;
+    durationMs: number;
+  };
+  powerBiPushed?: boolean;
+  totalDurationMs: number;
 }

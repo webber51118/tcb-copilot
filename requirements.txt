@@ -17,5 +17,8 @@ pyarrow>=14.0.0
 joblib>=1.3.0
 requests>=2.31.0
 
+# SHAP 可解釋性（CREW 3 防詐 PILOT XGBoost 風險因子解釋）
+shap>=0.43.0
+
 # 真實模型訓練時取消注解：
 # tensorflow>=2.13.0

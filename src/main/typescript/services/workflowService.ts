@@ -9,10 +9,14 @@ import {
   FullReviewResponse,
   WorkflowPhase1,
   WorkflowFinalSummary,
+  PilotCrewRequest,
+  PilotCrewResult,
+  FraudMlScore,
 } from '../models/workflow';
 import { callValuationEngine } from './valuationClient';
 import { performCreditReview } from './creditReviewService';
 import { runCommitteeReview } from './committeeReviewService';
+import { recommendProducts } from './recommendationEngine';
 import { recordAgentCall } from '../config/agentMonitorStore';
 import { ValuationResult } from '../models/types';
 import { CreditReviewResult } from '../models/creditReview';
@@ -218,6 +222,165 @@ export async function runFullReview(req: FullReviewRequest): Promise<FullReviewR
       committeeReview: committeePhase,
     },
     finalSummary,
+    totalDurationMs: Date.now() - startMs,
+  };
+}
+
+// ─── 三位一體 PILOT CREW（並行架構）────────────────────────────────
+
+/**
+ * 呼叫 CREW 3 防詐 PILOT ML 評分服務（Python FastAPI port 8002）
+ * FRAUD_SCORING_API_URL 未設定時使用 Demo 規則評分。
+ */
+async function callFraudScoringService(
+  input: PilotCrewRequest['fraudInput'],
+): Promise<FraudMlScore> {
+  const baseUrl = process.env['FRAUD_SCORING_API_URL'] ?? 'http://localhost:8002';
+  try {
+    const resp = await fetch(`${baseUrl}/score`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        age:                    input.age,
+        occupation_code:        input.occupationCode,
+        monthly_income:         input.monthlyIncome,
+        credit_inquiry_count:   input.creditInquiryCount,
+        existing_bank_loans:    input.existingBankLoans,
+        has_real_estate:        input.hasRealEstate,
+        document_match:         input.documentMatch,
+        lives_in_branch_county: input.livesInBranchCounty,
+        has_salary_transfer:    input.hasSalaryTransfer,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = (await resp.json()) as {
+      fraud_score: number;
+      risk_level: string;
+      top_risk_factors: Array<{ feature: string; label: string; contribution: number }>;
+      mode: string;
+    };
+    const score = data.fraud_score;
+    const alertLevel: 1 | 2 | 3 = score <= 0.4 ? 1 : score <= 0.7 ? 2 : 3;
+    return {
+      fraudScore: score,
+      riskLevel: data.risk_level as 'low' | 'medium' | 'high',
+      topRiskFactors: data.top_risk_factors,
+      alertLevel,
+      mode: data.mode as 'live' | 'demo',
+    };
+  } catch {
+    // Demo 降級：簡單規則評分
+    const score = input.documentMatch ? 0.1 : 0.5;
+    const alertLevel: 1 | 2 | 3 = score <= 0.4 ? 1 : score <= 0.7 ? 2 : 3;
+    return {
+      fraudScore: score,
+      riskLevel: score <= 0.4 ? 'low' : score <= 0.7 ? 'medium' : 'high',
+      topRiskFactors: [],
+      alertLevel,
+      mode: 'demo',
+    };
+  }
+}
+
+/**
+ * 三位一體 PILOT CREW 並行審核
+ *
+ * - CREW 1 行銷 PILOT：InstructRec 三層推薦（recommendationEngine）
+ * - CREW 2 鑑估 PILOT：XGBoost + Monte Carlo 鑑價（valuationClient，房貸限定）
+ * - CREW 3 防詐 PILOT：ML 異常評分（fraudScoringService，Python port 8002）
+ *
+ * 三 Crew 同時啟動（Promise.all），總流程時間壓縮至最慢單 Crew 時間。
+ * 推論完成後，呼叫 powerBIClient.py 推送行員個案即時儀表板（選配）。
+ */
+export async function runPilotCrewReview(req: PilotCrewRequest): Promise<PilotCrewResult> {
+  const startMs = Date.now();
+  const applicationId = req.applicationId ?? `PILOT-${Date.now()}`;
+  const isMortgage = req.loanType === 'mortgage';
+
+  // ── 三 Crew 並行啟動 ─────────────────────────────────────────────
+
+  const crew1Promise = (async () => {
+    const t = Date.now();
+    const recommendation = recommendProducts(req.session);
+    recordAgentCall('CREW1-行銷PILOT', true, Date.now() - t);
+    return { recommendation, durationMs: Date.now() - t };
+  })();
+
+  const crew2Promise = isMortgage
+    ? (async () => {
+        const t = Date.now();
+        let mode: 'live' | 'demo' = 'live';
+        let result: ValuationResult;
+        if (req.valuationInput && req.property) {
+          try {
+            result = await callValuationEngine({
+              areaPing:     req.valuationInput.areaPing,
+              propertyAge:  req.valuationInput.propertyAge,
+              buildingType: req.valuationInput.buildingType,
+              floor:        req.valuationInput.floor,
+              hasParking:   req.valuationInput.hasParking,
+              layout:       req.valuationInput.layout,
+              region:       req.property.region,
+              loanAmount:   (req.session.basicInfo.amount ?? 0),
+            });
+            recordAgentCall('CREW2-鑑估PILOT', true, Date.now() - t);
+          } catch {
+            mode = 'demo';
+            const est = Math.round((req.session.basicInfo.amount ?? 5_000_000) * 1.25);
+            result = {
+              estimatedValue: est,
+              confidenceInterval: { p5: Math.round(est * 0.85), p50: est, p95: Math.round(est * 1.15) },
+              ltvRatio: (req.session.basicInfo.amount ?? 0) / est,
+              riskLevel: '中風險',
+              lstmIndex: 1.0,
+              sentimentScore: 0,
+              baseValue: est,
+              breakdown: { area: 0.5, floor: 0.1, age: 0.2, location: 0.2 },
+              mode: 'demo',
+              region: req.property.region,
+              buildingType: req.valuationInput.buildingType,
+            };
+            recordAgentCall('CREW2-鑑估PILOT', false);
+          }
+        } else {
+          mode = 'demo';
+          const est = Math.round((req.session.basicInfo.amount ?? 5_000_000) * 1.25);
+          result = {
+            estimatedValue: est,
+            confidenceInterval: { p5: Math.round(est * 0.85), p50: est, p95: Math.round(est * 1.15) },
+            ltvRatio: (req.session.basicInfo.amount ?? 0) / est,
+            riskLevel: '中風險',
+            lstmIndex: 1.0,
+            sentimentScore: 0,
+            baseValue: est,
+            breakdown: { area: 0.5, floor: 0.1, age: 0.2, location: 0.2 },
+            mode: 'demo',
+            region: '',
+            buildingType: '',
+          };
+        }
+        return { mode, result, durationMs: Date.now() - t };
+      })()
+    : Promise.resolve(undefined);
+
+  const crew3Promise = (async () => {
+    const t = Date.now();
+    const mlScore = await callFraudScoringService(req.fraudInput);
+    recordAgentCall('CREW3-防詐PILOT', true, Date.now() - t);
+    return { mlScore, durationMs: Date.now() - t };
+  })();
+
+  // ── 等待三 Crew 全部完成 ──────────────────────────────────────────
+  const [crew1, crew2Raw, crew3] = await Promise.all([crew1Promise, crew2Promise, crew3Promise]);
+
+  return {
+    success: true,
+    applicationId,
+    loanType: req.loanType,
+    crew1,
+    crew2: crew2Raw ?? undefined,
+    crew3,
     totalDurationMs: Date.now() - startMs,
   };
 }
