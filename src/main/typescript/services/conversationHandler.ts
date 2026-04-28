@@ -74,6 +74,23 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     return replyMessages(event.replyToken, result.messages);
   }
 
+  // 申請進度查詢（P0-C 對應指令）
+  if (userText === '查詢申請進度') {
+    const appId = session.state === ConversationState.APPLY_DONE
+      ? '請至合庫各分行或撥打客服 0800-054-599 查詢'
+      : '您尚未完成申請，如需重新試算請輸入「重新開始」';
+    return replyMessages(event.replyToken, [{
+      type: 'text',
+      text: `📋 申請進度查詢\n\n${appId}\n\n合庫客服服務時間：週一至週五 09:00~17:30`,
+      quickReply: {
+        items: [
+          { type: 'action', action: { type: 'message', label: '常見問答', text: '常見問答' } },
+          { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
+        ],
+      },
+    }]);
+  }
+
   // 洽詢指令
   if (userText === '我想洽詢') {
     return replyMessages(event.replyToken, [{
@@ -90,6 +107,13 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     freshSession.state = result.nextState;
     updateSession(freshSession);
     return replyMessages(event.replyToken, result.messages);
+  }
+
+  // 語音確認：語音辨識結果確認後觸發推薦流程
+  if (userText === '語音確認') {
+    session.state = ConversationState.RECOMMEND;
+    updateSession(session);
+    // fall through → 下方 RECOMMEND 區塊會接手
   }
 
   // 全域貸款類型切換：任何狀態下輸入「房貸」或「信貸」都能重新進入產品介紹
@@ -674,6 +698,8 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
           { type: 'button', style: 'secondary',
             action: { type: 'message', label: '重新試算', text: '重新開始' },
           },
+          { type: 'text', wrap: true, size: 'xxs', color: '#94A3B8',
+            text: '本試算結果不構成貸款承諾。利率依核貸當日指標利率＋加碼為準，實際核貸條件由行員審查決定。' },
         ],
       },
     } as unknown as Record<string, unknown>,
@@ -883,6 +909,71 @@ async function triggerWorkflowAsync(userId: string, session: UserSession): Promi
   if (result.crew3.mlScore.alertLevel === 3) {
     await pushFraudAlertToStaff(result);
   }
+
+  // P0-C：推送後續流程指引
+  await pushMessages(userId, [buildNextStepsMessage(result.applicationId)]);
+}
+
+/** 申請完成後的後續流程指引訊息 */
+function buildNextStepsMessage(applicationId: string): LineReplyMessage {
+  return {
+    type: 'flex',
+    altText: '📋 您的申請後續流程說明',
+    contents: {
+      type: 'bubble', size: 'mega',
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'md', backgroundColor: '#FFFFFF',
+        contents: [
+          { type: 'text', text: '📋 申請送出後，接下來怎麼做？', weight: 'bold', size: 'sm', color: '#1B4F8A' },
+          { type: 'box', layout: 'vertical', height: '1px', backgroundColor: '#E2E8F0', contents: [{ type: 'filler' }] },
+          // 時程
+          {
+            type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm',
+            contents: [
+              { type: 'text', text: '⏰', size: 'sm', flex: 0 },
+              { type: 'text', text: '審核結果將於 3 個工作天內通知', size: 'sm', color: '#374151', flex: 1, wrap: true },
+            ],
+          },
+          // 對保文件
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs', margin: 'sm',
+            contents: [
+              { type: 'text', text: '📁 對保時請攜帶以下文件', size: 'sm', color: '#374151', weight: 'bold' },
+              ...([
+                '身分證正本＋第二證件（健保卡或駕照）',
+                '最近三個月薪資單或財力證明',
+                '存摺影本（近三個月往來紀錄）',
+                '印章',
+              ].map((doc) => ({
+                type: 'box', layout: 'horizontal', spacing: 'sm',
+                contents: [
+                  { type: 'text', text: '•', size: 'xs', color: '#1B4F8A', flex: 0 },
+                  { type: 'text', text: doc, size: 'xs', color: '#374151', flex: 1, wrap: true },
+                ],
+              }))),
+            ],
+          },
+          // 案件編號
+          {
+            type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm',
+            contents: [
+              { type: 'text', text: '🔢', size: 'sm', flex: 0 },
+              { type: 'text', text: `案件編號：${applicationId}`, size: 'sm', color: '#64748B', flex: 1, wrap: true },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: '#F0F6FF',
+        contents: [
+          { type: 'button', style: 'primary', color: '#1B4F8A', height: 'sm',
+            action: { type: 'message', label: '📞 查詢申請進度', text: '查詢申請進度' } },
+          { type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '❓ 常見問答', text: '常見問答' } },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
 }
 
 /** 建構三 Crew 並行結果 Flex 卡片 */
@@ -977,6 +1068,8 @@ function buildPilotCrewResultFlex(result: PilotCrewResult): LineReplyMessage {
             action: { type: 'message', label: '❓ 常見問答', text: '常見問答' } },
           { type: 'button', style: 'secondary', height: 'sm',
             action: { type: 'message', label: '🔄 重新試算', text: '重新開始' } },
+          { type: 'text', wrap: true, size: 'xxs', color: '#546E7A',
+            text: '本試算結果不構成貸款承諾。利率依核貸當日指標利率＋加碼為準，實際核貸條件由行員審查決定。' },
         ],
       },
     } as unknown as Record<string, unknown>,
