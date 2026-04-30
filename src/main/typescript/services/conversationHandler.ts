@@ -16,6 +16,8 @@ import { runPilotCrewReview } from './workflowService';
 import { PilotCrewRequest, PilotCrewResult } from '../models/workflow';
 import { parseVoiceWithClaude } from '../api/voice';
 import { getApplicationById } from '../config/applicationStore';
+import { subscribeUser, unsubscribeUser, isSubscribed } from '../config/marketSubscriberStore';
+import { buildMarketInfoFlex } from './marketPushService';
 
 /** LINE Blob 客戶端（用於下載圖片內容） */
 const blobClient = new messagingApi.MessagingApiBlobClient({
@@ -117,6 +119,73 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     session.state = ConversationState.RA_INTRO;
     updateSession(session);
     return replyMessages(event.replyToken, [buildRaIntroFlex()]);
+  }
+
+  // 訂閱市場週報（P2-B）
+  if (userText === '訂閱市場資訊') {
+    subscribeUser(userId);
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + 7); // 下週一
+    const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+    return replyMessages(event.replyToken, [{
+      type: 'flex',
+      altText: '✅ 已訂閱合庫房市週報！每週一 09:00 自動推播。',
+      contents: {
+        type: 'bubble', size: 'kilo',
+        body: {
+          type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'md',
+          contents: [
+            { type: 'text', text: '✅ 訂閱成功！', weight: 'bold', size: 'lg', color: '#166534' },
+            { type: 'text', text: '每週一 09:00 您將收到：', size: 'sm', color: '#64748B', margin: 'sm' },
+            {
+              type: 'box', layout: 'vertical', margin: 'sm', spacing: 'xs',
+              contents: [
+                { type: 'text', text: '• 本週房貸利率走勢', size: 'sm', color: '#1E293B' },
+                { type: 'text', text: '• 台北市均價漲跌幅', size: 'sm', color: '#1E293B' },
+                { type: 'text', text: '• 熱門區域與庫存天數', size: 'sm', color: '#1E293B' },
+                { type: 'text', text: '• 本週購屋策略建議', size: 'sm', color: '#1E293B' },
+              ],
+            },
+            { type: 'text', text: `首刊：${fmt(monday)}（週一）09:00`, size: 'xs', color: '#94A3B8', margin: 'md' },
+          ],
+        },
+        footer: {
+          type: 'box', layout: 'vertical', paddingAll: '12px',
+          contents: [{
+            type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '取消訂閱市場資訊', text: '取消訂閱市場資訊' },
+          }],
+        },
+      } as unknown as Record<string, unknown>,
+    } as LineReplyMessage]);
+  }
+
+  // 取消訂閱市場週報（P2-B）
+  if (userText === '取消訂閱市場資訊' || userText === '取消訂閱') {
+    if (isSubscribed(userId)) {
+      unsubscribeUser(userId);
+      return replyMessages(event.replyToken, [{
+        type: 'text',
+        text: '已為您取消訂閱合庫房市週報。\n\n如需重新訂閱，請隨時輸入「訂閱市場資訊」。',
+        quickReply: {
+          items: [
+            { type: 'action', action: { type: 'message', label: '重新訂閱', text: '訂閱市場資訊' } },
+            { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
+          ],
+        },
+      }]);
+    } else {
+      return replyMessages(event.replyToken, [{
+        type: 'text',
+        text: '您目前尚未訂閱合庫房市週報。\n\n輸入「訂閱市場資訊」即可開始接收每週市場資訊。',
+        quickReply: {
+          items: [
+            { type: 'action', action: { type: 'message', label: '立即訂閱', text: '訂閱市場資訊' } },
+          ],
+        },
+      }]);
+    }
   }
 
   // 月還款互動試算（P2-A）

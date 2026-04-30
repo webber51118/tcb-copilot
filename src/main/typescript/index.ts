@@ -38,6 +38,8 @@ import { agentMonitorRouter } from './api/agentMonitor';
 import { voiceRouter } from './api/voice';
 import { demoSeedRouter } from './api/demoSeed';
 import { pilotCrewRouter } from './api/pilotCrew';
+import { marketPushRouter } from './api/marketPush';
+import { startMarketPushScheduler } from './services/marketPushService';
 import { seedDemoData } from './config/agentMonitorStore';
 
 const app = express();
@@ -76,6 +78,7 @@ app.use('/api/admin', adminAuth, promotionAdminRouter);
 app.use('/api/admin', adminAuth, applicationAdminRouter);
 app.use('/api/admin', adminAuth, agentMonitorRouter);
 app.use('/api/admin', adminAuth, demoSeedRouter);
+app.use('/api/admin', adminAuth, marketPushRouter);
 app.use('/api/admin', adminAuth, lineTestRouter);
 app.use('/api', recommendRouter);
 app.use('/api', parseDocumentRouter);
@@ -113,6 +116,9 @@ if (fs.existsSync(FRONTEND_DIST)) {
 
 // 啟動時預填 Demo 種子資料
 seedDemoData();
+
+// 啟動市場週報排程（每週一 09:00 台灣時間推播）
+startMarketPushScheduler();
 
 // 啟動伺服器
 app.listen(PORT, () => {
