@@ -1,18 +1,27 @@
 /**
  * INPUT: 防詐評分結果 / PDF 批覆書路徑
- * OUTPUT: Power Automate HTTP trigger 回應（void，失敗靜默記錄）
- * POS: 服務層，Power Automate 兩條自動化流程串接
+ * OUTPUT: Teams 警示 / SharePoint 存檔（失敗靜默記錄）
+ * POS: 服務層，M365 兩條自動化流程串接
  *
- * 流程 1：CREW 3 防詐 PILOT — fraud_score > 0.7 → Teams 主管警示
- * 流程 2：三 Crew 完成後 → PDF 批覆書自動存至 SharePoint
+ * 流程 1：CREW 3 防詐 PILOT — fraud_score > 0.7 → Teams Incoming Webhook 警示
+ * 流程 2：三 Crew 完成後 → Microsoft Graph API 直接上傳 PDF 至 SharePoint
  *
  * 環境變數（.env）：
- *   POWER_AUTOMATE_FRAUD_WEBHOOK_URL   防詐警示 HTTP trigger URL
- *   POWER_AUTOMATE_PDF_WEBHOOK_URL     PDF 批覆書 HTTP trigger URL
+ *   POWER_AUTOMATE_FRAUD_WEBHOOK_URL   Teams Incoming Webhook URL（流程 1）
+ *   SHAREPOINT_SITE_ID                 SharePoint 站台 ID（流程 2）
+ *   SHAREPOINT_TENANT_ID / CLIENT_ID / CLIENT_SECRET  AAD 應用程式認證（流程 2）
+ *   （未設定時自動 fallback 至 POWER_BI_TENANT_ID / CLIENT_ID / CLIENT_SECRET）
  */
 
+import * as fs from 'fs';
+
 const FRAUD_WEBHOOK_URL = process.env['POWER_AUTOMATE_FRAUD_WEBHOOK_URL'] ?? '';
-const PDF_WEBHOOK_URL   = process.env['POWER_AUTOMATE_PDF_WEBHOOK_URL'] ?? '';
+
+// ─── SharePoint Graph API 認證 ────────────────────────────────────────
+const SP_TENANT_ID     = process.env['SHAREPOINT_TENANT_ID']     ?? process.env['POWER_BI_TENANT_ID']     ?? '';
+const SP_CLIENT_ID     = process.env['SHAREPOINT_CLIENT_ID']     ?? process.env['POWER_BI_CLIENT_ID']     ?? '';
+const SP_CLIENT_SECRET = process.env['SHAREPOINT_CLIENT_SECRET'] ?? process.env['POWER_BI_CLIENT_SECRET'] ?? '';
+const SP_SITE_ID       = process.env['SHAREPOINT_SITE_ID']       ?? '';
 
 // ─── 共用 HTTP POST ────────────────────────────────────────────────
 
@@ -139,34 +148,84 @@ export async function triggerFraudAlert(params: {
   return postWebhook(FRAUD_WEBHOOK_URL, payload);
 }
 
-// ─── 流程 2：PDF 批覆書自動化 → SharePoint ────────────────────────
+// ─── 流程 2：PDF 批覆書 → SharePoint（Microsoft Graph API）─────────
+
+async function getGraphAccessToken(): Promise<string> {
+  if (!SP_TENANT_ID || !SP_CLIENT_ID || !SP_CLIENT_SECRET) {
+    throw new Error('SharePoint AAD 認證環境變數未設定');
+  }
+  const url = `https://login.microsoftonline.com/${SP_TENANT_ID}/oauth2/v2.0/token`;
+  const body = new URLSearchParams({
+    grant_type:    'client_credentials',
+    client_id:     SP_CLIENT_ID,
+    client_secret: SP_CLIENT_SECRET,
+    scope:         'https://graph.microsoft.com/.default',
+  });
+  const resp = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:    body.toString(),
+    signal:  AbortSignal.timeout(10_000),
+  });
+  if (!resp.ok) throw new Error(`AAD token 取得失敗 status=${resp.status}`);
+  const data = await resp.json() as { access_token: string };
+  return data.access_token;
+}
 
 /**
- * PDF 批覆書 SharePoint 存檔觸發
+ * PDF 批覆書上傳至 SharePoint（Microsoft Graph API）
  *
- * Power Automate 流程預期 payload：
- *   applicationId, pdfUrl, loanType, applicantName, timestamp
- *
- * SharePoint 動作：將 PDF 存至指定文件庫的案件資料夾
+ * 存放路徑：批覆書/{年份}/{applicationId}/{fileName}
+ * 需要 AAD 應用程式具備 Sites.ReadWrite.All 權限
  */
 export async function triggerPdfWebhook(params: {
   applicationId: string;
   pdfUrl: string;
+  pdfPath?: string;
   loanType: 'mortgage' | 'personal';
   applicantName?: string;
 }): Promise<boolean> {
-  const { applicationId, pdfUrl, loanType, applicantName } = params;
+  const { applicationId, pdfPath, loanType, applicantName } = params;
 
-  const payload: Record<string, unknown> = {
-    applicationId,
-    pdfUrl,
-    loanType,
-    applicantName:    applicantName ?? '',
-    loanTypeLabel:    loanType === 'mortgage' ? '房屋貸款' : '個人信用貸款',
-    timestamp:        new Date().toISOString(),
-    sharepointFolder: `批覆書/${new Date().getFullYear()}/${applicationId}`,
-  };
+  if (!SP_SITE_ID) {
+    console.warn('[sharePoint] SHAREPOINT_SITE_ID 未設定，跳過 PDF 上傳。');
+    return false;
+  }
+  if (!pdfPath) {
+    console.warn('[sharePoint] pdfPath 未提供，跳過 PDF 上傳。');
+    return false;
+  }
 
-  console.log(`[powerAutomate] 觸發 PDF 批覆書 applicationId=${applicationId}`);
-  return postWebhook(PDF_WEBHOOK_URL, payload);
+  try {
+    const fileBuffer = fs.readFileSync(pdfPath);
+    const year       = new Date().getFullYear();
+    const loanLabel  = loanType === 'mortgage' ? '房貸' : '信貸';
+    const safeName   = (applicantName ?? '申請人').replace(/[/\\?%*:|"<>]/g, '_');
+    const fileName   = `${applicationId}_${loanLabel}_${safeName}.pdf`;
+    const folderPath = encodeURIComponent(`批覆書/${year}/${applicationId}`);
+
+    const token     = await getGraphAccessToken();
+    const uploadUrl = `https://graph.microsoft.com/v1.0/sites/${SP_SITE_ID}/drive/items/root:/${folderPath}/${encodeURIComponent(fileName)}:/content`;
+
+    const resp = await fetch(uploadUrl, {
+      method:  'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type':  'application/pdf',
+      },
+      body:   fileBuffer,
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (resp.ok) {
+      console.log(`[sharePoint] PDF 上傳成功 applicationId=${applicationId} fileName=${fileName}`);
+      return true;
+    }
+    const errText = await resp.text().catch(() => '');
+    console.warn(`[sharePoint] PDF 上傳失敗 status=${resp.status} ${errText}`);
+    return false;
+  } catch (err) {
+    console.error('[sharePoint] PDF 上傳例外：', err);
+    return false;
+  }
 }

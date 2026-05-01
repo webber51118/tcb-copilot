@@ -104,14 +104,15 @@ submitApplicationRouter.post('/submit-application', async (req: Request, res: Re
     // PDF 失敗不影響案件建立，繼續流程
   }
 
-  // Power Automate → SharePoint PDF 歸檔（非同步，不阻塞回應）
+  // Graph API → SharePoint PDF 歸檔（非同步，不阻塞回應）
   if (pdfPath) {
     const baseUrl = process.env['BASE_URL'] ?? `http://localhost:${process.env['PORT'] ?? 3000}`;
-    const pdfUrl = `${baseUrl}/applications/${path.basename(pdfPath)}`;
-    const lt = application.loanType === LoanType.MORTGAGE ? 'mortgage' : 'personal';
+    const pdfUrl  = `${baseUrl}/applications/${path.basename(pdfPath)}`;
+    const lt      = application.loanType === LoanType.MORTGAGE ? 'mortgage' : 'personal';
     triggerPdfWebhook({
       applicationId:  application.id,
       pdfUrl,
+      pdfPath,
       loanType:       lt,
       applicantName:  application.applicantName,
     }).catch((err) => console.error('[submitApplication] triggerPdfWebhook 失敗:', err));
