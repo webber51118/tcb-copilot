@@ -66,6 +66,22 @@ applicationAdminRouter.post('/applications/:id/notify-customer', async (req: Req
     ? '合庫將於 3 個工作天內與您聯繫，確認後續撥款事宜，請保持電話暢通。'
     : '很抱歉此次申請未能通過審核。如有任何疑問，歡迎至鄰近合庫分行諮詢，行員將為您說明後續選項。';
 
+  const formsUrl = process.env['MICROSOFT_FORMS_URL'] ?? '';
+
+  // footer 按鈕：核准時加入滿意度問卷（需 MICROSOFT_FORMS_URL 設定）
+  const footerButtons: unknown[] = [];
+  if (isApproved && formsUrl) {
+    footerButtons.push({
+      type: 'button', style: 'primary', color: GREEN, height: 'sm',
+      action: { type: 'uri', label: '📋 填寫服務滿意度問卷', uri: formsUrl },
+    });
+  }
+  footerButtons.push({
+    type: 'button', style: isApproved ? 'secondary' : 'primary',
+    color: isApproved ? undefined : BLUE, height: 'sm',
+    action: { type: 'message', label: '回到主選單', text: '返回主選單' },
+  });
+
   try {
     await lineClient.pushMessage({
       to: app.lineUserId,
@@ -97,12 +113,9 @@ applicationAdminRouter.post('/applications/:id/notify-customer', async (req: Req
             ],
           },
           footer: {
-            type: 'box', layout: 'vertical', backgroundColor: LIGHT,
+            type: 'box', layout: 'vertical', backgroundColor: LIGHT, spacing: 'sm',
             borderColor: BORDER, borderWidth: '1px', paddingAll: '12px',
-            contents: [{
-              type: 'button', style: 'primary', color: BLUE, height: 'sm',
-              action: { type: 'message', label: '回到主選單', text: '返回主選單' },
-            }],
+            contents: footerButtons,
           },
         } as unknown as Record<string, unknown>,
       } as unknown as Parameters<typeof lineClient.pushMessage>[0]['messages'][0]],
