@@ -56,21 +56,44 @@ export async function triggerFraudAlert(params: {
   fraudScore: number;
   riskLevel: string;
   topRiskFactors: Array<{ label: string; contribution: number }>;
+  /** 申請人姓名（供 Teams Adaptive Card 顯示） */
+  customerName?: string;
+  /** 貸款類型（'mortgage' | 'personal'） */
+  loanType?: string;
+  /** 申請金額（元） */
+  loanAmount?: number;
+  /** 受理分行（Demo 固定值）*/
+  branchName?: string;
 }): Promise<boolean> {
-  const { applicationId, fraudScore, riskLevel, topRiskFactors } = params;
+  const { applicationId, fraudScore, riskLevel, topRiskFactors,
+          customerName, loanType, loanAmount, branchName } = params;
+
+  const loanTypeLabel = loanType === 'mortgage' ? '房屋貸款' : loanType === 'personal' ? '信用貸款' : loanType ?? '';
+  const loanAmountLabel = loanAmount ? `${(loanAmount / 10_000).toFixed(0)} 萬元` : '—';
 
   const payload: Record<string, unknown> = {
     applicationId,
+    customerName:  customerName ?? '（未提供）',
+    loanType:      loanTypeLabel,
+    loanAmount:    loanAmount ? Math.round(loanAmount / 10_000) : 0,  // 萬元，供 PA 卡片顯示
     fraudScore:    Number(fraudScore.toFixed(4)),
     riskLevel,
     alertLevel:    3,
+    branchName:    branchName ?? '合庫分行',
     topFactor1:    topRiskFactors[0]?.label ?? '',
     topFactor2:    topRiskFactors[1]?.label ?? '',
     topFactor3:    topRiskFactors[2]?.label ?? '',
+    // 結構化 riskFactors（供 Adaptive Card 動態渲染）
+    riskFactors: topRiskFactors.slice(0, 3).map((f) => ({
+      factor:      f.label,
+      score:       Number(f.contribution.toFixed(4)),
+      description: `貢獻分數 ${(f.contribution * 100).toFixed(1)}%`,
+    })),
     timestamp:     new Date().toISOString(),
     // Teams Adaptive Card 標題用
     alertTitle:    `🔴 高風險防詐警示 — 案件 ${applicationId}`,
     alertBody:     [
+      `客戶：${customerName ?? '—'}　貸款：${loanTypeLabel} ${loanAmountLabel}`,
       `詐欺風險分數：${(fraudScore * 100).toFixed(1)}%`,
       `主要風險因子：${topRiskFactors.slice(0, 3).map((f) => f.label).join('、')}`,
       `請主管立即審查並決定是否凍結案件。`,

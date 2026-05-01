@@ -123,10 +123,14 @@ pilotCrewRouter.post('/pilot-crew', async (req: Request, res: Response): Promise
   let powerAutomateTriggered = false;
   if (result.crew3.mlScore.alertLevel === 3) {
     powerAutomateTriggered = await triggerFraudAlert({
-      applicationId:   result.applicationId,
-      fraudScore:      result.crew3.mlScore.fraudScore,
-      riskLevel:       result.crew3.mlScore.riskLevel,
-      topRiskFactors:  result.crew3.mlScore.topRiskFactors,
+      applicationId:  result.applicationId,
+      fraudScore:     result.crew3.mlScore.fraudScore,
+      riskLevel:      result.crew3.mlScore.riskLevel,
+      topRiskFactors: result.crew3.mlScore.topRiskFactors,
+      customerName:   pilotReq.session?.applicantName ?? undefined,
+      loanType:       result.loanType,
+      loanAmount:     pilotReq.session?.basicInfo?.amount ?? undefined,
+      branchName:     '合庫 Demo 分行',
     });
   }
 

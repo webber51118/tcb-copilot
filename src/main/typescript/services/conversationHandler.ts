@@ -18,6 +18,8 @@ import { parseVoiceWithClaude } from '../api/voice';
 import { getApplicationById } from '../config/applicationStore';
 import { subscribeUser, unsubscribeUser, isSubscribed } from '../config/marketSubscriberStore';
 import { buildMarketInfoFlex } from './marketPushService';
+import { triggerFraudAlert } from './powerAutomateNotifier';
+import { pushPilotCrewResultToPbi } from './powerBiService';
 
 /** LINE Blob 客戶端（用於下載圖片內容） */
 const blobClient = new messagingApi.MessagingApiBlobClient({
@@ -1014,9 +1016,23 @@ async function triggerWorkflowAsync(userId: string, session: UserSession): Promi
 
   await pushMessages(userId, [buildPilotCrewResultFlex(result)]);
 
-  // CREW3 高風險（alertLevel === 3）→ 推播警示給行員
+  // Power BI 推送審核結果（fire-and-forget）
+  pushPilotCrewResultToPbi(result, latestSession.applicantName ?? undefined)
+    .catch((err) => console.error('[conversationHandler] Power BI 推送失敗:', err));
+
+  // CREW3 高風險（alertLevel === 3）→ LINE 推播警示 + Power Automate Teams 警示
   if (result.crew3.mlScore.alertLevel === 3) {
     await pushFraudAlertToStaff(result);
+    triggerFraudAlert({
+      applicationId:  result.applicationId,
+      fraudScore:     result.crew3.mlScore.fraudScore,
+      riskLevel:      result.crew3.mlScore.riskLevel,
+      topRiskFactors: result.crew3.mlScore.topRiskFactors,
+      customerName:   latestSession.applicantName ?? undefined,
+      loanType:       result.loanType,
+      loanAmount:     latestSession.basicInfo.amount ?? undefined,
+      branchName:     '合庫 Demo 分行',
+    }).catch((err) => console.error('[conversationHandler] triggerFraudAlert 失敗:', err));
   }
 
   // P0-C：推送後續流程指引

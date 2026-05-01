@@ -8,6 +8,7 @@
  *   POST /api/submit-application       — 提交申請書（表單 + 簽名）
  */
 
+import * as path from 'path';
 import { Router, Request, Response } from 'express';
 import { validateToken, consumeToken } from '../config/sessionTokenStore';
 import { getSession, resetSession } from '../core/sessionStore';
@@ -16,6 +17,7 @@ import { generateApplicationPdf } from '../services/pdfGenerator';
 import { lineClient } from '../core/lineClient';
 import { LoanType } from '../models/enums';
 import { pushStaffNewCaseNotification } from '../services/staffNotifier';
+import { triggerPdfWebhook } from '../services/powerAutomateNotifier';
 
 export const submitApplicationRouter = Router();
 
@@ -100,6 +102,19 @@ submitApplicationRouter.post('/submit-application', async (req: Request, res: Re
   } catch (err) {
     console.error('[submitApplication] PDF 生成失敗:', err);
     // PDF 失敗不影響案件建立，繼續流程
+  }
+
+  // Power Automate → SharePoint PDF 歸檔（非同步，不阻塞回應）
+  if (pdfPath) {
+    const baseUrl = process.env['BASE_URL'] ?? `http://localhost:${process.env['PORT'] ?? 3000}`;
+    const pdfUrl = `${baseUrl}/applications/${path.basename(pdfPath)}`;
+    const lt = application.loanType === LoanType.MORTGAGE ? 'mortgage' : 'personal';
+    triggerPdfWebhook({
+      applicationId:  application.id,
+      pdfUrl,
+      loanType:       lt,
+      applicantName:  application.applicantName,
+    }).catch((err) => console.error('[submitApplication] triggerPdfWebhook 失敗:', err));
   }
 
   // 重置 session

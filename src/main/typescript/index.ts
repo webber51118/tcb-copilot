@@ -100,6 +100,9 @@ app.use('/posters', express.static(path.join(process.cwd(), 'data', 'posters')))
 // 批覆書 PDF 靜態服務
 app.use('/credit-reviews', express.static(path.join(process.cwd(), 'data', 'credit-reviews')));
 
+// 申請書 PDF 靜態服務（供 Power Automate SharePoint 歸檔下載）
+app.use('/applications', express.static(path.join(process.cwd(), 'data', 'applications')));
+
 // 健康檢查
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: '個金Co-Pilot領航員' });
