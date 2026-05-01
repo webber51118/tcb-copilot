@@ -40,64 +40,99 @@ async function postWebhook(url: string, payload: Record<string, unknown>): Promi
   }
 }
 
-// ─── 流程 1：防詐高風險警示 → Teams ──────────────────────────────
+// ─── 流程 1：防詐高風險警示 → Teams Workflows Webhook ────────────
 
 /**
  * 防詐警示觸發（fraud_score > 0.7 Level 3）
  *
- * Power Automate 流程預期 payload：
- *   applicationId, fraudScore, riskLevel, alertLevel,
- *   topFactor1, topFactor2, topFactor3, timestamp
- *
- * Teams 推播內容：主管群組接到警示卡片，含案件摘要 + 前三大風險因子
+ * 使用 Teams「將 webhook 警示傳送到頻道」工作流程
+ * Payload 格式：Teams Adaptive Card（application/vnd.microsoft.card.adaptive）
  */
 export async function triggerFraudAlert(params: {
   applicationId: string;
   fraudScore: number;
   riskLevel: string;
   topRiskFactors: Array<{ label: string; contribution: number }>;
-  /** 申請人姓名（供 Teams Adaptive Card 顯示） */
   customerName?: string;
-  /** 貸款類型（'mortgage' | 'personal'） */
   loanType?: string;
-  /** 申請金額（元） */
   loanAmount?: number;
-  /** 受理分行（Demo 固定值）*/
   branchName?: string;
 }): Promise<boolean> {
   const { applicationId, fraudScore, riskLevel, topRiskFactors,
           customerName, loanType, loanAmount, branchName } = params;
 
-  const loanTypeLabel = loanType === 'mortgage' ? '房屋貸款' : loanType === 'personal' ? '信用貸款' : loanType ?? '';
+  const loanTypeLabel  = loanType === 'mortgage' ? '房屋貸款' : loanType === 'personal' ? '信用貸款' : loanType ?? '—';
   const loanAmountLabel = loanAmount ? `${(loanAmount / 10_000).toFixed(0)} 萬元` : '—';
+  const scorePercent   = `${(fraudScore * 100).toFixed(1)}%`;
+  const ts             = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
 
-  const payload: Record<string, unknown> = {
-    applicationId,
-    customerName:  customerName ?? '（未提供）',
-    loanType:      loanTypeLabel,
-    loanAmount:    loanAmount ? Math.round(loanAmount / 10_000) : 0,  // 萬元，供 PA 卡片顯示
-    fraudScore:    Number(fraudScore.toFixed(4)),
-    riskLevel,
-    alertLevel:    3,
-    branchName:    branchName ?? '合庫分行',
-    topFactor1:    topRiskFactors[0]?.label ?? '',
-    topFactor2:    topRiskFactors[1]?.label ?? '',
-    topFactor3:    topRiskFactors[2]?.label ?? '',
-    // 結構化 riskFactors（供 Adaptive Card 動態渲染）
-    riskFactors: topRiskFactors.slice(0, 3).map((f) => ({
-      factor:      f.label,
-      score:       Number(f.contribution.toFixed(4)),
-      description: `貢獻分數 ${(f.contribution * 100).toFixed(1)}%`,
-    })),
-    timestamp:     new Date().toISOString(),
-    // Teams Adaptive Card 標題用
-    alertTitle:    `🔴 高風險防詐警示 — 案件 ${applicationId}`,
-    alertBody:     [
-      `客戶：${customerName ?? '—'}　貸款：${loanTypeLabel} ${loanAmountLabel}`,
-      `詐欺風險分數：${(fraudScore * 100).toFixed(1)}%`,
-      `主要風險因子：${topRiskFactors.slice(0, 3).map((f) => f.label).join('、')}`,
-      `請主管立即審查並決定是否凍結案件。`,
-    ].join('\n'),
+  // Teams Adaptive Card payload（符合 Workflows webhook 格式）
+  const payload = {
+    type: 'message',
+    attachments: [{
+      contentType: 'application/vnd.microsoft.card.adaptive',
+      content: {
+        $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+        type:    'AdaptiveCard',
+        version: '1.4',
+        body: [
+          // 標題列
+          {
+            type:                'Container',
+            style:               'attention',
+            bleed:               true,
+            items: [{
+              type:   'TextBlock',
+              text:   `🔴 高風險防詐警示`,
+              weight: 'Bolder',
+              size:   'Large',
+              color:  'Light',
+            }],
+          },
+          // 案件資訊
+          {
+            type:    'FactSet',
+            spacing: 'Medium',
+            facts: [
+              { title: '案件編號', value: applicationId },
+              { title: '申請人',   value: customerName ?? '—' },
+              { title: '貸款類型', value: loanTypeLabel },
+              { title: '申請金額', value: loanAmountLabel },
+              { title: '受理分行', value: branchName ?? '合庫分行' },
+            ],
+          },
+          { type: 'Separator' },
+          // 風險評分
+          {
+            type:  'TextBlock',
+            text:  `⚠️ 詐欺風險分數：**${scorePercent}**　風險等級：**${riskLevel}**`,
+            wrap:  true,
+            color: 'Attention',
+          },
+          // 前三大風險因子
+          {
+            type:  'TextBlock',
+            text:  '主要風險因子：',
+            weight: 'Bolder',
+            spacing: 'Small',
+          },
+          ...topRiskFactors.slice(0, 3).map((f, i) => ({
+            type:  'TextBlock',
+            text:  `${i + 1}. ${f.label}（貢獻 ${(f.contribution * 100).toFixed(1)}%）`,
+            wrap:  true,
+            spacing: 'None',
+          })),
+          { type: 'Separator' },
+          {
+            type:    'TextBlock',
+            text:    `請主管立即審查並決定是否凍結案件。\n${ts}`,
+            wrap:    true,
+            isSubtle: true,
+            size:    'Small',
+          },
+        ],
+      },
+    }],
   };
 
   console.log(`[powerAutomate] 觸發防詐警示 applicationId=${applicationId} fraudScore=${fraudScore}`);
