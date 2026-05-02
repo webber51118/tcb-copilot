@@ -64,8 +64,8 @@ src/
 ### 衝刺時間軸
 
 ```
-5/02（今天）Copilot Studio Instructions 完成、知識庫精簡（25,780→1,942行）
-5/05 前     Session 持久化（in-memory → JSON）
+5/02        ✅ Copilot Studio Instructions 完成、知識庫精簡（25,780→1,942行）
+5/02        ✅ Session 持久化（in-memory → JSON）完成（提前達標）
 5/08 前     Copilot Studio 知識庫上傳（取回操作手冊後）
             Power BI Push Dataset 建立 + 三 Tab 報表
             Microsoft Forms 問卷建立 → 填入 .env
