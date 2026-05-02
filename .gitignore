@@ -64,3 +64,6 @@ temp/
 *.tmp
 *.bak
 .gitnexus
+
+# Session 持久化（含使用者對話狀態，不進版控）
+data/sessions.json
