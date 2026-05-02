@@ -1017,8 +1017,11 @@ async function triggerWorkflowAsync(userId: string, session: UserSession): Promi
   await pushMessages(userId, [buildPilotCrewResultFlex(result)]);
 
   // Power BI 推送審核結果（fire-and-forget）
-  pushPilotCrewResultToPbi(result, latestSession.applicantName ?? undefined)
-    .catch((err) => console.error('[conversationHandler] Power BI 推送失敗:', err));
+  pushPilotCrewResultToPbi(
+    result,
+    latestSession.applicantName ?? undefined,
+    latestSession.basicInfo?.amount ?? undefined,
+  ).catch((err) => console.error('[conversationHandler] Power BI 推送失敗:', err));
 
   // CREW3 高風險（alertLevel === 3）→ LINE 推播警示 + Power Automate Teams 警示
   if (result.crew3.mlScore.alertLevel === 3) {

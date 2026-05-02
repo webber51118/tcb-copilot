@@ -1,0 +1,26 @@
+{
+  "name": "個金PILOT審核結果",
+  "tables": [
+    {
+      "name": "ReviewResults",
+      "columns": [
+        { "name": "ApplicationId",      "dataType": "string"   },
+        { "name": "CustomerName",       "dataType": "string"   },
+        { "name": "LoanType",           "dataType": "string"   },
+        { "name": "LoanAmount",         "dataType": "Int64"    },
+        { "name": "RecommendedProduct", "dataType": "string"   },
+        { "name": "InterestRate",       "dataType": "double"   },
+        { "name": "MonthlyPayment",     "dataType": "double"   },
+        { "name": "ValuationP50",       "dataType": "double"   },
+        { "name": "ValuationP5",        "dataType": "double"   },
+        { "name": "ValuationP95",       "dataType": "double"   },
+        { "name": "FraudScore",         "dataType": "double"   },
+        { "name": "AlertLevel",         "dataType": "Int64"    },
+        { "name": "TopRiskFactor1",     "dataType": "string"   },
+        { "name": "TopRiskFactor2",     "dataType": "string"   },
+        { "name": "TopRiskFactor3",     "dataType": "string"   },
+        { "name": "ReviewTimestamp",    "dataType": "DateTime" }
+      ]
+    }
+  ]
+}

@@ -64,6 +64,7 @@ async function getAccessToken(): Promise<string> {
 export async function pushPilotCrewResultToPbi(
   result: PilotCrewResult,
   applicantName?: string,
+  loanAmount?: number,
 ): Promise<boolean> {
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET || !WORKSPACE_ID || !DATASET_ID) {
     console.warn('[powerBi] 環境變數未設定，跳過 Power BI 推送');
@@ -81,7 +82,7 @@ export async function pushPilotCrewResultToPbi(
       ApplicationId:     result.applicationId,
       CustomerName:      applicantName ?? '（未提供）',
       LoanType:          result.loanType === 'mortgage' ? '房屋貸款' : '信用貸款',
-      LoanAmount:        0,  // Session 層已不在此函式，傳入端補值
+      LoanAmount:        loanAmount ?? 0,
       RecommendedProduct: rec.name,
       InterestRate:      parseFloat(rec.rateRange.split('~')[0]?.replace('%', '') ?? '0'),
       MonthlyPayment:    rec.monthlyPayment ?? 0,
