@@ -4,56 +4,16 @@
  * POS: 服務層，TypeScript 直接呼叫 Power BI REST API（無需 Python 層）
  *
  * 需要環境變數（.env）：
- *   POWER_BI_TENANT_ID      Azure AD 租戶 ID
- *   POWER_BI_CLIENT_ID      Service Principal App ID
- *   POWER_BI_CLIENT_SECRET  Service Principal 密碼
- *   POWER_BI_WORKSPACE_ID   Power BI 工作區 ID
- *   POWER_BI_DATASET_ID     Push Dataset ID
+ *   POWER_BI_PUSH_URL   Power BI 串流資料集 Push URL（含 Key，從平台直接取得）
+ *
+ * 黑客松模式：Push Key（免 Service Principal / Azure AD）
  */
 
 import { PilotCrewResult } from '../models/workflow';
 
 // ─── 設定 ─────────────────────────────────────────────────────────────────────
 
-const TENANT_ID    = process.env['POWER_BI_TENANT_ID']    ?? '';
-const CLIENT_ID    = process.env['POWER_BI_CLIENT_ID']    ?? '';
-const CLIENT_SECRET = process.env['POWER_BI_CLIENT_SECRET'] ?? '';
-const WORKSPACE_ID = process.env['POWER_BI_WORKSPACE_ID'] ?? '';
-const DATASET_ID   = process.env['POWER_BI_DATASET_ID']   ?? '';
-const TABLE_NAME   = 'ReviewResults';
-
-// ─── OAuth2 Token（Service Principal Client Credentials）─────────────────────
-
-let cachedToken: { value: string; expiresAt: number } | null = null;
-
-async function getAccessToken(): Promise<string> {
-  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
-    return cachedToken.value;
-  }
-
-  const url = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
-  const body = new URLSearchParams({
-    grant_type:    'client_credentials',
-    client_id:     CLIENT_ID,
-    client_secret: CLIENT_SECRET,
-    scope:         'https://analysis.windows.net/powerbi/api/.default',
-  });
-
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
-    signal: AbortSignal.timeout(10_000),
-  });
-
-  if (!resp.ok) {
-    throw new Error(`[powerBi] Token 取得失敗 status=${resp.status}`);
-  }
-
-  const data = (await resp.json()) as { access_token: string; expires_in: number };
-  cachedToken = { value: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
-  return cachedToken.value;
-}
+const PUSH_URL = process.env['POWER_BI_PUSH_URL'] ?? '';
 
 // ─── Push Dataset Row ────────────────────────────────────────────────────────
 
@@ -66,13 +26,12 @@ export async function pushPilotCrewResultToPbi(
   applicantName?: string,
   loanAmount?: number,
 ): Promise<boolean> {
-  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET || !WORKSPACE_ID || !DATASET_ID) {
-    console.warn('[powerBi] 環境變數未設定，跳過 Power BI 推送');
+  if (!PUSH_URL) {
+    console.warn('[powerBi] POWER_BI_PUSH_URL 未設定，跳過 Power BI 推送');
     return false;
   }
 
   try {
-    const token = await getAccessToken();
 
     const rec  = result.crew1.recommendation.primary;
     const ml   = result.crew3.mlScore;
@@ -97,14 +56,10 @@ export async function pushPilotCrewResultToPbi(
       ReviewTimestamp:   new Date().toISOString(),
     };
 
-    const url = `https://api.powerbi.com/v1.0/myorg/groups/${WORKSPACE_ID}/datasets/${DATASET_ID}/tables/${TABLE_NAME}/rows`;
-    const resp = await fetch(url, {
+    const resp = await fetch(PUSH_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ rows: [row] }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify([row]),
       signal: AbortSignal.timeout(10_000),
     });
 
