@@ -1,0 +1,7 @@
+ApplicationId,CustomerName,LoanType,LoanAmount,RecommendedProduct,InterestRate,MonthlyPayment,ValuationP50,ValuationP5,ValuationP95,FraudScore,AlertLevel,TopRiskFactor1,TopRiskFactor2,TopRiskFactor3,ReviewTimestamp
+TEST-001,測試王大明,房屋貸款,8000000,青安貸款,1.565,22000,10000000,9200000,10800000,12,LOW,收入穩定性,,,2026-05-03T10:00:00Z
+TEST-002,李小華,房屋貸款,12000000,一般房貸,2.1,45000,15000000,13800000,16200000,35,MEDIUM,高額貸款,負債比偏高,,2026-05-03T10:05:00Z
+TEST-003,張美玲,信用貸款,500000,薪轉優惠信貸,3.5,9500,0,0,0,8,LOW,,,,2026-05-03T10:10:00Z
+TEST-004,陳志成,信用貸款,800000,國軍優惠信貸,2.88,14800,0,0,0,72,HIGH,多筆債務,近期信照查詢頻繁,DBR 接近上限,2026-05-03T10:15:00Z
+TEST-005,林佳蓉,房屋貸款,9500000,青安貸款,1.745,26000,12000000,11000000,13100000,5,LOW,,,,2026-05-03T10:20:00Z
+TEST-006,王建國,房屋貸款,6000000,一般房貸,2.3,25500,8000000,7200000,8800000,91,HIGH,地址異常,收入來源不明,擔保品疑慮,2026-05-03T10:25:00Z
