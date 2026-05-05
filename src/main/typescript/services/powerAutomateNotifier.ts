@@ -75,70 +75,29 @@ export async function triggerFraudAlert(params: {
   const scorePercent   = `${(fraudScore * 100).toFixed(1)}%`;
   const ts             = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
 
-  // Teams Adaptive Card payload（符合 Workflows webhook 格式）
+  // Teams Adaptive Card payload（Power Automate Workflows webhook 相容格式）
+  // 注意：Container/FactSet/Separator 在部分 Teams 工作流程版本不支援，統一用 TextBlock
+  const riskFactorLines = topRiskFactors.slice(0, 3).map((f, i) =>
+    ({ type: 'TextBlock', text: `${i + 1}. ${f.label}（${(f.contribution * 100).toFixed(1)}%）`, wrap: true, spacing: 'None' })
+  );
+
   const payload = {
     type: 'message',
     attachments: [{
       contentType: 'application/vnd.microsoft.card.adaptive',
       content: {
-        $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
         type:    'AdaptiveCard',
-        version: '1.4',
+        version: '1.2',
         body: [
-          // 標題列
-          {
-            type:                'Container',
-            style:               'attention',
-            bleed:               true,
-            items: [{
-              type:   'TextBlock',
-              text:   `🔴 高風險防詐警示`,
-              weight: 'Bolder',
-              size:   'Large',
-              color:  'Light',
-            }],
-          },
-          // 案件資訊
-          {
-            type:    'FactSet',
-            spacing: 'Medium',
-            facts: [
-              { title: '案件編號', value: applicationId },
-              { title: '申請人',   value: customerName ?? '—' },
-              { title: '貸款類型', value: loanTypeLabel },
-              { title: '申請金額', value: loanAmountLabel },
-              { title: '受理分行', value: branchName ?? '合庫分行' },
-            ],
-          },
-          { type: 'Separator' },
-          // 風險評分
-          {
-            type:  'TextBlock',
-            text:  `⚠️ 詐欺風險分數：**${scorePercent}**　風險等級：**${riskLevel}**`,
-            wrap:  true,
-            color: 'Attention',
-          },
-          // 前三大風險因子
-          {
-            type:  'TextBlock',
-            text:  '主要風險因子：',
-            weight: 'Bolder',
-            spacing: 'Small',
-          },
-          ...topRiskFactors.slice(0, 3).map((f, i) => ({
-            type:  'TextBlock',
-            text:  `${i + 1}. ${f.label}（貢獻 ${(f.contribution * 100).toFixed(1)}%）`,
-            wrap:  true,
-            spacing: 'None',
-          })),
-          { type: 'Separator' },
-          {
-            type:    'TextBlock',
-            text:    `請主管立即審查並決定是否凍結案件。\n${ts}`,
-            wrap:    true,
-            isSubtle: true,
-            size:    'Small',
-          },
+          { type: 'TextBlock', text: `🔴 高風險防詐警示｜個金 Co-Pilot`, weight: 'Bolder', size: 'Large', color: 'Attention' },
+          { type: 'TextBlock', text: `📋 案件編號：${applicationId}`, wrap: true },
+          { type: 'TextBlock', text: `👤 申請人：${customerName ?? '—'}`, wrap: true, spacing: 'None' },
+          { type: 'TextBlock', text: `🏠 貸款類型：${loanTypeLabel}　申請金額：${loanAmountLabel}`, wrap: true, spacing: 'None' },
+          { type: 'TextBlock', text: `🏦 受理分行：${branchName ?? '合庫分行'}`, wrap: true, spacing: 'None' },
+          { type: 'TextBlock', text: `⚠️ 詐欺風險分數：**${scorePercent}**　等級：**${riskLevel}**`, weight: 'Bolder', color: 'Attention', wrap: true, spacing: 'Medium' },
+          { type: 'TextBlock', text: '【風險因子】', weight: 'Bolder', spacing: 'Small' },
+          ...riskFactorLines,
+          { type: 'TextBlock', text: `請主管立即審查是否凍結案件 | ${ts}`, isSubtle: true, size: 'Small', wrap: true, spacing: 'Medium' },
         ],
       },
     }],
