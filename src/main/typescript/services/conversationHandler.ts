@@ -18,7 +18,7 @@ import { parseVoiceWithClaude } from '../api/voice';
 import { getApplicationById } from '../config/applicationStore';
 import { subscribeUser, unsubscribeUser, isSubscribed } from '../config/marketSubscriberStore';
 import { buildMarketInfoFlex } from './marketPushService';
-import { triggerFraudAlert } from './powerAutomateNotifier';
+import { triggerFraudAlert, triggerRecommendationAlert } from './powerAutomateNotifier';
 import { pushPilotCrewResultToPbi } from './powerBiService';
 
 /** LINE Blob 客戶端（用於下載圖片內容） */
@@ -1022,6 +1022,15 @@ async function triggerWorkflowAsync(userId: string, session: UserSession): Promi
     latestSession.applicantName ?? undefined,
     latestSession.basicInfo?.amount ?? undefined,
   ).catch((err) => console.error('[conversationHandler] Power BI 推送失敗:', err));
+
+  // PILOT CREW 完成 → Teams 推薦通知 + 行員話術（fire-and-forget）
+  triggerRecommendationAlert({
+    applicationId: result.applicationId,
+    customerName:  latestSession.applicantName ?? undefined,
+    loanType:      result.loanType,
+    loanAmount:    latestSession.basicInfo?.amount ?? undefined,
+    product:       result.crew1.recommendation.primary,
+  }).catch((err) => console.error('[conversationHandler] 推薦 Teams 通知失敗:', err));
 
   // CREW3 高風險（alertLevel === 3）→ LINE 推播警示 + Power Automate Teams 警示
   if (result.crew3.mlScore.alertLevel === 3) {

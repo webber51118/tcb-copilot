@@ -1,15 +1,16 @@
 /**
- * INPUT: 防詐評分結果 / PDF 批覆書路徑
- * OUTPUT: Teams 警示 / SharePoint 存檔（失敗靜默記錄）
- * POS: 服務層，M365 兩條自動化流程串接
+ * INPUT: 防詐評分結果 / 推薦結果 / PDF 批覆書路徑
+ * OUTPUT: Teams 警示 / 推薦通知 / SharePoint 存檔（失敗靜默記錄）
+ * POS: 服務層，M365 三條自動化流程串接
  *
- * 流程 1：CREW 3 防詐 PILOT — fraud_score > 0.7 → Teams Incoming Webhook 警示
- * 流程 2：三 Crew 完成後 → Microsoft Graph API 直接上傳 PDF 至 SharePoint
+ * 流程 1：PILOT CREW 完成 → Teams 推薦通知 + 行員話術
+ * 流程 2：CREW 3 防詐 PILOT — fraud_score > 0.7 → Teams 高風險警示
+ * 流程 3：三 Crew 完成後 → Microsoft Graph API 直接上傳 PDF 至 SharePoint
  *
  * 環境變數（.env）：
- *   POWER_AUTOMATE_FRAUD_WEBHOOK_URL   Teams Incoming Webhook URL（流程 1）
- *   SHAREPOINT_SITE_ID                 SharePoint 站台 ID（流程 2）
- *   SHAREPOINT_TENANT_ID / CLIENT_ID / CLIENT_SECRET  AAD 應用程式認證（流程 2）
+ *   POWER_AUTOMATE_FRAUD_WEBHOOK_URL   Teams Webhook URL（流程 1 & 2 共用）
+ *   SHAREPOINT_SITE_ID                 SharePoint 站台 ID（流程 3）
+ *   SHAREPOINT_TENANT_ID / CLIENT_ID / CLIENT_SECRET  AAD 應用程式認證（流程 3）
  *   （未設定時自動 fallback 至 POWER_BI_TENANT_ID / CLIENT_ID / CLIENT_SECRET）
  */
 
@@ -107,7 +108,98 @@ export async function triggerFraudAlert(params: {
   return postWebhook(FRAUD_WEBHOOK_URL, payload);
 }
 
-// ─── 流程 2：PDF 批覆書 → SharePoint（Microsoft Graph API）─────────
+// ─── 流程 1：推薦通知 + 行員話術 → Teams Webhook ──────────────────
+
+/** 各商品行員銷售話術模板 */
+const SALES_PITCH: Record<string, (p: { rateRange: string; monthlyPayment?: number; maxAmount: number }) => string> = {
+  'young-safe-home':    ({ rateRange, monthlyPayment }) =>
+    `您的客戶符合政府青安優惠方案！利率低至 ${rateRange}，每月只要 ${monthlyPayment ? monthlyPayment.toLocaleString() : '—'} 元，30 年輕鬆圓房夢，額度最高 1,000 萬，現在申辦最划算！`,
+  'military-housing':   ({ rateRange, monthlyPayment }) =>
+    `您的客戶享有軍公教專屬優惠！利率 ${rateRange}，比市場一般方案更低，每月 ${monthlyPayment ? monthlyPayment.toLocaleString() : '—'} 元，是最適合軍公教身份的購屋貸款！`,
+  'next-loan':          ({ rateRange, monthlyPayment }) =>
+    `依客戶條件推薦合庫 Next 貸！利率 ${rateRange}，彈性寬限期最長 3 年，月付 ${monthlyPayment ? monthlyPayment.toLocaleString() : '—'} 元，資金調度更靈活！`,
+  'reverse-mortgage':   ({ rateRange, maxAmount }) =>
+    `以房養老方案最適合退休規劃！每月穩定領取生活費，最高可貸 ${(maxAmount / 10_000).toFixed(0)} 萬，利率 ${rateRange}，讓不動產資產活化，退休更無後顧之憂！`,
+  'military-civil-loan':({ rateRange, monthlyPayment, maxAmount }) =>
+    `軍公教優惠信貸，利率 ${rateRange}，最高 ${(maxAmount / 10_000).toFixed(0)} 萬，手續簡便，3 個工作天快速撥款，月付 ${monthlyPayment ? monthlyPayment.toLocaleString() : '—'} 元！`,
+  'elite-loan':         ({ rateRange, monthlyPayment, maxAmount }) =>
+    `薪轉戶專屬優職優利信貸！比一般信貸利率更低，利率 ${rateRange}，最高 ${(maxAmount / 10_000).toFixed(0)} 萬，月付 ${monthlyPayment ? monthlyPayment.toLocaleString() : '—'} 元，立即可辦！`,
+};
+
+/**
+ * 推薦通知推送至 Teams（PILOT CREW 審核完成後觸發）
+ *
+ * 包含推薦方案摘要 + 方案特色 + 量身定制行員話術
+ */
+export async function triggerRecommendationAlert(params: {
+  applicationId: string;
+  customerName?: string;
+  loanType: string;
+  loanAmount?: number;
+  product: {
+    id: string;
+    name: string;
+    rateRange: string;
+    monthlyPayment?: number;
+    maxAmount: number;
+    features: string[];
+    savingsHighlight: string;
+    crossSell?: { insurance?: { name: string; price: string }; creditCard?: { name: string; cashback: string } };
+  };
+}): Promise<boolean> {
+  const { applicationId, customerName, loanType, loanAmount, product } = params;
+
+  const loanTypeLabel   = loanType === 'mortgage' ? '房屋貸款' : '信用貸款';
+  const loanAmountLabel = loanAmount ? `${(loanAmount / 10_000).toFixed(0)} 萬` : '—';
+  const monthlyLabel    = product.monthlyPayment ? `${product.monthlyPayment.toLocaleString()} 元` : '—';
+  const ts              = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+
+  const pitchFn  = SALES_PITCH[product.id];
+  const salesPitch = pitchFn
+    ? pitchFn({ rateRange: product.rateRange, monthlyPayment: product.monthlyPayment, maxAmount: product.maxAmount })
+    : `推薦方案：${product.name}，利率 ${product.rateRange}，${product.savingsHighlight}`;
+
+  const featureLines = product.features.slice(0, 3).map((f) =>
+    ({ type: 'TextBlock', text: `• ${f}`, wrap: true, spacing: 'None' })
+  );
+
+  const crossSellLine = product.crossSell?.insurance
+    ? [{ type: 'TextBlock', text: `🛡️ 交叉銷售：${product.crossSell.insurance.name}（${product.crossSell.insurance.price}）`, wrap: true, spacing: 'None', isSubtle: true }]
+    : product.crossSell?.creditCard
+    ? [{ type: 'TextBlock', text: `💳 交叉銷售：${product.crossSell.creditCard.name}（現金回饋 ${product.crossSell.creditCard.cashback}）`, wrap: true, spacing: 'None', isSubtle: true }]
+    : [];
+
+  const payload = {
+    type: 'message',
+    attachments: [{
+      contentType: 'application/vnd.microsoft.card.adaptive',
+      content: {
+        type:    'AdaptiveCard',
+        version: '1.2',
+        body: [
+          { type: 'TextBlock', text: `💼 新案件推薦通知｜個金 Co-Pilot`, weight: 'Bolder', size: 'Large', color: 'Accent' },
+          { type: 'TextBlock', text: `📋 案件：${applicationId}　👤 ${customerName ?? '客戶'}`, wrap: true },
+          { type: 'TextBlock', text: `🏠 ${loanTypeLabel}　申貸：${loanAmountLabel}`, wrap: true, spacing: 'None' },
+          { type: 'TextBlock', text: `✅ 推薦方案：${product.name}`, weight: 'Bolder', spacing: 'Medium' },
+          { type: 'TextBlock', text: `💹 利率：${product.rateRange}　月付：${monthlyLabel}`, wrap: true, spacing: 'None' },
+          { type: 'TextBlock', text: `📣【行員話術】`, weight: 'Bolder', spacing: 'Medium' },
+          { type: 'TextBlock', text: `「${salesPitch}」`, wrap: true, spacing: 'None', isSubtle: false },
+          { type: 'TextBlock', text: `✨ 方案亮點：`, weight: 'Bolder', spacing: 'Small' },
+          ...featureLines,
+          ...crossSellLine,
+          { type: 'TextBlock', text: `${ts}`, isSubtle: true, size: 'Small', wrap: true, spacing: 'Medium' },
+        ],
+      },
+    }],
+  };
+
+  console.log(`[powerAutomate] 推薦通知 applicationId=${applicationId} product=${product.id}`);
+  return postWebhook(FRAUD_WEBHOOK_URL, payload);
+}
+
+// ─── 流程 2：防詐高風險警示 → Teams Webhook（原流程 1）────────────
+
+// ─── 流程 3：PDF 批覆書 → SharePoint（Microsoft Graph API）─────────
 
 async function getGraphAccessToken(): Promise<string> {
   if (!SP_TENANT_ID || !SP_CLIENT_ID || !SP_CLIENT_SECRET) {
