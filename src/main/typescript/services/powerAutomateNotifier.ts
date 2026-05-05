@@ -239,8 +239,11 @@ export async function triggerPdfWebhook(params: {
   const { applicationId, pdfPath, loanType, applicantName } = params;
 
   if (!SP_SITE_ID) {
-    console.warn('[sharePoint] SHAREPOINT_SITE_ID 未設定，跳過 PDF 上傳。');
-    return false;
+    const loanLabel = loanType === 'mortgage' ? '房貸' : '信貸';
+    const safeName  = (applicantName ?? '申請人').replace(/[/\\?%*:|"<>]/g, '_');
+    const demoFile  = `${applicationId}_${loanLabel}_${safeName}.pdf`;
+    console.log(`[sharePoint][DEMO] PDF 歸檔模擬成功 applicationId=${applicationId} fileName=${demoFile}`);
+    return true;
   }
   if (!pdfPath) {
     console.warn('[sharePoint] pdfPath 未提供，跳過 PDF 上傳。');
