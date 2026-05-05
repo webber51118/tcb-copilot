@@ -68,7 +68,6 @@ src/
 5/02        ✅ Session 持久化（in-memory → JSON）完成（提前達標）
 5/08 前     Copilot Studio 知識庫上傳（取回操作手冊後）
             Power BI Push Dataset 建立 + 三 Tab 報表
-            Microsoft Forms 問卷建立 → 填入 .env
 5/12 前     Demo 黃金測資完整驗收
             Teams 防詐警示（等顧問 Webhook URL）
 5/15        ⭐ 個金部同仁內部審閱
@@ -83,7 +82,6 @@ src/
 | Teams Webhook URL | IT 顧問 | 已發出權限申請 |
 | SharePoint Site ID | 租戶管理員 | 需管理員同意 Sites.ReadWrite.All |
 | Copilot Studio 知識庫 | 操作手冊文件 | 去公司取回後上傳 |
-| Microsoft Forms URL | 自行建立 | 建立後填入 MICROSOFT_FORMS_URL |
 
 ---
 
