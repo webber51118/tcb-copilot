@@ -438,7 +438,7 @@ async function handleAudioMessage(
     }
     updateSession(session);
 
-    await pushMessages(userId, [buildVoiceResultFlex(transcript, fields, hasEnough ?? false)]);
+    await pushMessages(userId, [buildVoiceResultFlex(transcript, fields, !!(hasEnough ?? false))]);
   } catch (err) {
     console.error('[conversationHandler] 語音處理失敗:', err);
     await pushMessages(userId, [{
@@ -979,7 +979,7 @@ function buildPilotCrewFromSession(session: UserSession): PilotCrewRequest | nul
       region: '台北市',
       isFirstHome: true,
       isOwnerOccupied: true,
-      purpose: basicInfo.purpose ?? '購屋',
+      purpose: (basicInfo.purpose ?? '購屋') as '購屋' | '週轉金' | '其他',
     };
     pilotReq.valuationInput = {
       areaPing:     propertyInfo.areaPing     ?? 30,
@@ -1131,7 +1131,7 @@ function buildPilotCrewResultFlex(result: PilotCrewResult): LineReplyMessage {
   ];
 
   const crew2Rows = crew2 ? [
-    { label: '鑑估值',   value: `NT$ ${crew2.result.estimatedPrice.toLocaleString()}` },
+    { label: '鑑估值',   value: `NT$ ${crew2.result.estimatedValue.toLocaleString()}` },
     { label: '評估模式', value: crew2.mode === 'live' ? '🔗 即時 ML 模型' : '📊 Demo 估算' },
   ] : [];
 

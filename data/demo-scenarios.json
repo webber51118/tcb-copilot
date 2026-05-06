@@ -190,7 +190,7 @@
       "crew1Product": "elite-loan",
       "crew2HasValuation": false,
       "crew3AlertLevel": 3,
-      "crew3FraudScoreMin": 70,
+      "crew3FraudScoreMin": 0.7,
       "teamsRecommendation": true,
       "teamsFraudAlert": true
     }

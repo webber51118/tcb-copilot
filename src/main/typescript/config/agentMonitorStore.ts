@@ -13,7 +13,10 @@ export type AgentName =
   | 'Qwen2.5本地AI'
   | 'XGBoost鑑價'
   | '文件解析AI'
-  | '對話推薦引擎';
+  | '對話推薦引擎'
+  | 'CREW1-行銷PILOT'
+  | 'CREW2-鑑估PILOT'
+  | 'CREW3-防詐PILOT';
 
 export interface AgentCallRecord {
   agentName: AgentName;

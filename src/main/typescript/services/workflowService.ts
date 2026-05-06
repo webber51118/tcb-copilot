@@ -270,13 +270,56 @@ async function callFraudScoringService(
       mode: data.mode as 'live' | 'demo',
     };
   } catch {
-    // Demo 降級：簡單規則評分
-    const score = input.documentMatch ? 0.1 : 0.5;
+    // Demo 降級：規則加權評分（對應 Python fraudScoringService.py 的 _demo_score 邏輯）
+    let score = 0;
+    const factors: Array<{ feature: string; label: string; contribution: number }> = [];
+
+    if (!input.documentMatch) {
+      score += 0.35;
+      factors.push({ feature: 'document_match', label: '證件比對不一致', contribution: 0.35 });
+    }
+    const inquiryContrib = Math.min(input.creditInquiryCount * 0.06, 0.25);
+    if (inquiryContrib > 0) {
+      score += inquiryContrib;
+      factors.push({ feature: 'credit_inquiry_count', label: '聯徵查詢次數過高', contribution: inquiryContrib });
+    }
+    if (input.occupationCode === 0 || input.occupationCode === 4) {
+      score += 0.15;
+      factors.push({ feature: 'occupation_code', label: '職業穩定性不足', contribution: 0.15 });
+    }
+    if (!input.livesInBranchCounty) {
+      score += 0.10;
+      factors.push({ feature: 'lives_in_branch_county', label: '非服務縣市居民', contribution: 0.10 });
+    }
+    if (!input.hasSalaryTransfer) {
+      score += 0.08;
+      factors.push({ feature: 'has_salary_transfer', label: '無薪轉往來', contribution: 0.08 });
+    }
+    const loanContrib = Math.min(input.existingBankLoans * 0.04, 0.15);
+    if (loanContrib > 0) {
+      score += loanContrib;
+      factors.push({ feature: 'existing_bank_loans', label: '現有借款筆數多', contribution: loanContrib });
+    }
+    if (!input.hasRealEstate) {
+      score += 0.05;
+      factors.push({ feature: 'has_real_estate', label: '無不動產擔保', contribution: 0.05 });
+    }
+    if (input.monthlyIncome < 3) {
+      score += 0.08;
+      factors.push({ feature: 'monthly_income', label: '月收入偏低', contribution: 0.08 });
+    } else if (input.monthlyIncome < 5) {
+      score += 0.04;
+      factors.push({ feature: 'monthly_income', label: '月收入偏低', contribution: 0.04 });
+    }
+    score = Math.min(Math.round(score * 100) / 100, 0.99);
     const alertLevel: 1 | 2 | 3 = score <= 0.4 ? 1 : score <= 0.7 ? 2 : 3;
+    const topRiskFactors = factors
+      .sort((a, b) => b.contribution - a.contribution)
+      .slice(0, 3);
     return {
       fraudScore: score,
       riskLevel: score <= 0.4 ? 'low' : score <= 0.7 ? 'medium' : 'high',
-      topRiskFactors: [],
+      topRiskFactors,
       alertLevel,
       mode: 'demo',
     };

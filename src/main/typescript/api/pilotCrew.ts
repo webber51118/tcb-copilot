@@ -45,7 +45,7 @@ function buildSession(body: Record<string, unknown>): PilotCrewRequest['session'
 
   return {
     userId:              (body['userId'] as string | undefined) ?? `anon-${Date.now()}`,
-    state:               ConversationState.COMPLETED,
+    state:               ConversationState.APPLY_DONE,
     loanType,
     basicInfo: {
       age:       typeof bi['age'] === 'number' ? bi['age'] : (fi['age'] as number),
@@ -76,6 +76,7 @@ function buildSession(body: Record<string, unknown>): PilotCrewRequest['session'
     annualIncome:       null,
     parsedFromDoc:      false,
     docReviewConfirmed: false,
+    applicationId:      null,
     createdAt:          Date.now(),
     updatedAt:          Date.now(),
   };
