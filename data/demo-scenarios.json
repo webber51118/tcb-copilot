@@ -1,0 +1,198 @@
+[
+  {
+    "scenarioId": "DEMO-001",
+    "scenarioName": "首購族房貸｜青安貸款順利過件",
+    "description": "35 歲公務員首購，申貸 800 萬，預期推薦青安貸款，低風險通過",
+    "request": {
+      "loanType": "mortgage",
+      "session": {
+        "userId": "demo-user-001",
+        "state": "APPLY_DONE",
+        "loanType": "mortgage",
+        "basicInfo": {
+          "age": 35,
+          "occupation": "公務員",
+          "income": 80000,
+          "purpose": "首購自住",
+          "termYears": 30,
+          "amount": 8000000
+        },
+        "propertyInfo": {
+          "propertyAge": 5,
+          "areaPing": 35,
+          "hasParking": true,
+          "layout": "3房2廳2衛",
+          "floor": 10,
+          "buildingType": "電梯大樓"
+        },
+        "applicantName": "陳小萍",
+        "applicantPhone": "0912-345-678",
+        "mydataReady": true,
+        "landRegistryReady": true,
+        "idNumber": "A123456789",
+        "employer": "台北市政府",
+        "annualIncome": 960000,
+        "parsedFromDoc": false,
+        "docReviewConfirmed": true,
+        "recommendedProductId": null,
+        "applicationId": null,
+        "createdAt": 1746518400000,
+        "updatedAt": 1746518400000
+      },
+      "valuationInput": {
+        "areaPing": 35,
+        "propertyAge": 5,
+        "buildingType": "電梯大樓",
+        "floor": 10,
+        "hasParking": true,
+        "layout": "3房2廳2衛"
+      },
+      "property": { "region": "台北市" },
+      "fraudInput": {
+        "age": 35,
+        "occupationCode": 1,
+        "monthlyIncome": 8,
+        "creditInquiryCount": 1,
+        "existingBankLoans": 0,
+        "hasRealEstate": false,
+        "documentMatch": true,
+        "livesInBranchCounty": true,
+        "hasSalaryTransfer": true
+      }
+    },
+    "expectedResult": {
+      "crew1Product": "young-safe-home",
+      "crew2HasValuation": true,
+      "crew3AlertLevel": 1,
+      "crew3FraudScoreMax": 40,
+      "teamsRecommendation": true,
+      "teamsFraudAlert": false
+    }
+  },
+  {
+    "scenarioId": "DEMO-002",
+    "scenarioName": "軍人信貸｜國軍優惠正常過件",
+    "description": "40 歲現役軍人，申貸 150 萬信貸，預期推薦軍公教信貸，低風險通過",
+    "request": {
+      "loanType": "personal",
+      "session": {
+        "userId": "demo-user-002",
+        "state": "APPLY_DONE",
+        "loanType": "personal",
+        "basicInfo": {
+          "age": 40,
+          "occupation": "軍人",
+          "income": 60000,
+          "purpose": "生活週轉",
+          "termYears": 7,
+          "amount": 1500000
+        },
+        "propertyInfo": {
+          "propertyAge": null,
+          "areaPing": null,
+          "hasParking": null,
+          "layout": null,
+          "floor": null,
+          "buildingType": null
+        },
+        "applicantName": "林志偉",
+        "applicantPhone": "0923-456-789",
+        "mydataReady": true,
+        "landRegistryReady": false,
+        "idNumber": "F234567890",
+        "employer": "陸軍第六軍團",
+        "annualIncome": 720000,
+        "parsedFromDoc": false,
+        "docReviewConfirmed": true,
+        "recommendedProductId": null,
+        "applicationId": null,
+        "createdAt": 1746518400000,
+        "updatedAt": 1746518400000
+      },
+      "valuationInput": null,
+      "property": null,
+      "fraudInput": {
+        "age": 40,
+        "occupationCode": 1,
+        "monthlyIncome": 6,
+        "creditInquiryCount": 2,
+        "existingBankLoans": 1,
+        "hasRealEstate": true,
+        "documentMatch": true,
+        "livesInBranchCounty": true,
+        "hasSalaryTransfer": false
+      }
+    },
+    "expectedResult": {
+      "crew1Product": "military-civil-loan",
+      "crew2HasValuation": false,
+      "crew3AlertLevel": 1,
+      "crew3FraudScoreMax": 30,
+      "teamsRecommendation": true,
+      "teamsFraudAlert": false
+    }
+  },
+  {
+    "scenarioId": "DEMO-003",
+    "scenarioName": "高風險詐欺案件｜Teams 防詐警示觸發",
+    "description": "45 歲自營商，文件異常、多筆借款、頻繁聯徵，預期 HIGH 風險，觸發 Teams 警示",
+    "request": {
+      "loanType": "personal",
+      "session": {
+        "userId": "demo-user-003",
+        "state": "APPLY_DONE",
+        "loanType": "personal",
+        "basicInfo": {
+          "age": 45,
+          "occupation": "自營商",
+          "income": 50000,
+          "purpose": "生活週轉",
+          "termYears": 7,
+          "amount": 4000000
+        },
+        "propertyInfo": {
+          "propertyAge": null,
+          "areaPing": null,
+          "hasParking": null,
+          "layout": null,
+          "floor": null,
+          "buildingType": null
+        },
+        "applicantName": "趙大山",
+        "applicantPhone": "0934-567-890",
+        "mydataReady": true,
+        "landRegistryReady": false,
+        "idNumber": "G345678901",
+        "employer": "大山企業社",
+        "annualIncome": 600000,
+        "parsedFromDoc": false,
+        "docReviewConfirmed": true,
+        "recommendedProductId": null,
+        "applicationId": null,
+        "createdAt": 1746518400000,
+        "updatedAt": 1746518400000
+      },
+      "valuationInput": null,
+      "property": null,
+      "fraudInput": {
+        "age": 45,
+        "occupationCode": 3,
+        "monthlyIncome": 5,
+        "creditInquiryCount": 9,
+        "existingBankLoans": 5,
+        "hasRealEstate": false,
+        "documentMatch": false,
+        "livesInBranchCounty": false,
+        "hasSalaryTransfer": false
+      }
+    },
+    "expectedResult": {
+      "crew1Product": "elite-loan",
+      "crew2HasValuation": false,
+      "crew3AlertLevel": 3,
+      "crew3FraudScoreMin": 70,
+      "teamsRecommendation": true,
+      "teamsFraudAlert": true
+    }
+  }
+]
