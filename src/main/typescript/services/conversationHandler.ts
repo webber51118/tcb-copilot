@@ -314,10 +314,10 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
       });
     }
 
-    // 交叉銷售小卡（若有）
+    // 交叉銷售小卡（房貸壽險 + 合家保 + 信用卡）
     const crossSell = recommendation.primary.crossSell;
     if (crossSell) {
-      messages.push(buildCrossSellFlex(crossSell, session.loanType));
+      messages.push(buildCrossSellFlex(crossSell, session.loanType, session));
     }
 
     // 說明下一步
@@ -812,36 +812,121 @@ function buildRecommendFlexMessage(product: RecommendedProduct, loanType: LoanTy
   };
 }
 
-/** 建構交叉銷售小卡 Flex Message */
+/** 合家保三款商品定義 */
+const WEALTH_PRODUCTS = {
+  'mei-hao-an-xin': {
+    id: 'mei-hao-an-xin', name: '美好安心', currency: '美元',
+    paymentYears: '躉繳', coverage: '7年定期',
+    highlight: '繳費一次享7年保障，美元資產配置，最高折扣約2.1%',
+  },
+  'he-li-chao-wang': {
+    id: 'he-li-chao-wang', name: '合利超旺', currency: '台幣',
+    paymentYears: '2年期', coverage: '終身',
+    highlight: '繳費2年擁有終身保障，有機會享增值回饋分享金',
+  },
+  'zhen-mei-chuan-jia': {
+    id: 'zhen-mei-chuan-jia', name: '真美傳家', currency: '美元',
+    paymentYears: '6或7年期', coverage: '終身',
+    highlight: '美元終身壽險，最高折扣約4.5%，二至六級失能豁免保費',
+  },
+} as const;
+
+/** 依客戶屬性加權評分，自動選出最適合的合家保商品 */
+function selectWealthProduct(session: UserSession): typeof WEALTH_PRODUCTS[keyof typeof WEALTH_PRODUCTS] {
+  const scores: Record<string, number> = {
+    'mei-hao-an-xin': 0, 'he-li-chao-wang': 0, 'zhen-mei-chuan-jia': 0,
+  };
+  const age    = session.basicInfo.age ?? 40;
+  const income = (session.basicInfo.income ?? 60000) / 10000;
+  const occ    = session.basicInfo.occupation ?? '';
+  const loan   = session.recommendedProductId ?? '';
+
+  // 年齡
+  if (age <= 45) { scores['he-li-chao-wang'] += 3; scores['zhen-mei-chuan-jia'] += 2; }
+  else if (age <= 65) { scores['mei-hao-an-xin'] += 3; scores['he-li-chao-wang'] += 1; scores['zhen-mei-chuan-jia'] += 2; }
+  else { scores['mei-hao-an-xin'] += 4; scores['zhen-mei-chuan-jia'] += 1; }
+
+  // 職業
+  if (['軍人', '公務員', '教師'].includes(occ)) {
+    scores['he-li-chao-wang'] += 3; scores['mei-hao-an-xin'] += 1; scores['zhen-mei-chuan-jia'] += 1;
+  } else if (occ === '自營商') {
+    scores['zhen-mei-chuan-jia'] += 3; scores['mei-hao-an-xin'] += 2;
+  } else {
+    scores['he-li-chao-wang'] += 2; scores['mei-hao-an-xin'] += 2; scores['zhen-mei-chuan-jia'] += 2;
+  }
+
+  // 月收入（萬元）
+  if (income < 6) { scores['he-li-chao-wang'] += 3; }
+  else if (income <= 10) { scores['he-li-chao-wang'] += 2; scores['mei-hao-an-xin'] += 2; scores['zhen-mei-chuan-jia'] += 2; }
+  else { scores['mei-hao-an-xin'] += 3; scores['zhen-mei-chuan-jia'] += 3; }
+
+  // 貸款商品
+  if (loan === 'reverse-mortgage') { scores['mei-hao-an-xin'] += 4; }
+  else if (loan === 'elite-loan') { scores['zhen-mei-chuan-jia'] += 4; }
+  else if (['young-safe-home', 'military-housing', 'military-civil-loan'].includes(loan)) {
+    scores['he-li-chao-wang'] += 3;
+  }
+
+  const winner = (Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0]) as keyof typeof WEALTH_PRODUCTS;
+  return WEALTH_PRODUCTS[winner];
+}
+
+/** 建構交叉銷售小卡 Flex Message（3格：房貸壽險 + 合家保 + 信用卡）*/
 function buildCrossSellFlex(
   crossSell: NonNullable<RecommendedProduct['crossSell']>,
   loanType: LoanType | null,
+  session?: UserSession,
 ): LineReplyMessage {
   const BG = '#FFFFFF'; const FOOTER = '#F0F6FF'; const BORDER = '#E2E8F0';
   const isMortgage = loanType === LoanType.MORTGAGE || loanType === LoanType.REVERSE_ANNUITY;
 
   const bubbles: unknown[] = [];
 
+  // 格 1：房貸壽險
   if (crossSell.insurance) {
     bubbles.push({
       type: 'bubble', size: 'kilo',
       body: {
         type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: BG, spacing: 'sm',
         contents: [
-          { type: 'text', text: '🛡️ 保障規劃', size: 'xs', color: '#0F766E', weight: 'bold' },
+          { type: 'text', text: '🛡️ 房貸壽險', size: 'xs', color: '#0F766E', weight: 'bold' },
           { type: 'text', text: crossSell.insurance.name, size: 'sm', color: '#1E293B', weight: 'bold', wrap: true },
-          { type: 'text', text: `月繳 ${crossSell.insurance.price}`, size: 'sm', color: '#1B4F8A' },
+          { type: 'text', text: crossSell.insurance.price, size: 'sm', color: '#1B4F8A' },
         ],
       },
       footer: {
         type: 'box', layout: 'vertical', paddingAll: '8px', backgroundColor: FOOTER, borderWidth: '1px', borderColor: BORDER,
         contents: [{ type: 'button', style: 'secondary', height: 'sm',
-          action: { type: 'message', label: '進一步了解', text: '我想洽詢' },
+          action: { type: 'message', label: '了解壽險', text: '我想洽詢房貸壽險' },
         }],
       },
     });
   }
 
+  // 格 2：合家保理財商品（加權演算法自動選）
+  const wealth = crossSell.wealthManagement ?? (session ? selectWealthProduct(session) : undefined);
+  if (wealth) {
+    bubbles.push({
+      type: 'bubble', size: 'kilo',
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: BG, spacing: 'sm',
+        contents: [
+          { type: 'text', text: '💰 合家保理財', size: 'xs', color: '#7C3AED', weight: 'bold' },
+          { type: 'text', text: wealth.name, size: 'sm', color: '#1E293B', weight: 'bold', wrap: true },
+          { type: 'text', text: `${wealth.currency}｜${wealth.paymentYears}｜${wealth.coverage}`, size: 'xs', color: '#64748B' },
+          { type: 'text', text: wealth.highlight, size: 'xs', color: '#1B4F8A', wrap: true },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '8px', backgroundColor: FOOTER, borderWidth: '1px', borderColor: BORDER,
+        contents: [{ type: 'button', style: 'secondary', height: 'sm',
+          action: { type: 'message', label: '了解合家保', text: `我想了解${wealth.name}` },
+        }],
+      },
+    });
+  }
+
+  // 格 3：信用卡
   if (crossSell.creditCard) {
     bubbles.push({
       type: 'bubble', size: 'kilo',
@@ -857,19 +942,19 @@ function buildCrossSellFlex(
       footer: {
         type: 'box', layout: 'vertical', paddingAll: '8px', backgroundColor: FOOTER, borderWidth: '1px', borderColor: BORDER,
         contents: [{ type: 'button', style: 'secondary', height: 'sm',
-          action: { type: 'message', label: '進一步了解', text: '我想洽詢' },
+          action: { type: 'message', label: '了解信用卡', text: '我想洽詢信用卡' },
         }],
       },
     });
   }
 
   if (bubbles.length === 0) {
-    return { type: 'text', text: '' }; // 無交叉銷售
+    return { type: 'text', text: '' };
   }
 
   return {
     type: 'flex',
-    altText: '🎁 貼心加值服務',
+    altText: '🎁 貼心加值服務（壽險・合家保・信用卡）',
     contents: bubbles.length === 1
       ? bubbles[0] as Record<string, unknown>
       : { type: 'carousel', contents: bubbles } as Record<string, unknown>,
@@ -1030,6 +1115,7 @@ async function triggerWorkflowAsync(userId: string, session: UserSession): Promi
     loanType:      result.loanType,
     loanAmount:    latestSession.basicInfo?.amount ?? undefined,
     product:       result.crew1.recommendation.primary,
+    wealthProduct: selectWealthProduct(latestSession),
   }).catch((err) => console.error('[conversationHandler] 推薦 Teams 通知失敗:', err));
 
   // CREW3 高風險（alertLevel === 3）→ LINE 推播警示 + Power Automate Teams 警示

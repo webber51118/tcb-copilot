@@ -144,10 +144,15 @@ export async function triggerRecommendationAlert(params: {
     maxAmount: number;
     features: string[];
     savingsHighlight: string;
-    crossSell?: { insurance?: { name: string; price: string }; creditCard?: { name: string; cashback: string } };
+    crossSell?: {
+      insurance?: { name: string; price: string };
+      creditCard?: { name: string; cashback: string };
+      wealthManagement?: { name: string; currency: string; paymentYears: string; coverage: string; highlight: string };
+    };
   };
+  wealthProduct?: { name: string; currency: string; paymentYears: string; coverage: string; highlight: string };
 }): Promise<boolean> {
-  const { applicationId, customerName, loanType, loanAmount, product } = params;
+  const { applicationId, customerName, loanType, loanAmount, product, wealthProduct } = params;
 
   const loanTypeLabel   = loanType === 'mortgage' ? '房屋貸款' : '信用貸款';
   const loanAmountLabel = loanAmount ? `${(loanAmount / 10_000).toFixed(0)} 萬` : '—';
@@ -163,11 +168,18 @@ export async function triggerRecommendationAlert(params: {
     ({ type: 'TextBlock', text: `• ${f}`, wrap: true, spacing: 'None' })
   );
 
-  const crossSellLine = product.crossSell?.insurance
-    ? [{ type: 'TextBlock', text: `🛡️ 交叉銷售：${product.crossSell.insurance.name}（${product.crossSell.insurance.price}）`, wrap: true, spacing: 'None', isSubtle: true }]
-    : product.crossSell?.creditCard
-    ? [{ type: 'TextBlock', text: `💳 交叉銷售：${product.crossSell.creditCard.name}（現金回饋 ${product.crossSell.creditCard.cashback}）`, wrap: true, spacing: 'None', isSubtle: true }]
+  // 房貸壽險行
+  const insuranceLine = product.crossSell?.insurance
+    ? [{ type: 'TextBlock', text: `🛡️ 房貸壽險推薦：${product.crossSell.insurance.name}（${product.crossSell.insurance.price}）`, wrap: true, spacing: 'None', isSubtle: true }]
     : [];
+
+  // 合家保行（優先使用動態計算的 wealthProduct，fallback 到 crossSell.wealthManagement）
+  const wealth = wealthProduct ?? product.crossSell?.wealthManagement;
+  const wealthLine = wealth
+    ? [{ type: 'TextBlock', text: `💰 合家保推薦：${wealth.name}（${wealth.currency}｜${wealth.paymentYears}｜${wealth.coverage}）`, wrap: true, spacing: 'None', isSubtle: true }]
+    : [];
+
+  const crossSellLine = [...insuranceLine, ...wealthLine];
 
   const payload = {
     type: 'message',

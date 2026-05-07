@@ -145,6 +145,14 @@ export interface RecommendedProduct {
   crossSell?: {
     insurance?: { name: string; price: string };
     creditCard?: { name: string; cashback: string; fee: string };
+    wealthManagement?: {
+      id: string;
+      name: string;
+      currency: string;
+      paymentYears: string;
+      coverage: string;
+      highlight: string;
+    };
   };
 }
 
