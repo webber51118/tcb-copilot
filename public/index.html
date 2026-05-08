@@ -216,14 +216,10 @@ function setRiskFilter(f) {
   renderFeed();
 }
 
-const REJECT_REASONS = {
-  'mortgage': 'DBR超限',
-  'personal': '負債比過高',
-};
-function riskBadge(status, loanType, amount) {
+function riskBadge(status, rejectionReason) {
   if (status === 'rejected') {
-    const reason = amount > 5000000 ? '擔保品不足' : (REJECT_REASONS[loanType] || 'DBR超限');
-    return `<span class="badge-high">未通過</span><span class="text-red-400 ml-1 text-xs">${reason}</span>`;
+    const reason = rejectionReason || 'DBR超限';
+    return `<span class="badge-high">未通過</span><span class="text-red-400 ml-1 text-xs" title="${reason}">${reason.slice(0,12)}${reason.length>12?'…':''}</span>`;
   }
   if (status === 'approved')  return '<span class="badge-low">已核准</span>';
   if (status === 'reviewing') return '<span class="badge-med">審核中</span>';
@@ -258,7 +254,7 @@ function renderFeed() {
       <div class="text-slate-700 font-medium">${app.applicantName||'--'}</div>
       <div class="text-slate-500">${app.loanType==='mortgage'?'🏠 房貸':'💳 信貸'}</div>
       <div class="text-slate-700">${fmtAmt(app.basicInfo?.amount)}</div>
-      <div>${riskBadge(app.status, app.loanType, app.basicInfo?.amount)} <span class="text-slate-400 ml-1">${app.status !== 'rejected' ? (PRODUCT_NAMES[app.recommendedProductId]||'') : ''}</span></div>
+      <div>${riskBadge(app.status, app.rejectionReason)} <span class="text-slate-400 ml-1">${app.status !== 'rejected' ? (PRODUCT_NAMES[app.recommendedProductId]||'') : ''}</span></div>
     </div>
   `).join('');
 }

@@ -135,7 +135,8 @@
     "mydataReady": false,
     "landRegistryReady": null,
     "status": "rejected",
-    "appliedAt": "2026-04-05T11:30:00.000Z"
+    "appliedAt": "2026-04-05T11:30:00.000Z",
+    "rejectionReason": "DBR 超過 22 倍（申請 30 萬，現欠合計達月收入 24.3 倍）"
   },
   {
     "id": "TCB-20260406-0001",
@@ -266,7 +267,8 @@
     "mydataReady": false,
     "landRegistryReady": false,
     "status": "rejected",
-    "appliedAt": "2026-04-08T09:45:30.000Z"
+    "appliedAt": "2026-04-08T09:45:30.000Z",
+    "rejectionReason": "負債比超過 85%（房貸本息 + 現有債務 / 月收入 = 91.2%）"
   },
   {
     "id": "TCB-20260409-0001",

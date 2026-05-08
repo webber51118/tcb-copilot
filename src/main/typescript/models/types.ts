@@ -97,6 +97,7 @@ export interface LoanApplication {
   /** 土地建物謄本（信貸為 null） */
   landRegistryReady: boolean | null;
   status: 'pending' | 'reviewing' | 'approved' | 'rejected';
+  rejectionReason?: string;
   appliedAt: string;
 }
 
