@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>個金 Co-Pilot — PILOT CREW 即時監控中心</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { background: #0f172a; font-family: 'Segoe UI', sans-serif; }
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
+  .card-green { border-left: 4px solid #22c55e; }
+  .card-red { border-left: 4px solid #ef4444; }
+  .card-orange { border-left: 4px solid #f97316; }
+  .card-blue { border-left: 4px solid #3b82f6; }
+  .card-purple { border-left: 4px solid #a855f7; }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .badge-high { background:#ef4444; color:white; padding:2px 8px; border-radius:999px; font-size:11px; }
+  .badge-med  { background:#f97316; color:white; padding:2px 8px; border-radius:999px; font-size:11px; }
+  .badge-low  { background:#22c55e; color:white; padding:2px 8px; border-radius:999px; font-size:11px; }
+  .dot-online { width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:6px; }
+  .dot-idle   { width:8px;height:8px;border-radius:50%;background:#64748b;display:inline-block;margin-right:6px; }
+  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #1e293b; } ::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+</style>
+</head>
+<body class="text-slate-200 min-h-screen">
+
+<!-- Header -->
+<div class="flex items-center justify-between px-6 py-4 border-b border-slate-700" style="background:#1e293b;">
+  <div class="flex items-center gap-3">
+    <div class="text-2xl">🏦</div>
+    <div>
+      <div class="text-lg font-bold text-white">個金 Co-Pilot — PILOT CREW 即時監控中心</div>
+      <div class="text-xs text-slate-400">合作金庫銀行 × Claude AI × Microsoft 365</div>
+    </div>
+  </div>
+  <div class="flex items-center gap-4">
+    <div class="text-xs text-slate-400">今日 <span class="text-white" id="today-date"></span></div>
+    <div class="flex items-center gap-2 text-xs">
+      <span class="dot-online pulse"></span>
+      <span class="text-green-400 font-medium">系統運行中</span>
+    </div>
+    <div class="text-xs text-slate-400">最後更新 <span id="last-update" class="text-slate-300">--:--:--</span></div>
+  </div>
+</div>
+
+<div class="flex" style="height:calc(100vh - 65px);">
+
+<!-- Sidebar -->
+<div class="w-52 border-r border-slate-700 p-4 flex flex-col gap-4 overflow-y-auto" style="background:#1e293b; min-width:200px;">
+  <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider">貸款類型篩選</div>
+  <div class="flex flex-col gap-2">
+    <button onclick="setFilter('all')" id="btn-all" class="text-left text-sm px-3 py-2 rounded-lg bg-blue-600 text-white font-medium">全部案件</button>
+    <button onclick="setFilter('mortgage')" id="btn-mortgage" class="text-left text-sm px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700">🏠 房屋貸款</button>
+    <button onclick="setFilter('personal')" id="btn-personal" class="text-left text-sm px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700">💳 信用貸款</button>
+  </div>
+  <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-2">風險等級篩選</div>
+  <div class="flex flex-col gap-2">
+    <button onclick="setRiskFilter('all')" id="btn-risk-all" class="text-left text-sm px-3 py-2 rounded-lg bg-slate-600 text-white font-medium">全部風險</button>
+    <button onclick="setRiskFilter('high')" id="btn-risk-high" class="text-left text-sm px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700">🔴 高風險</button>
+    <button onclick="setRiskFilter('pending')" id="btn-risk-pending" class="text-left text-sm px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700">🟡 審核中</button>
+    <button onclick="setRiskFilter('approved')" id="btn-risk-approved" class="text-left text-sm px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700">🟢 已核准</button>
+  </div>
+  <div class="mt-auto">
+    <div class="text-xs text-slate-500">PILOT CREW v1.0</div>
+    <div class="text-xs text-slate-500">個金Co-Pilot 黑客松</div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-4 gap-4">
+    <div class="card card-blue p-4">
+      <div class="text-xs text-slate-400 mb-1">今日案件總數</div>
+      <div class="text-3xl font-bold text-white" id="kpi-total">--</div>
+      <div class="text-xs text-slate-400 mt-1" id="kpi-total-sub">載入中...</div>
+    </div>
+    <div class="card card-red p-4">
+      <div class="text-xs text-slate-400 mb-1">最高詐欺風險分數</div>
+      <div class="text-3xl font-bold text-red-400" id="kpi-fraud">--</div>
+      <div class="text-xs text-slate-400 mt-1" id="kpi-fraud-sub">載入中...</div>
+    </div>
+    <div class="card card-green p-4">
+      <div class="text-xs text-slate-400 mb-1">AI 平均審核時間</div>
+      <div class="text-3xl font-bold text-green-400" id="kpi-time">--</div>
+      <div class="text-xs text-slate-400 mt-1">秒（三 Crew 並行）</div>
+    </div>
+    <div class="card card-orange p-4">
+      <div class="text-xs text-slate-400 mb-1">今日 AI 呼叫次數</div>
+      <div class="text-3xl font-bold text-orange-400" id="kpi-calls">--</div>
+      <div class="text-xs text-slate-400 mt-1" id="kpi-calls-sub">載入中...</div>
+    </div>
+  </div>
+
+  <!-- Middle Row: PILOT CREW + Risk Quadrant -->
+  <div class="grid grid-cols-3 gap-4">
+
+    <!-- PILOT CREW Status -->
+    <div class="card p-4 col-span-1">
+      <div class="text-sm font-semibold text-slate-300 mb-3">⚙️ PILOT CREW 三引擎狀態</div>
+      <div class="flex flex-col gap-3" id="crew-status">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center"><span class="dot-online pulse"></span><span class="text-sm">CREW 1 行銷 PILOT</span></div>
+          <div class="flex items-center gap-2"><span class="text-xs text-slate-400" id="crew1-calls">--次</span><span class="text-xs text-green-400" id="crew1-rate">--%</span></div>
+        </div>
+        <div class="w-full bg-slate-700 rounded-full h-1.5"><div class="bg-blue-500 h-1.5 rounded-full" id="crew1-bar" style="width:0%"></div></div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center"><span class="dot-online pulse"></span><span class="text-sm">CREW 2 鑑估 PILOT</span></div>
+          <div class="flex items-center gap-2"><span class="text-xs text-slate-400" id="crew2-calls">--次</span><span class="text-xs text-green-400" id="crew2-rate">--%</span></div>
+        </div>
+        <div class="w-full bg-slate-700 rounded-full h-1.5"><div class="bg-purple-500 h-1.5 rounded-full" id="crew2-bar" style="width:0%"></div></div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center"><span class="dot-online pulse"></span><span class="text-sm">CREW 3 防詐 PILOT</span></div>
+          <div class="flex items-center gap-2"><span class="text-xs text-slate-400" id="crew3-calls">--次</span><span class="text-xs text-green-400" id="crew3-rate">--%</span></div>
+        </div>
+        <div class="w-full bg-slate-700 rounded-full h-1.5"><div class="bg-red-500 h-1.5 rounded-full" id="crew3-bar" style="width:0%"></div></div>
+        <div class="border-t border-slate-700 pt-2 mt-1">
+          <div class="text-xs text-slate-400 mb-2">其他 AI Agent</div>
+          <div id="other-agents" class="flex flex-col gap-1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Risk Quadrant -->
+    <div class="card p-4 col-span-1">
+      <div class="text-sm font-semibold text-slate-300 mb-3">📊 案件風險四象限</div>
+      <div class="grid grid-cols-2 gap-2 h-40">
+        <div class="rounded-lg p-3 flex flex-col justify-between" style="background:#1a2744;border:1px solid #3b5baa;">
+          <div class="text-xs text-blue-300">📋 審核中</div>
+          <div class="text-2xl font-bold text-blue-400" id="q-pending">--</div>
+          <div class="text-xs text-slate-400">案件</div>
+        </div>
+        <div class="rounded-lg p-3 flex flex-col justify-between" style="background:#2d1515;border:1px solid #aa3b3b;">
+          <div class="text-xs text-red-300">🔴 高風險警示</div>
+          <div class="text-2xl font-bold text-red-400" id="q-high">--</div>
+          <div class="text-xs text-slate-400">案件</div>
+        </div>
+        <div class="rounded-lg p-3 flex flex-col justify-between" style="background:#1a2e1a;border:1px solid #3baa3b;">
+          <div class="text-xs text-green-300">✅ 已核准</div>
+          <div class="text-2xl font-bold text-green-400" id="q-approved">--</div>
+          <div class="text-xs text-slate-400">案件</div>
+        </div>
+        <div class="rounded-lg p-3 flex flex-col justify-between" style="background:#2d2010;border:1px solid #aa6b10;">
+          <div class="text-xs text-orange-300">❌ 未通過</div>
+          <div class="text-2xl font-bold text-orange-400" id="q-rejected">--</div>
+          <div class="text-xs text-slate-400">案件</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Distribution Chart -->
+    <div class="card p-4 col-span-1">
+      <div class="text-sm font-semibold text-slate-300 mb-3">🏷️ 推薦商品分布</div>
+      <canvas id="productChart" height="160"></canvas>
+    </div>
+  </div>
+
+  <!-- Case Feed -->
+  <div class="card p-4 flex-1">
+    <div class="flex items-center justify-between mb-3">
+      <div class="text-sm font-semibold text-slate-300">📋 即時案件 Feed</div>
+      <div class="text-xs text-slate-400">自動更新 ● 每 5 秒</div>
+    </div>
+    <div class="grid grid-cols-6 gap-2 text-xs text-slate-500 pb-2 border-b border-slate-700 font-semibold">
+      <div>時間</div><div>案件編號</div><div>申請人</div><div>貸款類型</div><div>金額</div><div>狀態 / 風險</div>
+    </div>
+    <div id="case-feed" class="flex flex-col gap-1 mt-2 overflow-y-auto" style="max-height:280px;">
+      <div class="text-xs text-slate-500 py-4 text-center">載入中...</div>
+    </div>
+  </div>
+
+</div><!-- end main -->
+</div><!-- end flex -->
+
+<script>
+const API_KEY = 'tcbloan2026';
+const BASE = window.location.origin;
+let loanFilter = 'all';
+let riskFilter = 'all';
+let allApps = [];
+let productChart = null;
+
+const PRODUCT_NAMES = {
+  'young-safe-home': '青安貸款',
+  'military-housing': '國軍輔導',
+  'next-loan': 'Next 貸',
+  'reverse-mortgage': '以房養老',
+  'military-civil-loan': '軍公教信貸',
+  'elite-loan': '優職優利',
+};
+
+function setFilter(f) {
+  loanFilter = f;
+  ['all','mortgage','personal'].forEach(id => {
+    const el = document.getElementById('btn-'+id);
+    el.className = el.className.replace('bg-blue-600 text-white font-medium','text-slate-300 hover:bg-slate-700');
+  });
+  const active = document.getElementById('btn-'+f);
+  active.className = active.className.replace('text-slate-300 hover:bg-slate-700','bg-blue-600 text-white font-medium');
+  renderFeed();
+}
+
+function setRiskFilter(f) {
+  riskFilter = f;
+  ['all','high','pending','approved'].forEach(id => {
+    const el = document.getElementById('btn-risk-'+id);
+    el.className = el.className.replace('bg-slate-600 text-white font-medium','text-slate-300 hover:bg-slate-700');
+  });
+  const active = document.getElementById('btn-risk-'+f);
+  active.className = active.className.replace('text-slate-300 hover:bg-slate-700','bg-slate-600 text-white font-medium');
+  renderFeed();
+}
+
+function riskBadge(status) {
+  if (status === 'rejected') return '<span class="badge-high">未通過</span>';
+  if (status === 'approved') return '<span class="badge-low">已核准</span>';
+  if (status === 'reviewing') return '<span class="badge-med">審核中</span>';
+  return '<span style="background:#475569;color:white;padding:2px 8px;border-radius:999px;font-size:11px;">待審</span>';
+}
+
+function fmtTime(iso) {
+  if (!iso) return '--';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+}
+
+function fmtAmt(n) {
+  if (!n) return '--';
+  return (n/10000).toFixed(0) + ' 萬';
+}
+
+function renderFeed() {
+  let apps = [...allApps];
+  if (loanFilter !== 'all') apps = apps.filter(a => a.loanType === loanFilter);
+  if (riskFilter === 'high') apps = apps.filter(a => a.status === 'rejected');
+  else if (riskFilter === 'pending') apps = apps.filter(a => a.status === 'pending' || a.status === 'reviewing');
+  else if (riskFilter === 'approved') apps = apps.filter(a => a.status === 'approved');
+
+  const feed = document.getElementById('case-feed');
+  if (apps.length === 0) {
+    feed.innerHTML = '<div class="text-xs text-slate-500 py-4 text-center">此篩選條件無案件</div>';
+    return;
+  }
+  feed.innerHTML = apps.slice(0,20).map(app => `
+    <div class="grid grid-cols-6 gap-2 py-2 border-b border-slate-800 hover:bg-slate-800 rounded px-1 text-xs">
+      <div class="text-slate-400">${fmtTime(app.appliedAt)}</div>
+      <div class="text-slate-300 font-mono text-xs">${app.id ? app.id.slice(-8) : '--'}</div>
+      <div class="text-slate-200">${app.applicantName || '--'}</div>
+      <div class="text-slate-400">${app.loanType === 'mortgage' ? '🏠 房貸' : '💳 信貸'}</div>
+      <div class="text-slate-300">${fmtAmt(app.basicInfo?.amount)}</div>
+      <div>${riskBadge(app.status)} <span class="text-slate-500 ml-1">${PRODUCT_NAMES[app.recommendedProductId] || ''}</span></div>
+    </div>
+  `).join('');
+}
+
+function updateProductChart(apps) {
+  const counts = {};
+  apps.forEach(a => {
+    const name = PRODUCT_NAMES[a.recommendedProductId] || '其他';
+    counts[name] = (counts[name] || 0) + 1;
+  });
+  const labels = Object.keys(counts);
+  const data = Object.values(counts);
+  const colors = ['#3b82f6','#22c55e','#f97316','#a855f7','#06b6d4','#f43f5e'];
+
+  if (productChart) {
+    productChart.data.labels = labels;
+    productChart.data.datasets[0].data = data;
+    productChart.update();
+  } else {
+    const ctx = document.getElementById('productChart').getContext('2d');
+    productChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ data, backgroundColor: colors, borderRadius: 4 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#1e293b' } },
+          y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#334155' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+}
+
+async function fetchApplications() {
+  try {
+    const res = await fetch(`${BASE}/api/admin/applications`, { headers: { 'x-admin-api-key': API_KEY } });
+    if (!res.ok) return;
+    const data = await res.json();
+    allApps = Array.isArray(data) ? data : (data.applications || []);
+    allApps.sort((a,b) => new Date(b.appliedAt||0) - new Date(a.appliedAt||0));
+
+    // KPI
+    document.getElementById('kpi-total').textContent = allApps.length;
+    document.getElementById('kpi-total-sub').textContent = `房貸 ${allApps.filter(a=>a.loanType==='mortgage').length} / 信貸 ${allApps.filter(a=>a.loanType==='personal').length}`;
+
+    // Quadrant
+    document.getElementById('q-pending').textContent = allApps.filter(a=>a.status==='pending'||a.status==='reviewing').length;
+    document.getElementById('q-approved').textContent = allApps.filter(a=>a.status==='approved').length;
+    document.getElementById('q-rejected').textContent = allApps.filter(a=>a.status==='rejected').length;
+    document.getElementById('q-high').textContent = allApps.filter(a=>a.status==='rejected').length;
+
+    updateProductChart(allApps);
+    renderFeed();
+  } catch(e) { console.warn('Applications fetch error:', e); }
+}
+
+async function fetchAgentStatus() {
+  try {
+    const res = await fetch(`${BASE}/api/admin/agents/status`, { headers: { 'x-admin-api-key': API_KEY } });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    // KPI
+    document.getElementById('kpi-calls').textContent = data.summary?.totalCallsToday ?? '--';
+    document.getElementById('kpi-calls-sub').textContent = `${data.summary?.onlineNow ?? 0}/${data.summary?.totalAgents ?? 0} Agent 在線`;
+
+    // Avg duration from crews
+    const crews = (data.agents || []).filter(a => a.agentName?.startsWith('CREW'));
+    if (crews.length > 0) {
+      const avgMs = crews.reduce((s,c) => s + (c.avgDurationMs||0), 0) / crews.length;
+      document.getElementById('kpi-time').textContent = (avgMs/1000).toFixed(1);
+    }
+
+    // Crew status bars
+    const crewMap = {};
+    (data.agents || []).forEach(a => { crewMap[a.agentName] = a; });
+
+    ['CREW1-行銷PILOT','CREW2-鑑估PILOT','CREW3-防詐PILOT'].forEach((name, i) => {
+      const idx = i+1;
+      const crew = crewMap[name] || {};
+      const calls = crew.callsToday || 0;
+      const errors = crew.errorsToday || 0;
+      const rate = calls > 0 ? Math.round((calls - errors) / calls * 100) : 100;
+      document.getElementById(`crew${idx}-calls`).textContent = calls + '次';
+      document.getElementById(`crew${idx}-rate`).textContent = rate + '%';
+      document.getElementById(`crew${idx}-bar`).style.width = rate + '%';
+    });
+
+    // Other agents
+    const others = (data.agents || []).filter(a => !a.agentName?.startsWith('CREW'));
+    const otherEl = document.getElementById('other-agents');
+    otherEl.innerHTML = others.map(a => {
+      const rate = a.callsToday > 0 ? Math.round((a.callsToday - a.errorsToday) / a.callsToday * 100) : 100;
+      return `<div class="flex items-center justify-between"><span class="text-xs text-slate-400">${a.agentName}</span><span class="text-xs ${rate>=90?'text-green-400':'text-orange-400'}">${a.callsToday}次 ${rate}%</span></div>`;
+    }).join('');
+
+    // Fraud KPI from recentWorkflows (placeholder)
+    document.getElementById('kpi-fraud').textContent = '91';
+    document.getElementById('kpi-fraud-sub').textContent = 'HIGH 風險（趙大山）';
+
+    document.getElementById('last-update').textContent = new Date().toLocaleTimeString('zh-TW');
+  } catch(e) { console.warn('Agent status fetch error:', e); }
+}
+
+// Init
+document.getElementById('today-date').textContent = new Date().toLocaleDateString('zh-TW', {month:'long',day:'numeric',weekday:'short'});
+
+async function refresh() {
+  await Promise.all([fetchApplications(), fetchAgentStatus()]);
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

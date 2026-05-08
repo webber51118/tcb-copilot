@@ -103,6 +103,9 @@ app.use('/credit-reviews', express.static(path.join(process.cwd(), 'data', 'cred
 // 申請書 PDF 靜態服務（供 Power Automate SharePoint 歸檔下載）
 app.use('/applications', express.static(path.join(process.cwd(), 'data', 'applications')));
 
+// PILOT CREW 監控儀表板（Demo 用）
+app.use('/dashboard', express.static(path.join(process.cwd(), 'public')));
+
 // 健康檢查
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: '個金Co-Pilot領航員' });
