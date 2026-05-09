@@ -12,7 +12,7 @@
 
 本版本依 2026-04-28 架構收斂決策，將原六大 Crew 精簡為**三位一體 PILOT CREW**，
 並移除未實裝的 Azure 服務（Cosmos DB / AI Search / OpenAI / App Insights / AI Foundry），
-改以 **Claude API + Power BI + Power Automate** 為核心整合策略。
+改以 **AI 大語言模型 + Power BI + Power Automate** 為核心整合策略。
 
 ---
 
@@ -54,7 +54,7 @@
 |--|------------|--------------|
 | 時間 | 2026 年底才推出 | **現在就能 Demo** |
 | 方向 | 建立 LLM 基礎建設 | 在應用層直接落地 |
-| 架構 | RAG + 內化訓練混合模式（規劃中）| **RAG + Claude API（已實裝）** |
+| 架構 | RAG + 內化訓練混合模式（規劃中）| **RAG + AI 大語言模型（已實裝）** |
 | 場景 | 授信、財務分析、市場判讀 | 個金推薦 + 鑑估 + 防詐（全覆蓋）|
 
 **關鍵一句話**（紅框強調）：
@@ -144,7 +144,7 @@
 - 主推 70% 版面 + 交叉銷售 30% 版面
 
 **Layer 3 個人化說明（LLM Instruction Following）**：
-- Claude API 即時生成客製化推薦理由
+- AI 大語言模型 即時生成客製化推薦理由
 - 同一產品，護理師看到「月省 X 元」，軍人看到「軍人專屬優惠」
 - 學術依據：InstructRec（arXiv:2305.07001）
 
@@ -328,6 +328,6 @@ fraud_score > 0.7
 | 用途 | 微軟顧問約談（22 分鐘，11-13 張）| 黑客松交付（3-5 分鐘，8 張）|
 | Crew 數 | 5-7 個 | **3 個（三位一體）**|
 | Azure | Cosmos DB / AI Search / OpenAI / Foundry | **全部移除（未實裝）**|
-| LLM | Azure OpenAI GPT-4o | **Claude API（已實裝）**|
+| LLM | Azure OpenAI GPT-4o | **AI 大語言模型（已實裝）**|
 | 整合亮點 | Azure 四階段遷移時間軸 | **Power BI + Power Automate M365**|
 | 台語亮點 | Crew 5 附帶提及 | **S4 獨立強調差異化**|
