@@ -18,6 +18,7 @@ import { performCreditReview } from './creditReviewService';
 import { runCommitteeReview } from './committeeReviewService';
 import { recommendProducts } from './recommendationEngine';
 import { recordAgentCall } from '../config/agentMonitorStore';
+import { pushPilotCrewResultToPbi } from './powerBiService';
 import { ValuationResult } from '../models/types';
 import { CreditReviewResult } from '../models/creditReview';
 import {
@@ -417,7 +418,7 @@ export async function runPilotCrewReview(req: PilotCrewRequest): Promise<PilotCr
   // ── 等待三 Crew 全部完成 ──────────────────────────────────────────
   const [crew1, crew2Raw, crew3] = await Promise.all([crew1Promise, crew2Promise, crew3Promise]);
 
-  return {
+  const result: PilotCrewResult = {
     success: true,
     applicationId,
     loanType: req.loanType,
@@ -426,4 +427,13 @@ export async function runPilotCrewReview(req: PilotCrewRequest): Promise<PilotCr
     crew3,
     totalDurationMs: Date.now() - startMs,
   };
+
+  // ── Power BI 即時推送（fire-and-forget，不阻塞回應）────────────
+  void pushPilotCrewResultToPbi(
+    result,
+    undefined,
+    req.session.basicInfo.amount ?? undefined,
+  );
+
+  return result;
 }

@@ -6,7 +6,7 @@
 
 // ─── 知識庫段落 ────────────────────────────────────────────────
 
-export type KbSource = '央行規定' | '政策性貸款' | '授信規章';
+export type KbSource = '央行規定' | '政策性貸款' | '授信規章' | '理財商品';
 export type KbPriority = 1 | 2 | 3; // 1=一般, 2=中, 3=最高
 
 export interface KbChunk {
