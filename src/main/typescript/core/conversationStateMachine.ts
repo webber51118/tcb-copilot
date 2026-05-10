@@ -108,7 +108,7 @@ function buildWelcomeMenu(): LineReplyMessage {
             contents: [
               iconBtn('🏡', 'AI自動鑑價', '即時估算', 'AI自動鑑價'),
               iconBtn('🎁', '優惠專案', '限時活動', '當期活動'),
-              iconBtn('❓', '常見問答', '快速解答', '常見問答'),
+              iconBtn('💬', 'AI 諮詢', '智能客服', 'AI諮詢'),
             ],
           },
         ],
@@ -1813,6 +1813,11 @@ const stateHandlers: Record<ConversationState, StateHandler> = {
   [ConversationState.RA_COLLECT_AREA]:    handleRaCollectArea,
   [ConversationState.RA_COLLECT_PROP_AGE]: handleRaCollectPropAge,
   [ConversationState.RA_MONTHLY_WISH]:    handleRaMonthlyWish,
+  // AI 諮詢模式（實際處理在 conversationHandler.ts，此處為 fallback）
+  [ConversationState.AI_CONSULTING]: (session) => ({
+    nextState: ConversationState.AI_CONSULTING,
+    messages: [{ type: 'text', text: '請輸入您的問題，或輸入「返回主選單」結束諮詢。' }],
+  }),
 };
 
 /** 執行狀態轉移 */

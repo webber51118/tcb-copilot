@@ -20,6 +20,7 @@ import { subscribeUser, unsubscribeUser, isSubscribed } from '../config/marketSu
 import { buildMarketInfoFlex } from './marketPushService';
 import { triggerFraudAlert, triggerRecommendationAlert } from './powerAutomateNotifier';
 import { pushPilotCrewResultToPbi } from './powerBiService';
+import { buildAiConsultingResponse, buildAiConsultingWelcome, appendChatHistory } from './aiConsultingService';
 
 /** LINE Blob 客戶端（用於下載圖片內容） */
 const blobClient = new messagingApi.MessagingApiBlobClient({
@@ -240,6 +241,39 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
         ],
       },
     }]);
+  }
+
+  // AI 諮詢模式入口（全域可用）
+  if (userText === 'AI諮詢' || userText === 'ai諮詢' || userText === 'AI 諮詢') {
+    session.state = ConversationState.AI_CONSULTING;
+    session.chatHistory = [];
+    updateSession(session);
+    return replyMessages(event.replyToken, [buildAiConsultingWelcome()]);
+  }
+
+  // AI 諮詢模式：自由問答（任何訊息都在此狀態下由 LLM 處理）
+  if (session.state === ConversationState.AI_CONSULTING) {
+    try {
+      const aiReply = await buildAiConsultingResponse(session, userText);
+      appendChatHistory(session, userText, aiReply);
+      updateSession(session);
+      return replyMessages(event.replyToken, [{
+        type: 'text',
+        text: aiReply,
+        quickReply: {
+          items: [
+            { type: 'action', action: { type: 'message', label: '繼續提問', text: ' ' } },
+            { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
+          ],
+        },
+      }]);
+    } catch (err) {
+      console.error('[aiConsulting] LLM 呼叫失敗:', err);
+      return replyMessages(event.replyToken, [{
+        type: 'text',
+        text: '抱歉，目前 AI 客服暫時無法回應，請稍後再試，或輸入「返回主選單」重新開始。',
+      }]);
+    }
   }
 
   // 貸款常見問答入口（全域可用）

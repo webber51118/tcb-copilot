@@ -93,6 +93,7 @@ function createEmptySession(userId: string): UserSession {
     parsedFromDoc: false,
     docReviewConfirmed: false,
     applicationId: null,
+    chatHistory: [],
     createdAt: now,
     updatedAt: now,
   };

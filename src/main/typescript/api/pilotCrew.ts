@@ -77,6 +77,7 @@ function buildSession(body: Record<string, unknown>): PilotCrewRequest['session'
     parsedFromDoc:      false,
     docReviewConfirmed: false,
     applicationId:      null,
+    chatHistory:        [],
     createdAt:          Date.now(),
     updatedAt:          Date.now(),
   };

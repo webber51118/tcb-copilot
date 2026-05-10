@@ -47,6 +47,8 @@ function makeSession(overrides: {
     annualIncome: null,
     parsedFromDoc: false,
     docReviewConfirmed: false,
+    applicationId: null,
+    chatHistory: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

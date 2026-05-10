@@ -73,6 +73,9 @@ export enum ConversationState {
   RA_COLLECT_PROP_AGE = 'RA_COLLECT_PROP_AGE',
   /** 以房養老：期望每月撥付金額（選填） */
   RA_MONTHLY_WISH = 'RA_MONTHLY_WISH',
+  // ── AI 諮詢模式 ───────────────────────────────────────────────
+  /** AI 自由問答客服模式（RAG + 對話記憶） */
+  AI_CONSULTING = 'AI_CONSULTING',
 }
 
 /** 貸款類型 */

@@ -80,6 +80,7 @@ recommendRouter.post('/recommend', (req: Request, res: Response) => {
     parsedFromDoc: false,
     docReviewConfirmed: false,
     applicationId: null,
+    chatHistory: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

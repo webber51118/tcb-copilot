@@ -52,6 +52,12 @@ export interface DocumentParseResult {
   error?: string;
 }
 
+/** AI 諮詢對話歷史單筆訊息 */
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 /** 使用者對話 Session */
 export interface UserSession {
   userId: string;
@@ -76,6 +82,8 @@ export interface UserSession {
   docReviewConfirmed: boolean;
   /** PILOT CREW 審核完成後的案件編號（用於進度查詢） */
   applicationId: string | null;
+  /** AI 諮詢模式對話歷史（最多保留 10 輪） */
+  chatHistory: ChatMessage[];
   createdAt: number;
   updatedAt: number;
 }
