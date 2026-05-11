@@ -78,8 +78,9 @@ export async function triggerFraudAlert(params: {
 
   // Teams Adaptive Card payload（Power Automate Workflows webhook 相容格式）
   // 注意：Container/FactSet/Separator 在部分 Teams 工作流程版本不支援，統一用 TextBlock
+  const ORDINALS = ['①', '②', '③'];
   const riskFactorLines = topRiskFactors.slice(0, 3).map((f, i) =>
-    ({ type: 'TextBlock', text: `${i + 1}. ${f.label}（${(f.contribution * 100).toFixed(1)}%）`, wrap: true, spacing: 'None' })
+    ({ type: 'TextBlock', text: `${ORDINALS[i]} ${f.label}（${(f.contribution * 100).toFixed(1)}%）`, wrap: true, spacing: 'None' })
   );
 
   const payload = {

@@ -54,6 +54,12 @@ app.use('/api/webhook', lineMiddleware, webhookRouter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// 跳過 ngrok 瀏覽器警告（開發用 tunnel）
+app.use((_req, res, next) => {
+  res.header('ngrok-skip-browser-warning', 'true');
+  next();
+});
+
 // Admin API 金鑰驗證中介層
 function adminAuth(req: Request, res: Response, next: NextFunction): void {
   const key = req.headers['x-admin-api-key'];
