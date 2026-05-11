@@ -243,6 +243,32 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     }]);
   }
 
+  // ── 交叉銷售詳細介紹（全域可用）──────────────────────────────────────
+  const wealthDetailMatch = Object.values(WEALTH_PRODUCTS).find(
+    (w) => userText === `我想了解${w.name}`,
+  );
+
+  if (userText === '我想洽詢房貸壽險') {
+    return replyMessages(event.replyToken, [
+      buildMortgageInsuranceDetailFlex(session),
+      buildCrossSellFollowupQuickReply(),
+    ]);
+  }
+
+  if (wealthDetailMatch) {
+    return replyMessages(event.replyToken, [
+      buildWealthProductDetailFlex(wealthDetailMatch, session),
+      buildCrossSellFollowupQuickReply(),
+    ]);
+  }
+
+  if (userText === '我想洽詢信用卡') {
+    return replyMessages(event.replyToken, [
+      buildCreditCardDetailFlex(session),
+      buildCrossSellFollowupQuickReply(),
+    ]);
+  }
+
   // AI 諮詢模式入口（全域可用）
   if (userText === 'AI諮詢' || userText === 'ai諮詢' || userText === 'AI 諮詢') {
     session.state = ConversationState.AI_CONSULTING;
@@ -992,6 +1018,288 @@ function buildCrossSellFlex(
     contents: bubbles.length === 1
       ? bubbles[0] as Record<string, unknown>
       : { type: 'carousel', contents: bubbles } as Record<string, unknown>,
+  };
+}
+
+/** 房貸壽險詳細說明 Flex（深藍 header） */
+function buildMortgageInsuranceDetailFlex(session: UserSession): LineReplyMessage {
+  const age = session.basicInfo.age ?? null;
+  let personalizedReason: string;
+  if (age !== null && age <= 35) {
+    personalizedReason = '您正值青壯年，貸款初期保費最低，正是投保最划算時機。';
+  } else if (age !== null && age <= 50) {
+    personalizedReason = '中年是家庭支柱期，房貸壽險確保萬一時家人不因房貸陷入困境。';
+  } else {
+    personalizedReason = '確保退休前貸款期間，家人無需承擔剩餘房貸壓力。';
+  }
+
+  return {
+    type: 'flex',
+    altText: '🛡️ 房貸壽險詳細說明',
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#1B4F8A', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '🛡️ 房貸壽險詳細說明', color: '#FFFFFF', weight: 'bold', size: 'md' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'md', paddingAll: '16px',
+        contents: [
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs',
+            contents: [
+              { type: 'text', text: '產品機制', weight: 'bold', size: 'sm', color: '#1B4F8A' },
+              { type: 'text', text: '• 保額隨貸款餘額遞減，越繳越少', size: 'sm', wrap: true, color: '#334155' },
+              { type: 'text', text: '• 身故或全殘時理賠金直接清償貸款', size: 'sm', wrap: true, color: '#334155' },
+              { type: 'text', text: '• 遺屬無需承擔剩餘房貸壓力', size: 'sm', wrap: true, color: '#334155' },
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs',
+            contents: [
+              { type: 'text', text: '費率參考', weight: 'bold', size: 'sm', color: '#1B4F8A' },
+              { type: 'text', text: '30歲 / 千萬貸款 / 30年期\n約每年 NT$10,000～15,000', size: 'sm', wrap: true, color: '#334155' },
+              { type: 'text', text: '搭配貸款申辦可直接扣繳，省去繳費麻煩', size: 'sm', wrap: true, color: '#64748B' },
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs', backgroundColor: '#FFFBEB',
+            paddingAll: '12px', cornerRadius: '8px',
+            contents: [
+              { type: 'text', text: '💡 個人化推薦理由', weight: 'bold', size: 'sm', color: '#92400E' },
+              { type: 'text', text: personalizedReason, size: 'sm', wrap: true, color: '#92400E' },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'horizontal', spacing: 'sm', paddingAll: '12px',
+        contents: [
+          {
+            type: 'button', style: 'primary', height: 'sm', flex: 1,
+            action: { type: 'uri', label: '📍 預約最近分行', uri: 'https://www.tcb.com.tw/branches' },
+            color: '#1B4F8A',
+          },
+          {
+            type: 'button', style: 'secondary', height: 'sm', flex: 1,
+            action: { type: 'message', label: '重新試算', text: '房貸' },
+          },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
+
+/** 合家保商品詳細說明 Flex（紫色 header） */
+function buildWealthProductDetailFlex(
+  wealth: typeof WEALTH_PRODUCTS[keyof typeof WEALTH_PRODUCTS],
+  session: UserSession,
+): LineReplyMessage {
+  const age = session.basicInfo.age ?? null;
+  const income = session.basicInfo.income ?? null;
+  const occupation = session.basicInfo.occupation ?? null;
+
+  const taglines: Record<string, string> = {
+    'he-li-chao-wang': '短期繳費，終身守護',
+    'mei-hao-an-xin': '一次搞定，美元保值',
+    'zhen-mei-chuan-jia': '美元終身保障，世代傳承財富',
+  };
+  const tagline = taglines[wealth.id] ?? '';
+
+  const corePoints: Record<string, string[]> = {
+    'he-li-chao-wang': [
+      '繳費 2 年，保障終身',
+      '台幣計價，無匯率風險',
+      '有機會享增值回饋分享金',
+      '強制儲蓄，紀律理財最佳工具',
+    ],
+    'mei-hao-an-xin': [
+      '躉繳一次，享 7 年定期保障',
+      '美元計價，對抗台幣長期貶值',
+      '最高折扣約 2.1%',
+      '適合外幣資產配置需求',
+    ],
+    'zhen-mei-chuan-jia': [
+      '美元終身壽險，財富跨代傳承',
+      '最高折扣約 4.5%',
+      '6 或 7 年繳費期可選',
+      '二至六級失能自動豁免保費',
+    ],
+  };
+  const points = corePoints[wealth.id] ?? [];
+
+  let personalizedReason: string;
+  if (wealth.id === 'he-li-chao-wang') {
+    if (age !== null && age <= 40) {
+      personalizedReason = '年齡較輕投保最划算，短繳長保效益最大化。';
+    } else if (['軍人', '公務員', '教師'].includes(occupation ?? '')) {
+      personalizedReason = '職業穩定，短繳 2 年壓力小，終身保障有保障。';
+    } else {
+      personalizedReason = '台幣計價無匯率困擾，適合穩健型理財首選。';
+    }
+  } else if (wealth.id === 'mei-hao-an-xin') {
+    if (income !== null && income >= 100000) {
+      personalizedReason = '躉繳資金效率最高，一次到位享最大折扣。';
+    } else if (age !== null && age >= 50) {
+      personalizedReason = '無繳費年期壓力，一次搞定美元資產配置。';
+    } else {
+      personalizedReason = '美元資產對抗匯率波動，分散台幣集中風險。';
+    }
+  } else {
+    if (occupation === '自營商') {
+      personalizedReason = '隔離事業風險，保全家族資產世代傳承。';
+    } else if (income !== null && income >= 100000) {
+      personalizedReason = '符合優惠折扣資格，傳承規劃效益最高。';
+    } else {
+      personalizedReason = '兼具財富傳承與失能保障，一張保單多重守護。';
+    }
+  }
+
+  return {
+    type: 'flex',
+    altText: `💰 ${wealth.name}｜${tagline}`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#7C3AED', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: `💰 ${wealth.name}`, color: '#FFFFFF', weight: 'bold', size: 'md' },
+          { type: 'text', text: tagline, color: '#DDD6FE', size: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'md', paddingAll: '16px',
+        contents: [
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs',
+            contents: [
+              { type: 'text', text: '商品規格', weight: 'bold', size: 'sm', color: '#7C3AED' },
+              { type: 'text', text: `幣別：${wealth.currency}　繳費：${wealth.paymentYears}　保障：${wealth.coverage}`, size: 'sm', wrap: true, color: '#334155' },
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs',
+            contents: [
+              { type: 'text', text: '核心說明', weight: 'bold', size: 'sm', color: '#7C3AED' },
+              ...points.map((p) => ({ type: 'text' as const, text: `• ${p}`, size: 'sm' as const, wrap: true, color: '#334155' })),
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs', backgroundColor: '#FFFBEB',
+            paddingAll: '12px', cornerRadius: '8px',
+            contents: [
+              { type: 'text', text: '💡 個人化推薦理由', weight: 'bold', size: 'sm', color: '#92400E' },
+              { type: 'text', text: personalizedReason, size: 'sm', wrap: true, color: '#92400E' },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'horizontal', spacing: 'sm', paddingAll: '12px',
+        contents: [
+          {
+            type: 'button', style: 'primary', height: 'sm', flex: 1,
+            action: { type: 'uri', label: '📍 預約最近分行', uri: 'https://www.tcb.com.tw/branches' },
+            color: '#7C3AED',
+          },
+          {
+            type: 'button', style: 'secondary', height: 'sm', flex: 1,
+            action: { type: 'message', label: '返回主選單', text: '返回主選單' },
+          },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
+
+/** 信用卡詳細說明 Flex */
+function buildCreditCardDetailFlex(session: UserSession): LineReplyMessage {
+  const loanType = session.loanType;
+  const occupation = session.basicInfo.occupation ?? null;
+  const isMortgage = loanType === LoanType.MORTGAGE || loanType === LoanType.REVERSE_ANNUITY;
+  const headerColor = isMortgage ? '#1565C0' : '#166534';
+
+  let personalizedReason: string;
+  if (isMortgage) {
+    personalizedReason = '搭配房貸申辦可享首年年費優惠，購屋裝潢消費最高 3% 回饋。';
+  } else if (['軍人', '公務員', '教師'].includes(occupation ?? '')) {
+    personalizedReason = '軍公教核卡門檻低、薪轉合庫享專屬優惠，信用卡年費減免。';
+  } else {
+    personalizedReason = '信貸同步申請，消費貸款一站整合，回饋點數累積更快。';
+  }
+
+  return {
+    type: 'flex',
+    altText: '💳 合庫信用卡詳細說明',
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '💳 合庫信用卡詳細說明', color: '#FFFFFF', weight: 'bold', size: 'md' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'md', paddingAll: '16px',
+        contents: [
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs',
+            contents: [
+              { type: 'text', text: '主要特點', weight: 'bold', size: 'sm', color: headerColor },
+              { type: 'text', text: '• 消費回饋最高 3%，點數折抵年費', size: 'sm', wrap: true, color: '#334155' },
+              { type: 'text', text: '• 貸款自動扣繳，免擔心忘繳', size: 'sm', wrap: true, color: '#334155' },
+              { type: 'text', text: '• 海外消費享專屬匯率優惠', size: 'sm', wrap: true, color: '#334155' },
+              { type: 'text', text: '• 電商合作平台加碼回饋活動', size: 'sm', wrap: true, color: '#334155' },
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs',
+            contents: [
+              { type: 'text', text: '申辦資格', weight: 'bold', size: 'sm', color: headerColor },
+              { type: 'text', text: '年滿 20 歲、無不良信用紀錄即可申請', size: 'sm', wrap: true, color: '#334155' },
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical', spacing: 'xs', backgroundColor: '#FFFBEB',
+            paddingAll: '12px', cornerRadius: '8px',
+            contents: [
+              { type: 'text', text: '💡 個人化推薦理由', weight: 'bold', size: 'sm', color: '#92400E' },
+              { type: 'text', text: personalizedReason, size: 'sm', wrap: true, color: '#92400E' },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'horizontal', spacing: 'sm', paddingAll: '12px',
+        contents: [
+          {
+            type: 'button', style: 'primary', height: 'sm', flex: 1,
+            action: { type: 'uri', label: '📍 預約最近分行', uri: 'https://www.tcb.com.tw/branches' },
+            color: headerColor,
+          },
+          {
+            type: 'button', style: 'secondary', height: 'sm', flex: 1,
+            action: { type: 'message', label: '返回主選單', text: '返回主選單' },
+          },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
+
+/** 交叉銷售後續引導 quickReply 文字訊息 */
+function buildCrossSellFollowupQuickReply(): LineReplyMessage {
+  return {
+    type: 'text',
+    text: '如需進一步洽詢，歡迎預約分行服務人員，或繼續使用其他功能。',
+    quickReply: {
+      items: [
+        { type: 'action', action: { type: 'message', label: '預約分行洽詢', text: '我想洽詢' } },
+        { type: 'action', action: { type: 'message', label: '返回主選單', text: '返回主選單' } },
+      ],
+    },
   };
 }
 
