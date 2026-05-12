@@ -33,6 +33,7 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
   if (event.type === 'follow') {
     const userId = event.source.userId;
     if (!userId) return;
+    resetSession(userId);  // 封鎖再解封時清除舊 session，確保從 INITIAL 狀態開始
     const session = getSession(userId);
     const menuResult = transition(session, '');
     session.state = menuResult.nextState;
@@ -215,6 +216,19 @@ export async function handleEvent(event: WebhookEvent): Promise<void> {
     session.state = ConversationState.RECOMMEND;
     updateSession(session);
     // fall through → 下方 RECOMMEND 區塊會接手
+  }
+
+  // 語音辨識後「繼續填寫資料」或「手動填寫」：根據已收集資料推進到下一個缺漏欄位
+  if (userText === '繼續' && session.loanType !== null) {
+    if (!session.basicInfo.income) {
+      session.state = ConversationState.COLLECT_INCOME;
+    } else if (!session.basicInfo.amount) {
+      session.state = ConversationState.COLLECT_AMOUNT;
+    } else if (!session.basicInfo.occupation) {
+      session.state = ConversationState.COLLECT_OCCUPATION;
+    }
+    updateSession(session);
+    // fall through → state machine 接手，詢問缺漏欄位
   }
 
   // 全域貸款類型切換：任何狀態下輸入「房貸」或「信貸」都能重新進入產品介紹
@@ -565,7 +579,7 @@ function buildVoiceResultFlex(
               { type: 'button', style: 'primary', color: ACCENT, height: 'sm',
                 action: { type: 'message', label: '繼續填寫資料', text: '繼續' } },
               { type: 'button', style: 'secondary', height: 'sm',
-                action: { type: 'message', label: '✏️ 手動填寫', text: '重新開始' } },
+                action: { type: 'message', label: '✏️ 手動填寫', text: '繼續' } },
             ],
       },
     } as unknown as Record<string, unknown>,
