@@ -451,7 +451,7 @@ async function handleAudioMessage(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ audioBase64, mimeType: 'audio/m4a' }),
-          signal: AbortSignal.timeout(10_000),
+          signal: AbortSignal.timeout(60_000),
         });
         const data = (await res.json()) as { transcript?: string };
         transcript = data.transcript ?? '';

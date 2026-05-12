@@ -236,4 +236,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("BREEZE_ASR_PORT", "8003"))
     logger.info(f"Breeze-ASR-26 服務啟動中，port={port}")
     logger.info("首次啟動會自動下載模型 ~4-6GB，請耐心等候…")
-    uvicorn.run("breeze-asr-service:app", host="0.0.0.0", port=port, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=port, reload=False)
