@@ -8,6 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { UserSession, ChatMessage, LineReplyMessage } from '../models/types';
 import { ragQuery } from './ragService';
 import { LoanType, OccupationType } from '../models/enums';
+import { getApplicationById } from '../config/applicationStore';
 
 const MODEL = 'claude-sonnet-4-6';
 const MAX_HISTORY = 10;
@@ -40,7 +41,26 @@ function buildClientSummary(session: UserSession): string {
   if (session.basicInfo.income) lines.push(`月收入：約 ${Math.round(session.basicInfo.income / 10000)} 萬元`);
   if (session.basicInfo.amount) lines.push(`有意申貸：${Math.round(session.basicInfo.amount / 10000)} 萬元`);
   if (session.basicInfo.termYears) lines.push(`貸款年限：${session.basicInfo.termYears} 年`);
-  if (session.applicationId) lines.push(`進行中案件編號：${session.applicationId}`);
+  if (session.applicationId) {
+    const app = getApplicationById(session.applicationId);
+    if (app) {
+      const STATUS_LABEL: Record<string, string> = {
+        pending:   '待審核（剛送出，等待系統處理）',
+        reviewing: '審核中（行員複核中，預計 3 個工作天完成）',
+        approved:  '已核准（準備撥款，請洽分行確認撥款事宜）',
+        rejected:  '未通過',
+      };
+      const statusText = STATUS_LABEL[app.status] ?? app.status;
+      const rejectionNote = app.status === 'rejected' && app.rejectionReason
+        ? `，原因：${app.rejectionReason}`
+        : '';
+      lines.push(`案件編號：${session.applicationId}`);
+      lines.push(`案件狀態：${statusText}${rejectionNote}`);
+      if (app.basicInfo.amount) lines.push(`申請金額：${Math.round(app.basicInfo.amount / 10000)} 萬元`);
+    } else {
+      lines.push(`案件編號：${session.applicationId}（查無資料，可能已逾期）`);
+    }
+  }
   if (session.recommendedProductId) lines.push(`已推薦方案：${session.recommendedProductId}`);
 
   return lines.length > 0
