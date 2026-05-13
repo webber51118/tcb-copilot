@@ -33,7 +33,9 @@
 | `docs/screenshots/03_line_crew_flex.png` | 手機 LINE — PILOT CREW 三欄審核結果 Flex | S7 |
 | `docs/screenshots/04_valuate_result.png` | 瀏覽器 localhost:3000/valuate — P5/P50/P95 結果 | S9 |
 | `docs/screenshots/05_teams_fraud_alert.png` | Teams 頻道 — 防詐警示 Adaptive Card | S11 |
-| `docs/screenshots/06_copilot_studio_demo.png` | Copilot Studio — 行員查詢 Demo 截圖 | S12 |
+| `docs/screenshots/06a_copilot_studio_agent.jpeg` | Copilot Studio — Agent 設定頁（指示 + 知識庫）| S12 |
+| `docs/screenshots/06b_copilot_studio_demo.jpeg` | Copilot Studio — 主推薦 Demo（青安試算結果）| S12 |
+| `docs/screenshots/06c_copilot_studio_detail.jpeg` | Copilot Studio — 貸款條件摘要（Demo 下半段）| S12 |
 | `docs/screenshots/07_powerbi_dashboard.png` | Power BI Service — 四 Tab 儀表板 | S13 |
 | `docs/screenshots/08_mission_control.png` | 瀏覽器 localhost:3000/dashboard/ | S14 |
 | `docs/screenshots/09_teams_recommend.png` | Teams 頻道 — 推薦通知 + 行員話術卡片 | S15 |
@@ -41,7 +43,7 @@
 
 ---
 
-## 投影片大綱（20 張）
+## 投影片大綱（21 張）
 
 ---
 
@@ -720,32 +722,32 @@ PILOT CREW 審核完成（fire-and-forget）
 | 02:10-02:30 | S10-S11 | 防詐 PILOT + Teams 警示 | Teams 頻道截圖 |
 | 02:30-02:50 | S12 | Copilot Studio 行員查詢 | 三組 Demo 場景 |
 | 02:50-03:10 | S13-S15 | Power BI + Mission Control + Teams 話術 | 儀表板截圖 |
-| 03:10-03:30 | S16 | 可驗證成效收尾 | 三場景驗收 + 五大指標 |
-| 03:30-03:50 | S17-S18 | 同業趨勢 + 三大創新亮點 | 同業比較表 + 台語首創強調 |
-| 03:50-04:10 | S19 | AI 治理 9 項合規 | 對應表 |
-| 04:10-04:20 | S20 | 評分自評收尾 | 五維度自評表，總結一句話 |
+| 03:10-03:30 | S17 | 可驗證成效收尾 | 三場景驗收 + 五大指標 |
+| 03:30-03:50 | S18-S19 | 同業趨勢 + 四大創新亮點 | 同業比較表 + 台語首創強調 |
+| 03:50-04:10 | S20 | AI 治理 9 項合規 | 對應表 |
+| 04:10-04:20 | S21 | 評分自評收尾 | 五維度自評表，總結一句話 |
 
 **S17-S20 影片腳本文字（30-60 秒）**：
 
 ```
-【03:30 — S17 同業概況 + 三大關卡】
+【03:30 — S18 同業概況 + 三大關卡】
 各家銀行正在建構 AI 基礎建設——
 向量化法規、RAG 知識庫、防詐生態系都在進行中。
 合庫面臨三大待突破的關卡：帳務主機現代化、資料向量化、NLP 人才內化。
 而個金 Co-Pilot 正是在基礎建設完成前，最快能落地的應用層方案。
 
-【03:40 — S18 三大創新亮點】
+【03:40 — S19 四大創新亮點】
 我們的三大首創差異化：
 第一，台語語音申辦——全台首創，服務 400 萬高齡台語族群，其他銀行 AI 完全空白。
 第二，以房養老獨立流程——60-85 歲暖心五步，多數銀行 AI 完全忽略這個族群。
 第三，合家保加權演算法——貸款加壽險加理財，一次服務最大化，跳脫傳統銀行 AI 格局。
 
-【03:50 — S19 AI 治理 9 項合規】
+【03:50 — S20 AI 治理 9 項合規】
 我們主動對應合庫 AI 管理政策第六條九項原則——
 從公平待客、系統穩健、可解釋性，到演算法偏見防範，
 架構設計已具備正式上線申請的基礎。
 
-【04:00 — S20 評分自評收尾】
+【04:00 — S21 評分自評收尾】
 五個評分維度我們逐項對應：
 效益實用性 30%——審核時間 -94%、鑑估 -99.9%；
 創意度 25%——台語首創、合家保演算法、Mission Control；
@@ -769,3 +771,4 @@ PILOT CREW 審核完成（fire-and-forget）
 | v5.1 | 2026-05-10 | S5 台語語音標注「已實裝 Breeze-ASR-26」、S12 知識庫 8→9 章 2441→2653 行、S13 Power BI 自動推送標注「已整合」、補充 S17-S21 影片腳本文字（03:30-04:20）+ 截圖清單新增台語語音 Demo 截圖 |
 | v5.2 | 2026-05-10 | S17 加 Encoder/Decoder 技術層次差異化表；刪 S19 落地計畫頁；S20/S21 重編為 S19/S20；修正新 S19 ⑥ 知識庫章數為 9 章 2,653 行 |
 | v5.3 | 2026-05-10 | S17 加入「公股行庫標竿 — 華南銀行路徑」Callout（行內資料科學團隊 + SI 廠商整合 LLM 部署）|
+| v6.1 | 2026-05-13 | 修正三項不一致：大綱標題 20→21 張；截圖清單 06 單檔→06a/b/c 三張 .jpeg；影片腳本投影片編號錯位修正（S17-S20 → S18-S21）|
