@@ -3,8 +3,8 @@
 > **用途**：黑客松第一階段交付 — 紙本 PPT + 3-5 分鐘影片
 > **目標**：展示三位一體 PILOT CREW 架構 + M365 完整整合 + 真實 Demo 截圖
 > **時長**：3-5 分鐘影片 Demo
-> **版本**：v8 — 2026-05-15 擴充（26 → 28 張）：S5 後插入 S5b（AI 文件辨識 Demo）+ S5c（OpenData × MCP 業界趨勢）+ S19 創新亮點增第五項
-> **前版**：v7（2026-05-14，26 張）
+> **版本**：v9 — 2026-05-15 結構修訂（維持 28 張）：移除 S5c（邏輯串接錯誤）→ 新增 S10b（Twinkle Hub MCP × 實價登錄，置於鑑估段落）+ S5b 備註修正 + S9/S10 加 HITL + S19 亮點五修正
+> **前版**：v8（2026-05-15，28 張）
 
 ---
 
@@ -34,8 +34,8 @@
 | `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234744_LINE.jpg` | LIFF Step 2 — MyData✅解析完成（俞佑龍, NT$1,026,502）+ 謄本上傳提示 | **S5b（新增）** |
 | `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234806_LINE.jpg` | LIFF 完成頁雙✅ + 完整解析結果（MyData + 謄本）| **S5b（新增）** |
 | `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234826_LINE.jpg` | LINE Bot 回傳 AI辨識結果 + 三按鈕（確認/重傳/手填）| **S5b（新增）** |
-| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_194559_Facebook.jpg` | Twinkle Hub MCP：600萬筆實價登錄進 MCP Server | **S5c（新增）** |
-| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_194622_Facebook.jpg` | Twinkle Hub 平台截圖 + #MCP #OpenData #實價登錄 | **S5c（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_194559_Facebook.jpg` | Twinkle Hub MCP：600萬筆實價登錄進 MCP Server | **S10b（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_194622_Facebook.jpg` | Twinkle Hub 平台截圖 + #MCP #OpenData #實價登錄 | **S10b（新增）** |
 | `docs/screenshots/02_line_3card_crosssell.png` | 手機 LINE — 合家保 3 格交叉銷售卡片 | S6 |
 | `docs/screenshots/03_line_crew_flex.png` | 手機 LINE — PILOT CREW 三欄審核結果 Flex | S7 |
 | `docs/screenshots/04_valuate_result.png` | 瀏覽器 localhost:3000/valuate — P5/P50/P95 結果 | S9 |
@@ -264,63 +264,9 @@ MYDATA + 謄本提示      MyData 上傳頁       MyData✅解析完成         
 
 **備註文字**：
 > 客戶從 mydata.nat.gov.tw 下載所得資料、eland.nat.gov.tw 取得謄本，上傳後 AI 秒讀
-> → 模擬政府 OpenData 直接串接的體驗，免手填、免錯誤、節省行員核對時間
-
----
-
-### S5c｜OpenData × MCP：業界資料革命，Co-Pilot 已就緒
-
-**標題**：OpenData 進入 MCP 時代：台灣 49,343 筆政府資料走進 AI 工作流
-
-**版面設計**：左右三欄對照（左欄：現在 / 中欄：趨勢箭頭 / 右欄：未來）
-
-```
-左欄：現在（Co-Pilot 做法）
-──────────────────────────
-客戶自行至 MyData / eland.nat.gov.tw 下載
-           ↓
-LINE Bot LIFF 上傳
-           ↓
-Claude Vision 解析 → 結構化 JSON
-           ↓
-自動填入授信表單
-
-    中欄：業界趨勢
-    ─────────────
-         →→→
-    OpenData + MCP
-    生態逐步成熟
-
-右欄：未來（OpenData + MCP）
-──────────────────────────────
-Twinkle Hub MCP Server
-49,343 筆政府開放資料（96.6% 全量）
-600 萬筆全國實價登錄
-（2012 Q3 ～ 2026 Q1，22 縣市，55 季）
-           ↓
-自然語言一句話查詢
-           ↓
-Agent 直接取資料，客戶零上傳
-```
-
-**右欄截圖佐證**（Facebook 貼文截圖）：
-- `Screenshot_20260514_194559_Facebook.jpg` — Twinkle Hub：600萬筆實價登錄進 MCP Server
-- `Screenshot_20260514_194622_Facebook.jpg` — Twinkle Hub 平台截圖 + #MCP #OpenData #實價登錄
-
-> 所有截圖位於 `c:\Users\Webber\Downloads\Photos-3-001 (9)\`
-
-**數據標籤（強調框）**：
-- **49,343 個資料集** × 96.6% 政府全量
-- **600 萬筆實價登錄** × 22 縣市 × 55 季完整歷史
-- 支援 **Claude / Cursor / Ollama**
-
-**文章佐證**：
-> Business Insider（2026）：台灣首個 MCP Hub 上線，49,343 筆政府開放資料（96.6%全量）
-> 進入 AI 工作流，支援 Claude / Cursor / Ollama
-
-**底部橋接句（紅框）**：
-> Co-Pilot 已建立 Claude Vision 文件辨識架構，當 OpenData MCP 生態成熟時，
-> **可無縫升級為客戶零上傳體驗** — 基礎今天已經建好。
+> → 免手填、免錯誤、節省行員核對時間
+> 技術說明：MyData 為個人授權敏感資料，需本人驗證授權，非公開 Open Data；
+> 本系統透過 LIFF 讓客戶完成授權上傳後，Claude Vision 自動解析結構化欄位。
 
 ---
 
@@ -489,6 +435,9 @@ Monte Carlo GBM（1,000 路徑模擬）
 → 壓力情境下的市場波動分佈
           ↓
 輸出：P5 / P50 / P95 三情境估價區間
+          ↓
+⚑ Human in the Loop：行員判斷與裁量
+→ 最終核貸金額由行員依授信政策決定
 ```
 
 **銀行決策邏輯**（SmartArt 三色分層）：
@@ -519,6 +468,65 @@ Monte Carlo GBM（1,000 路徑模擬）
 - SHAP 前三大貢獻因子：屋齡（-18%）、樓層（+12%）、捷運距離（-9%）
 
 **對比**：傳統行員人工查詢實價登錄需 2-3 天，現在 15 秒完成且有 1,000 路徑信心區間支撐
+
+> ⚠️ Human in the Loop：AI 估價為輔助工具，P5/P50/P95 供行員參考，
+> 最終核貸金額由行員依授信政策與職業判斷裁量決定。
+
+---
+
+### S10b｜實價登錄進入 MCP 時代：Co-Pilot 鑑估的下一步
+
+**標題**：實價登錄進入 MCP 時代：Co-Pilot 鑑估的下一步
+
+**版面設計**：三欄敘事（過去 / 今天 Co-Pilot / 未來 MCP）
+
+```
+過去（行員痛點）               今天（Co-Pilot）              未來（MCP接軌）
+──────────────────────────────────────────────────────────────────────────
+行員查實價登錄要：           XGBoost 訓練自                  Twinkle Hub MCP Server
+• 打開政府網站手動搜尋       600 萬筆全國實價登錄            600 萬筆全國實價登錄
+• 篩掉格式錯誤資料           2012 Q3 ～ 2026 Q1              22 縣市 × 55 季
+• 逐筆比對坪數/屋齡/樓層      ↓                               ↓
+• 主觀判斷加減幾成            15 秒 P5/P50/P95               行員自然語言查詢：
+A 估 900 萬                  SHAP 可解釋因子                  「信義區近一年實價
+B 估 1,050 萬                → 行員直接引用核貸                登錄中位數與最高價？」
+稽核來問，沒有依據                                            AI 直接從真實資料回答
+```
+
+**截圖佐證**（Facebook 貼文截圖）：
+- `Screenshot_20260514_194559_Facebook.jpg` — Twinkle Hub：600萬筆實價登錄進 MCP Server
+- `Screenshot_20260514_194622_Facebook.jpg` — Twinkle Hub 平台截圖 + #MCP #OpenData #實價登錄
+
+> 所有截圖位於 `c:\Users\Webber\Downloads\Photos-3-001 (9)\`
+
+**故事旁白文字**：
+
+```
+過去行員在做的事：
+打開政府實價登錄網站、手動篩資料、逐筆比對、靠經驗判斷……
+A 行員估 900 萬，B 行員估 1,050 萬，稽核來問，沒有依據。
+
+今天 PILOT CREW 2 做到這件事：
+XGBoost 模型訓練自 600 萬筆全國實價登錄，
+輸入地址/坪數/屋齡，15 秒給出 P5/P50/P95，
+SHAP 因子全程可溯查。
+
+未來（OpenData MCP 接軌）：
+Twinkle Hub 已整合 600 萬筆全國實價登錄進 MCP Server。
+行員只要問：
+「幫我比較信義區近一年實價登錄中位數與單坪最高價」
+AI 直接從真實資料回答——不靠記憶、不幻覺。
+Co-Pilot 的模型基礎今天已建好，MCP 接軌路徑清晰可見。
+```
+
+**數據標籤（強調框）**：
+- **600 萬筆** 全國實價登錄 × 22 縣市 × 55 季（2012 Q3 ～ 2026 Q1）
+- 三大交易類型：房屋買賣 475 萬筆 / 預售屋 55.4 萬筆 / 租賃 72.6 萬筆
+- 支援自然語言查詢，無幻覺
+
+**底部橋接句**：
+> OGDL-Taiwan-1.0 開放授權，合法合規。
+> Co-Pilot XGBoost 今天訓練自相同資料集——未來升級為即時 MCP 查詢，架構無縫銜接。
 
 ---
 
@@ -889,11 +897,11 @@ PILOT CREW 審核完成（fire-and-forget）
 - 符合「AI 客服正確架構」六步驟完整閉環
 - 差異化：傳統 FAQ Bot 沒記憶，客戶每次重新開始；我們有 Memory Augmentation
 
-**亮點五：OpenData × MCP 接軌就緒（前瞻架構）**：
-- Claude Vision 文件辨識架構已落地（MyData + 謄本自動解析，S5b Demo 可見）
-- 業界 Twinkle Hub MCP Server 已提供 49,343 筆政府開放資料（96.6% 全量）+ 600 萬筆實價登錄
-- Co-Pilot 無需重建架構，即可升級為「客戶零上傳、Agent 直接取資料」體驗
-- 差異化：大多數銀行 AI 仍停在手動上傳階段，我們的架構已為 MCP 時代預備好接口
+**亮點五：鑑估資料 × MCP 接軌就緒（前瞻架構）**：
+- 鑑估 PILOT CREW 訓練自 600 萬筆全國實價登錄（與 Twinkle Hub MCP 相同資料來源）
+- 業界 Twinkle Hub 已整合此資料集進 MCP Server，支援自然語言即時查詢
+- Co-Pilot XGBoost 模型 → 未來可銜接 MCP 即時資料層，行員估價體驗再升級
+- 差異化：資料來源相同，今天已有模型基礎，接軌路徑最短
 
 **可延伸至其他部門**：
 > 企業金融（中小企業授信）/ 財富管理（投資組合推薦）/ 法金（企業貸款評估）
@@ -955,7 +963,8 @@ PILOT CREW 審核完成（fire-and-forget）
 | 01:10-01:30 | S4 | 三位一體架構解法 | 架構圖動態展開 |
 | 01:30-01:55 | S5-S7 | LINE Bot 旅程 + 三欄審核 Flex | 手機 LINE 畫面錄影 |
 | 01:45-02:10 | S8-S9 | 鑑估 PILOT Demo | P5/P50/P95 結果截圖 |
-| 02:10-02:30 | S10-S11 | 防詐 PILOT + Teams 警示 | Teams 頻道截圖 |
+| 02:10-02:25 | S10b | 實價登錄 MCP 未來展望 | Twinkle Hub 截圖 + 自然語言查詢示例 |
+| 02:25-02:45 | S10-S11 | 防詐 PILOT + Teams 警示 | Teams 頻道截圖 |
 | 02:30-02:50 | S12 | Copilot Studio 行員查詢 | 三組 Demo 場景 |
 | 02:50-03:10 | S13-S15 | Power BI + Mission Control + Teams 話術 | 儀表板截圖 |
 | 03:10-03:30 | S17 | 可驗證成效收尾 | 三場景驗收 + 五大指標 |
@@ -1026,3 +1035,4 @@ PILOT CREW 審核完成（fire-and-forget）
 | v6.1 | 2026-05-13 | 修正三項不一致：大綱標題 20→21 張；截圖清單 06 單檔→06a/b/c 三張 .jpeg；影片腳本投影片編號錯位修正（S17-S20 → S18-S21）|
 | v7 | 2026-05-14 | 擴充 21 → 26 張：S3 改版（版本A純三代演進脈絡，移除四大痛點列表）+ 新增 S3b（LINE Bot 微電影 × 貸款專區）+ 四張敘事鋪陳頁（鑑估痛點 / 防詐痛點 / 即時警示 / 數據困境）+ PILOT CREW 標題統一 + 影片腳本補 S3/S3b 旁白 |
 | v8 | 2026-05-15 | 擴充 26 → 28 張：S5 後插入 S5b（AI 文件辨識 Demo — 五格截圖流程 + 底部自動解析數據）+ S5c（OpenData × MCP 業界趨勢 — 左右三欄對照 + Twinkle Hub 佐證 + 底部橋接）+ S19 創新亮點增第五項「OpenData × MCP 接軌就緒」+ 截圖清單新增 7 張素材 |
+| v9 | 2026-05-15 | 結構修訂（維持 28 張）：移除 S5c（MyData 與 OpenData 邏輯串接錯誤）→ 新增 S10b「實價登錄進入 MCP 時代」（置於鑑估 Demo 後、防詐痛點前）+ S5b 備註修正（移除「模擬 OpenData 串接」誤導文字，加技術說明）+ S9 技術流程圖加 HITL 層 + S10 加 HITL 聲明 + S19 亮點五改為「鑑估資料 × MCP 接軌就緒」+ 截圖清單更新（S5c → S10b）+ 影片腳本插入 S10b |
