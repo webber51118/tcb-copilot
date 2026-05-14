@@ -1,10 +1,10 @@
-# 個金 Co-Pilot 領航員：三位一體 PILOT CREW 黑客松版（26 張投影片）
+# 個金 Co-Pilot 領航員：三位一體 PILOT CREW 黑客松版（28 張投影片）
 
 > **用途**：黑客松第一階段交付 — 紙本 PPT + 3-5 分鐘影片
 > **目標**：展示三位一體 PILOT CREW 架構 + M365 完整整合 + 真實 Demo 截圖
 > **時長**：3-5 分鐘影片 Demo
-> **版本**：v7 — 2026-05-14 擴充（21 → 26 張）：S3 改版（三代演進脈絡）+ 新增 S3b（LINE Bot 微電影）+ 四張敘事鋪陳頁 + PILOT CREW 標題統一
-> **前版**：v5（2026-05-10，20 張）
+> **版本**：v8 — 2026-05-15 擴充（26 → 28 張）：S5 後插入 S5b（AI 文件辨識 Demo）+ S5c（OpenData × MCP 業界趨勢）+ S19 創新亮點增第五項
+> **前版**：v7（2026-05-14，26 張）
 
 ---
 
@@ -29,6 +29,13 @@
 |------|------|-----------|
 | `docs/screenshots/01_line_mainmenu.png` | 手機 LINE — 主選單 6 宮格 | S5 |
 | `docs/screenshots/01b_breeze_asr_demo.png` | **台語語音辨識流程（說台語 → 辨識結果畫面）** | **S5（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234409_LINE.jpg` | LINE Bot AI文件辨識 Flex Card（MYDATA + 謄本清單提示）| **S5b（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234732_LINE.jpg` | LIFF Step 1 — MYDATA 所得上傳頁 | **S5b（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234744_LINE.jpg` | LIFF Step 2 — MyData✅解析完成（俞佑龍, NT$1,026,502）+ 謄本上傳提示 | **S5b（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234806_LINE.jpg` | LIFF 完成頁雙✅ + 完整解析結果（MyData + 謄本）| **S5b（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234826_LINE.jpg` | LINE Bot 回傳 AI辨識結果 + 三按鈕（確認/重傳/手填）| **S5b（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_194559_Facebook.jpg` | Twinkle Hub MCP：600萬筆實價登錄進 MCP Server | **S5c（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_194622_Facebook.jpg` | Twinkle Hub 平台截圖 + #MCP #OpenData #實價登錄 | **S5c（新增）** |
 | `docs/screenshots/02_line_3card_crosssell.png` | 手機 LINE — 合家保 3 格交叉銷售卡片 | S6 |
 | `docs/screenshots/03_line_crew_flex.png` | 手機 LINE — PILOT CREW 三欄審核結果 Flex | S7 |
 | `docs/screenshots/04_valuate_result.png` | 瀏覽器 localhost:3000/valuate — P5/P50/P95 結果 | S9 |
@@ -43,7 +50,7 @@
 
 ---
 
-## 投影片大綱（26 張）
+## 投影片大綱（28 張）
 
 ---
 
@@ -216,6 +223,104 @@
 > Bot 帶知識庫 8 章 + 本次對話記憶組裝 system prompt
 > 問利率、問資格、查進度——不用重填，Bot 記得你說的
 > 符合「AI 客服正確架構」六步驟：認身份 → 撈歷史 → 查知識庫 → 組 prompt → 呼叫 LLM → 寫回
+
+---
+
+### S5b｜AI 文件辨識 Demo：MyData × 謄本 → 零手填
+
+**標題**：AI 文件辨識：MyData × 謄本 → 零手填，模擬 OpenData 串接效果
+
+**版面設計**：橫向五格截圖 + 底部說明列
+
+```
+[截圖1]                [截圖2]             [截圖3]                  [截圖4]              [截圖5]
+LINE Bot 文件清單      LIFF Step 1         Step 2                  完成頁               Bot 回傳
+MYDATA + 謄本提示      MyData 上傳頁       MyData✅解析完成          雙✅結果頁            AI辨識結果
+                                          +謄本上傳提示                                   +三按鈕確認
+      ↓                    ↓                   ↓                        ↓                    ↓
+  提示文件上傳          選圖 / 拍攝         AI 解析中                姓名 / 年所得         行員直接核貸
+```
+
+**截圖來源**（依序）：
+1. `Screenshot_20260514_234409_LINE.jpg` — LINE Bot Flex Card（MYDATA + 謄本清單提示）
+2. `Screenshot_20260514_234732_LINE.jpg` — LIFF Step 1，MyData 所得上傳頁
+3. `Screenshot_20260514_234744_LINE.jpg` — LIFF Step 2，MyData✅解析完成（俞佑龍, NT$1,026,502）
+4. `Screenshot_20260514_234806_LINE.jpg` — LIFF 完成頁雙✅，MyData + 謄本解析結果
+5. `Screenshot_20260514_234826_LINE.jpg` — LINE Bot 回傳 AI 辨識結果 + 三按鈕（確認/重傳/手填）
+
+> 所有截圖位於 `c:\Users\Webber\Downloads\Photos-3-001 (9)\`
+
+**自動解析欄位（底部數據列）**：
+
+| 來源 | 解析欄位 |
+|------|---------|
+| MyData（mydata.nat.gov.tw）| 姓名・身分證・年所得 NT$1,026,502・就業單位・月收入 NT$85,542 |
+| 謄本（eland.nat.gov.tw）| 建物種類公寓・1樓・26.62坪・屋齡56年 |
+
+**相關程式碼**：
+- `src/main/typescript/services/documentParser.ts` — Claude Vision 解析 MyData + 謄本
+- `frontend/src/pages/UploadDocsPage.tsx` — LIFF 上傳頁面（兩步驟）
+- `src/main/typescript/api/valuateXgboost.ts` — 謄本解析整合 XGBoost 鑑估
+
+**備註文字**：
+> 客戶從 mydata.nat.gov.tw 下載所得資料、eland.nat.gov.tw 取得謄本，上傳後 AI 秒讀
+> → 模擬政府 OpenData 直接串接的體驗，免手填、免錯誤、節省行員核對時間
+
+---
+
+### S5c｜OpenData × MCP：業界資料革命，Co-Pilot 已就緒
+
+**標題**：OpenData 進入 MCP 時代：台灣 49,343 筆政府資料走進 AI 工作流
+
+**版面設計**：左右三欄對照（左欄：現在 / 中欄：趨勢箭頭 / 右欄：未來）
+
+```
+左欄：現在（Co-Pilot 做法）
+──────────────────────────
+客戶自行至 MyData / eland.nat.gov.tw 下載
+           ↓
+LINE Bot LIFF 上傳
+           ↓
+Claude Vision 解析 → 結構化 JSON
+           ↓
+自動填入授信表單
+
+    中欄：業界趨勢
+    ─────────────
+         →→→
+    OpenData + MCP
+    生態逐步成熟
+
+右欄：未來（OpenData + MCP）
+──────────────────────────────
+Twinkle Hub MCP Server
+49,343 筆政府開放資料（96.6% 全量）
+600 萬筆全國實價登錄
+（2012 Q3 ～ 2026 Q1，22 縣市，55 季）
+           ↓
+自然語言一句話查詢
+           ↓
+Agent 直接取資料，客戶零上傳
+```
+
+**右欄截圖佐證**（Facebook 貼文截圖）：
+- `Screenshot_20260514_194559_Facebook.jpg` — Twinkle Hub：600萬筆實價登錄進 MCP Server
+- `Screenshot_20260514_194622_Facebook.jpg` — Twinkle Hub 平台截圖 + #MCP #OpenData #實價登錄
+
+> 所有截圖位於 `c:\Users\Webber\Downloads\Photos-3-001 (9)\`
+
+**數據標籤（強調框）**：
+- **49,343 個資料集** × 96.6% 政府全量
+- **600 萬筆實價登錄** × 22 縣市 × 55 季完整歷史
+- 支援 **Claude / Cursor / Ollama**
+
+**文章佐證**：
+> Business Insider（2026）：台灣首個 MCP Hub 上線，49,343 筆政府開放資料（96.6%全量）
+> 進入 AI 工作流，支援 Claude / Cursor / Ollama
+
+**底部橋接句（紅框）**：
+> Co-Pilot 已建立 Claude Vision 文件辨識架構，當 OpenData MCP 生態成熟時，
+> **可無縫升級為客戶零上傳體驗** — 基礎今天已經建好。
 
 ---
 
@@ -784,6 +889,12 @@ PILOT CREW 審核完成（fire-and-forget）
 - 符合「AI 客服正確架構」六步驟完整閉環
 - 差異化：傳統 FAQ Bot 沒記憶，客戶每次重新開始；我們有 Memory Augmentation
 
+**亮點五：OpenData × MCP 接軌就緒（前瞻架構）**：
+- Claude Vision 文件辨識架構已落地（MyData + 謄本自動解析，S5b Demo 可見）
+- 業界 Twinkle Hub MCP Server 已提供 49,343 筆政府開放資料（96.6% 全量）+ 600 萬筆實價登錄
+- Co-Pilot 無需重建架構，即可升級為「客戶零上傳、Agent 直接取資料」體驗
+- 差異化：大多數銀行 AI 仍停在手動上傳階段，我們的架構已為 MCP 時代預備好接口
+
 **可延伸至其他部門**：
 > 企業金融（中小企業授信）/ 財富管理（投資組合推薦）/ 法金（企業貸款評估）
 > 架構可重用，只需替換知識庫與產品目錄
@@ -914,3 +1025,4 @@ PILOT CREW 審核完成（fire-and-forget）
 | v5.3 | 2026-05-10 | S17 加入「公股行庫標竿 — 華南銀行路徑」Callout（行內資料科學團隊 + SI 廠商整合 LLM 部署）|
 | v6.1 | 2026-05-13 | 修正三項不一致：大綱標題 20→21 張；截圖清單 06 單檔→06a/b/c 三張 .jpeg；影片腳本投影片編號錯位修正（S17-S20 → S18-S21）|
 | v7 | 2026-05-14 | 擴充 21 → 26 張：S3 改版（版本A純三代演進脈絡，移除四大痛點列表）+ 新增 S3b（LINE Bot 微電影 × 貸款專區）+ 四張敘事鋪陳頁（鑑估痛點 / 防詐痛點 / 即時警示 / 數據困境）+ PILOT CREW 標題統一 + 影片腳本補 S3/S3b 旁白 |
+| v8 | 2026-05-15 | 擴充 26 → 28 張：S5 後插入 S5b（AI 文件辨識 Demo — 五格截圖流程 + 底部自動解析數據）+ S5c（OpenData × MCP 業界趨勢 — 左右三欄對照 + Twinkle Hub 佐證 + 底部橋接）+ S19 創新亮點增第五項「OpenData × MCP 接軌就緒」+ 截圖清單新增 7 張素材 |
