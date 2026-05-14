@@ -3,8 +3,8 @@
 > **用途**：黑客松第一階段交付 — 紙本 PPT + 3-5 分鐘影片
 > **目標**：展示三位一體 PILOT CREW 架構 + M365 完整整合 + 真實 Demo 截圖
 > **時長**：3-5 分鐘影片 Demo
-> **版本**：v9 — 2026-05-15 結構修訂（維持 28 張）：移除 S5c（邏輯串接錯誤）→ 新增 S10b（Twinkle Hub MCP × 實價登錄，置於鑑估段落）+ S5b 備註修正 + S9/S10 加 HITL + S19 亮點五修正
-> **前版**：v8（2026-05-15，28 張）
+> **版本**：v10 — 2026-05-15 S6 演算法深化（InstructRec 話術對比 + 合家保計分色塊，移除 Layer 4）+ S8 合併 AI 諮詢原理（左側說明 40% + 右側 Demo 60%）+ 截圖清單補登 234523 Quick Reply + 頁數維持 28 張
+> **前版**：v9（2026-05-15，28 張）
 
 ---
 
@@ -36,6 +36,7 @@
 | `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234826_LINE.jpg` | LINE Bot 回傳 AI辨識結果 + 三按鈕（確認/重傳/手填）| **S5b（新增）** |
 | `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_194559_Facebook.jpg` | Twinkle Hub MCP：600萬筆實價登錄進 MCP Server | **S10b（新增）** |
 | `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_194622_Facebook.jpg` | Twinkle Hub 平台截圖 + #MCP #OpenData #實價登錄 | **S10b（新增）** |
+| `c:\Users\Webber\Downloads\Photos-3-001 (9)\Screenshot_20260514_234523_LINE.jpg` | 貸款類型 Quick Reply（房/信選擇）| **S3b 或 S5（貸款專區入口視覺）** |
 | `docs/screenshots/02_line_3card_crosssell.png` | 手機 LINE — 合家保 3 格交叉銷售卡片 | S6 |
 | `docs/screenshots/03_line_crew_flex.png` | 手機 LINE — PILOT CREW 三欄審核結果 Flex | S7 |
 | `docs/screenshots/04_valuate_result.png` | 瀏覽器 localhost:3000/valuate — P5/P50/P95 結果 | S9 |
@@ -272,7 +273,7 @@ MYDATA + 謄本提示      MyData 上傳頁       MyData✅解析完成         
 
 ### S6｜PILOT CREW 1：行銷客服
 
-**標題**：PILOT CREW 1 行銷客服：從推薦、交叉銷售到 AI 諮詢，全程陪伴客戶
+**標題**：PILOT CREW 1 行銷客服：三層推薦引擎 × 合家保加權演算法
 
 **左側 — 推薦引擎三層架構**（SmartArt 由下往上）：
 
@@ -284,6 +285,13 @@ MYDATA + 謄本提示      MyData 上傳頁       MyData✅解析完成         
 **Layer 2 個人化說明（LLM Instruction Following）**：
 - 同一產品，護理師看到「月省 X 元」，軍人看到「軍人專屬優惠」
 - 學術依據：InstructRec（arXiv:2305.07001）
+
+**話術對比範例**：
+```
+護理師 → 「月省 X 元、每月輕鬆負擔」
+軍人   → 「國軍專屬優惠利率」
+同一產品，LLM 依職業生成不同話術
+```
 
 **Layer 3 交叉銷售升級 — 合家保加權演算法**：
 
@@ -297,17 +305,15 @@ MYDATA + 謄本提示      MyData 上傳頁       MyData✅解析完成         
 | 青安/軍公教貸款 | +3 | +1 | +1 |
 | 以房養老貸款 | 0 | +4 | +2 |
 
-範例：35 歲公務員月薪 8 萬 + 青安貸款 → **合利超旺 11 分**（最高）
-
-**Layer 4 AI 諮詢（RAG + Memory Augmentation）**：
-- 觸發：推薦後客戶仍有問題 → 💬 AI 諮詢接棒陪伴
-- 機制：知識庫 8 章 + chatHistory 最近 5 輪 → 組 system prompt → LLM 回答
-- 效果：Bot 記得客戶年齡、職業、申貸金額，不用重填
-- 學術對應：RAG + Memory Augmentation（狀態寫在 context 外面）
+**計分色塊範例**：
+```
+35 歲公務員 + 月薪 8 萬 + 青安貸款
+  年齡 ≤ 45 → +3　軍公教職業 → +3　青安貸款 → +3
+  合利超旺：11 分 🥇 → 第一推薦
+```
 
 **底部 Callout**（紅框）：
-> CREW 1 覆蓋完整客戶旅程：**推薦產品 → 合家保交叉銷售 → 台語語音入口 → AI 諮詢跟進**
-> 從初次接觸到申辦完成，全程不離 LINE
+> 演算法決定順序，LLM 決定話術——同一商品對不同客戶說不同的話。
 
 **右側 — LINE 交叉銷售 3 格升級卡**（📸 截圖：`docs/screenshots/02_line_3card_crosssell.png`）：
 
@@ -360,7 +366,25 @@ MYDATA + 謄本提示      MyData 上傳頁       MyData✅解析完成         
 
 **標題**：Demo — AI 諮詢：Bot 記得你說過什麼，問什麼都能答
 
-**版面配置**：截圖佔 65%，右側 35% 說明
+**版面配置**：左側說明 40% + 右側截圖 60%
+
+**左側 — AI 諮詢原理**（從 S6 Layer 4 移入，精簡版）：
+
+```
+知識庫 8 章 2,441 行
+        ↓
+chatHistory 最近 5 輪
+（記住年齡 / 職業 / 申貸金額）
+        ↓
+組裝 system prompt → LLM → 回覆
+Bot 記得你說的，不用每次重填
+```
+
+**六步驟閉環**（小字 callout）：
+認身份 → 撈歷史 → 查知識庫 → 組 prompt → LLM → 寫回
+
+**差異化說明**（底部紅框）：
+> 傳統 FAQ Bot 無記憶；Co-Pilot Memory Augmentation，上下文 5 輪連貫。
 
 📸 **截圖**：`docs/screenshots/10_ai_consulting_demo.png`
 
@@ -1036,3 +1060,4 @@ PILOT CREW 審核完成（fire-and-forget）
 | v7 | 2026-05-14 | 擴充 21 → 26 張：S3 改版（版本A純三代演進脈絡，移除四大痛點列表）+ 新增 S3b（LINE Bot 微電影 × 貸款專區）+ 四張敘事鋪陳頁（鑑估痛點 / 防詐痛點 / 即時警示 / 數據困境）+ PILOT CREW 標題統一 + 影片腳本補 S3/S3b 旁白 |
 | v8 | 2026-05-15 | 擴充 26 → 28 張：S5 後插入 S5b（AI 文件辨識 Demo — 五格截圖流程 + 底部自動解析數據）+ S5c（OpenData × MCP 業界趨勢 — 左右三欄對照 + Twinkle Hub 佐證 + 底部橋接）+ S19 創新亮點增第五項「OpenData × MCP 接軌就緒」+ 截圖清單新增 7 張素材 |
 | v9 | 2026-05-15 | 結構修訂（維持 28 張）：移除 S5c（MyData 與 OpenData 邏輯串接錯誤）→ 新增 S10b「實價登錄進入 MCP 時代」（置於鑑估 Demo 後、防詐痛點前）+ S5b 備註修正（移除「模擬 OpenData 串接」誤導文字，加技術說明）+ S9 技術流程圖加 HITL 層 + S10 加 HITL 聲明 + S19 亮點五改為「鑑估資料 × MCP 接軌就緒」+ 截圖清單更新（S5c → S10b）+ 影片腳本插入 S10b |
+| v10 | 2026-05-15 | S6 演算法深化（InstructRec 話術對比 + 合家保計分色塊，移除 Layer 4）+ S8 合併 AI 諮詢原理（左側說明 40% + 右側 Demo 60%）+ 截圖清單補登 234523 Quick Reply + 頁數維持 28 張 |
