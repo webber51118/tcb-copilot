@@ -22,6 +22,7 @@ const MOCK_RESULT = {
   riskLevel:          '低風險' as const,
   pricePerPing:       600_000,
   model:              'demo' as const,
+  shapFactors:        [],
 };
 
 /** 手動模式完整欄位 */

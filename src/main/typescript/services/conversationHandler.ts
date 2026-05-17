@@ -1575,6 +1575,12 @@ function buildPilotCrewResultFlex(result: PilotCrewResult): LineReplyMessage {
   const crew2Rows = crew2 ? [
     { label: '鑑估值',   value: `NT$ ${crew2.result.estimatedValue.toLocaleString()}` },
     { label: '評估模式', value: crew2.mode === 'live' ? '🔗 即時 ML 模型' : '📊 Demo 估算' },
+    ...((crew2.result.shapFactors ?? []).length > 0 ? [{
+      label: 'SHAP 因子',
+      value: (crew2.result.shapFactors ?? []).slice(0, 3)
+        .map((f) => `${f.label}${f.direction === '拉高' ? '↑' : '↓'}${(Math.abs(f.contribution) * 100).toFixed(0)}%`)
+        .join('、'),
+    }] : []),
   ] : [];
 
   const crew3Rows = [

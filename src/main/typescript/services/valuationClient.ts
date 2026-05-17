@@ -9,7 +9,7 @@
  *   3. 優雅降級：Python 服務下線時回 503
  */
 
-import { ValuationRequest, ValuationResult, XGBoostValuationRequest, XGBoostValuationResult } from '../models/types';
+import { ValuationRequest, ValuationResult, XGBoostValuationRequest, XGBoostValuationResult, ShapFactor } from '../models/types';
 
 const VALUATION_API_URL  = process.env.VALUATION_API_URL || 'http://localhost:8001';
 const VALUATE_ENDPOINT   = `${VALUATION_API_URL}/valuate`;
@@ -90,6 +90,7 @@ export async function callValuationEngine(request: ValuationRequest): Promise<Va
 /** XGBoost snake_case → camelCase 轉換 */
 function fromXGBoostSnakeCase(raw: Record<string, unknown>): XGBoostValuationResult {
   const ci = raw.confidence_interval as Record<string, number>;
+  const rawShap = (raw.shap_factors ?? []) as Array<Record<string, unknown>>;
   return {
     estimatedValue:     raw.estimated_value  as number,
     confidenceInterval: { p5: ci.p5, p50: ci.p50, p95: ci.p95 },
@@ -97,6 +98,11 @@ function fromXGBoostSnakeCase(raw: Record<string, unknown>): XGBoostValuationRes
     riskLevel:          raw.risk_level       as XGBoostValuationResult['riskLevel'],
     pricePerPing:       raw.price_per_ping   as number,
     model:              (raw.model ?? 'xgboost') as XGBoostValuationResult['model'],
+    shapFactors:        rawShap.map((f) => ({
+      label:        f.label        as string,
+      contribution: f.contribution as number,
+      direction:    f.direction    as ShapFactor['direction'],
+    })),
   };
 }
 

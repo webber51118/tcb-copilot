@@ -269,6 +269,13 @@ export interface XGBoostValuationRequest {
   loanAmount:   number;
 }
 
+/** SHAP 單一貢獻因子 */
+export interface ShapFactor {
+  label:        string;
+  contribution: number;
+  direction:    '拉高' | '拉低';
+}
+
 /** XGBoost 個別物件鑑價結果 */
 export interface XGBoostValuationResult {
   estimatedValue:     number;
@@ -277,6 +284,7 @@ export interface XGBoostValuationResult {
   riskLevel:          '低風險' | '中風險' | '高風險';
   pricePerPing:       number;
   model:              'xgboost' | 'demo';
+  shapFactors:        ShapFactor[];
 }
 
 /** 鑑價結果（Python 服務回傳，camelCase 轉換後） */
@@ -303,4 +311,6 @@ export interface ValuationResult {
   region: string;
   /** 建物類型 */
   buildingType: string;
+  /** SHAP 前三大貢獻因子（選填，XGBoost 模式才有）*/
+  shapFactors?: ShapFactor[];
 }
