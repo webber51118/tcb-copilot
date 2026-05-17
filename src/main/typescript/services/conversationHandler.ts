@@ -469,8 +469,14 @@ async function handleAudioMessage(
         });
         const data = (await res.json()) as { transcript?: string };
         transcript = data.transcript ?? '';
-      } catch {
-        transcript = '我是上班族，月薪六萬，想借五百萬買第一間房子，自己住';
+      } catch (asrErr) {
+        console.error('[ASR] 台語辨識服務呼叫失敗，降級至 Demo 模式:', asrErr);
+        const DEMO = [
+          '我是護理師，月薪六萬，想借五百萬，買第一間厝，自住',
+          '我是現役軍人，月俸七萬，想借七百萬，要買自住的房子',
+          '我已經退休，每月有四萬退休金，想借三十萬週轉用',
+        ];
+        transcript = DEMO[Math.floor(Math.random() * DEMO.length)]!;
       }
     } else {
       // Demo 模式：使用示範台語轉錄句
