@@ -177,7 +177,7 @@
     },
     "propertyInfo": {
       "propertyAge": 15,
-      "areaPing": 55.0,
+      "areaPing": 55,
       "hasParking": true,
       "layout": "4房2廳3衛",
       "floor": 12,
@@ -206,7 +206,7 @@
     },
     "propertyInfo": {
       "propertyAge": 3,
-      "areaPing": 28.0,
+      "areaPing": 28,
       "hasParking": false,
       "layout": "2房2廳1衛",
       "floor": 8,
@@ -338,7 +338,7 @@
     },
     "propertyInfo": {
       "propertyAge": 5,
-      "areaPing": 35.0,
+      "areaPing": 35,
       "hasParking": true,
       "layout": "3房2廳2衛",
       "floor": 10,
@@ -389,7 +389,7 @@
     },
     "propertyInfo": {
       "propertyAge": 2,
-      "areaPing": 30.0,
+      "areaPing": 30,
       "hasParking": true,
       "layout": "3房2廳1衛",
       "floor": 6,
@@ -440,7 +440,7 @@
     },
     "propertyInfo": {
       "propertyAge": 20,
-      "areaPing": 78.0,
+      "areaPing": 78,
       "hasParking": true,
       "layout": "5房3廳3衛",
       "floor": 2,
@@ -629,7 +629,7 @@
     },
     "propertyInfo": {
       "propertyAge": 4,
-      "areaPing": 33.0,
+      "areaPing": 33,
       "hasParking": true,
       "layout": "3房2廳2衛",
       "floor": 7,
@@ -738,7 +738,7 @@
     },
     "propertyInfo": {
       "propertyAge": 0,
-      "areaPing": 45.0,
+      "areaPing": 45,
       "hasParking": true,
       "layout": "3房2廳2衛",
       "floor": 15,
@@ -749,5 +749,89 @@
     "landRegistryReady": true,
     "status": "reviewing",
     "appliedAt": "2026-04-17T11:20:00.000Z"
+  },
+  {
+    "id": "TCB-20260511-0001",
+    "lineUserId": "Ue802e36259cbadd70256a15622097254",
+    "applicantName": "",
+    "applicantPhone": "",
+    "loanType": "mortgage",
+    "basicInfo": {
+      "age": 35,
+      "occupation": "公務員",
+      "income": 80000,
+      "purpose": "首購自住",
+      "termYears": 30,
+      "amount": 8000000
+    },
+    "propertyInfo": {
+      "propertyAge": 10,
+      "areaPing": 35,
+      "hasParking": true,
+      "layout": "3房2廳2衛",
+      "floor": 8,
+      "buildingType": "大樓"
+    },
+    "recommendedProductId": "young-safe-home",
+    "mydataReady": true,
+    "landRegistryReady": true,
+    "status": "pending",
+    "appliedAt": "2026-05-11T17:03:15.692Z"
+  },
+  {
+    "id": "TCB-20260512-0001",
+    "lineUserId": "Ue802e36259cbadd70256a15622097254",
+    "applicantName": "",
+    "applicantPhone": "",
+    "loanType": "mortgage",
+    "basicInfo": {
+      "age": 35,
+      "occupation": "公務員",
+      "income": 80000,
+      "purpose": "首購自住",
+      "termYears": 40,
+      "amount": 8000000
+    },
+    "propertyInfo": {
+      "propertyAge": 10,
+      "areaPing": 35,
+      "hasParking": true,
+      "layout": "3房2廳2衛",
+      "floor": 8,
+      "buildingType": "大樓"
+    },
+    "recommendedProductId": "young-safe-home",
+    "mydataReady": true,
+    "landRegistryReady": true,
+    "status": "pending",
+    "appliedAt": "2026-05-12T15:14:47.921Z"
+  },
+  {
+    "id": "TCB-20260517-0001",
+    "lineUserId": "Ue802e36259cbadd70256a15622097254",
+    "applicantName": "",
+    "applicantPhone": "",
+    "loanType": "mortgage",
+    "basicInfo": {
+      "age": null,
+      "occupation": null,
+      "income": 10000,
+      "purpose": "其他",
+      "termYears": 30,
+      "amount": 500000
+    },
+    "propertyInfo": {
+      "propertyAge": 50,
+      "areaPing": 35,
+      "hasParking": false,
+      "layout": "3房2廳2衛",
+      "floor": 1,
+      "buildingType": "公寓"
+    },
+    "recommendedProductId": "reverse-mortgage",
+    "mydataReady": false,
+    "landRegistryReady": false,
+    "status": "pending",
+    "appliedAt": "2026-05-17T14:06:45.876Z"
   }
 ]

@@ -1451,7 +1451,7 @@ async function triggerWorkflowAsync(userId: string, session: UserSession): Promi
 
   await pushMessages(userId, [{
     type: 'text',
-    text: '🚀 您的申請已送出！\n\n三位一體 PILOT CREW 正在並行審核：\n🎯 CREW1 行銷PILOT — 推薦引擎\n🏗️ CREW2 鑑估PILOT — ML 鑑價\n🔍 CREW3 防詐PILOT — 風控評分\n\n預計需要 10~30 秒，請稍候...',
+    text: '🚀 您的申請已送出！\nAI 正在審核，預計 10~30 秒，請稍候...',
   }]);
 
   const result = await runPilotCrewReview(pilotReq);
@@ -1461,7 +1461,7 @@ async function triggerWorkflowAsync(userId: string, session: UserSession): Promi
   latestSession.applicationId = result.applicationId;
   updateSession(latestSession);
 
-  await pushMessages(userId, [buildPilotCrewResultFlex(result)]);
+  await pushMessages(userId, [buildCustomerResultFlex(result)]);
 
   // Power BI 推送審核結果（fire-and-forget）
   pushPilotCrewResultToPbi(
@@ -1657,6 +1657,85 @@ function buildPilotCrewResultFlex(result: PilotCrewResult): LineReplyMessage {
         contents: [
           { type: 'button', style: 'secondary', height: 'sm',
             action: { type: 'message', label: '❓ 常見問答', text: '常見問答' } },
+          { type: 'button', style: 'secondary', height: 'sm',
+            action: { type: 'message', label: '🔄 重新試算', text: '重新開始' } },
+          { type: 'text', wrap: true, size: 'xxs', color: '#546E7A',
+            text: '本試算結果不構成貸款承諾。利率依核貸當日指標利率＋加碼為準，實際核貸條件由行員審查決定。' },
+        ],
+      },
+    } as unknown as Record<string, unknown>,
+  };
+}
+
+/** 建構客戶版推薦結果 Flex 卡片（不含防詐分數）*/
+function buildCustomerResultFlex(result: PilotCrewResult): LineReplyMessage {
+  const D = '#0D1B2A'; const M = '#0F2035'; const B = '#0A1628';
+  const { applicationId, crew1, crew2 } = result;
+
+  const rec = crew1.recommendation.primary;
+
+  const crew1Rows = [
+    { label: '推薦方案', value: rec.name },
+    { label: '利率範圍', value: rec.rateRange },
+    ...(rec.monthlyPayment ? [{ label: '預估月付', value: `NT$ ${rec.monthlyPayment.toLocaleString()}` }] : []),
+  ];
+
+  const crew2Rows = crew2 ? [
+    { label: '鑑估值（P50）', value: `NT$ ${crew2.result.estimatedValue.toLocaleString()}` },
+  ] : [];
+
+  const makeRows = (rows: Array<{ label: string; value: string }>) =>
+    rows.map((r) => ({
+      type: 'box', layout: 'horizontal',
+      contents: [
+        { type: 'text', text: r.label, size: 'xs', color: '#90A4AE', flex: 5 },
+        { type: 'text', text: r.value, size: 'xs', color: '#FFFFFF', weight: 'bold', flex: 7, wrap: true },
+      ],
+    }));
+
+  return {
+    type: 'flex',
+    altText: `✅ AI 審核完成 — ${rec.name}`,
+    contents: {
+      type: 'bubble', size: 'mega',
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: '0px', backgroundColor: D,
+        contents: [
+          {
+            type: 'box', layout: 'vertical', paddingAll: '16px', paddingBottom: '10px', spacing: 'xs',
+            contents: [
+              { type: 'text', text: '✅ AI 審核完成 — 推薦方案', weight: 'bold', size: 'sm', color: '#FFFFFF' },
+              { type: 'text', text: `案件 ${applicationId}`, size: 'xxs', color: '#546E7A' },
+            ],
+          },
+          { type: 'box', layout: 'vertical', height: '2px', backgroundColor: '#1B4F8A', contents: [{ type: 'filler' }] },
+          {
+            type: 'box', layout: 'vertical', paddingAll: '12px', paddingBottom: '8px', backgroundColor: M, spacing: 'xs',
+            contents: [
+              { type: 'text', text: '🎯 推薦貸款方案', size: 'xs', color: '#64B5F6', weight: 'bold' },
+              ...makeRows(crew1Rows),
+            ],
+          },
+          ...(crew2Rows.length > 0 ? [{
+            type: 'box', layout: 'vertical', paddingAll: '12px', paddingBottom: '8px', backgroundColor: '#101F35', spacing: 'xs',
+            contents: [
+              { type: 'text', text: '🏗️ 不動產鑑估參考', size: 'xs', color: '#80CBC4', weight: 'bold' },
+              ...makeRows(crew2Rows),
+            ],
+          } as Record<string, unknown>] : []),
+          {
+            type: 'box', layout: 'vertical', paddingAll: '10px',
+            contents: [
+              { type: 'text', text: '本結果由 AI 模擬，實際核貸依行員審查為準', size: 'xxs', color: '#37474F', wrap: true },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', backgroundColor: B,
+        contents: [
+          { type: 'button', style: 'primary', height: 'sm',
+            action: { type: 'message', label: '✅ 確認申請', text: '確認申請' } },
           { type: 'button', style: 'secondary', height: 'sm',
             action: { type: 'message', label: '🔄 重新試算', text: '重新開始' } },
           { type: 'text', wrap: true, size: 'xxs', color: '#546E7A',
