@@ -143,6 +143,12 @@ export interface LandRegistryParsed {
   propertyAge?:  number;
 }
 
+export interface ShapFactor {
+  label:        string;
+  contribution: number;
+  direction:    '拉高' | '拉低';
+}
+
 export interface XGBoostValuationResult {
   estimatedValue:     number;
   confidenceInterval: { p5: number; p50: number; p95: number };
@@ -150,6 +156,7 @@ export interface XGBoostValuationResult {
   riskLevel:          '低風險' | '中風險' | '高風險';
   pricePerPing:       number;
   model:              'xgboost' | 'demo';
+  shapFactors?:       ShapFactor[];
 }
 
 export interface XGBoostAutoValuateResponse {

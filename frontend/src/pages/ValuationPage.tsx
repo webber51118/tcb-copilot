@@ -508,6 +508,30 @@ export default function ValuationPage() {
                 </div>
               </div>
 
+              {/* SHAP 貢獻因子 */}
+              {val.shapFactors && val.shapFactors.length > 0 && (
+                <div className="card border border-blue-100">
+                  <p className="text-xs font-bold text-gray-500 mb-3">AI 估價依據（SHAP 貢獻因子）</p>
+                  <div className="space-y-2">
+                    {val.shapFactors.slice(0, 3).map((f, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 w-16 shrink-0">{f.label}</span>
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${f.direction === '拉高' ? 'bg-green-400' : 'bg-red-400'}`}
+                            style={{ width: `${Math.min(Math.abs(f.contribution) * 100, 100)}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs font-bold w-16 text-right ${f.direction === '拉高' ? 'text-green-600' : 'text-red-500'}`}>
+                          {f.direction === '拉高' ? '+' : '-'}{(Math.abs(f.contribution) * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">決策依據可查、可解釋、可重現</p>
+                </div>
+              )}
+
               {/* Qwen2.5 AI 白話說明 */}
               {(aiLoading || aiAttempted) && (
                 <div className="card border border-purple-100 bg-purple-50">
