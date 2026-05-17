@@ -644,19 +644,71 @@ AI 從真實資料即時回答——不靠記憶、不幻覺
 
 **右側截圖（下）**：
 📸 `docs/screenshots/twinkle_hub_domains.png`
-（主題分類：不動產與地政 / 經濟產業 / 政府採購 / 交通等 8 個 Domain 方塊）
+（主題分類：不動產與地政 / 經濟產業 / 政府採購 / 交通等 Domain 方塊）
 
 ---
 
-### S10c｜Co-Pilot 今天就站在這條路上
+### S10b-2｜Copilot Studio × Twinkle Hub MCP — 行員今天就能查真實資料
 
-**標題**：Co-Pilot 鑑估今天訓練自相同資料——MCP 接軌路徑最短
+**標題**：Copilot Studio × Twinkle Hub MCP — 行員今天就能查真實資料，不靠記憶
+
+**副標**：個金PILOT行員助理已串接 52,960 筆政府開放資料
+
+**版面**：三欄截圖並排（各佔約 33%）
+
+---
+
+**左欄｜實價登錄查詢 Demo**
+
+📸 `docs/screenshots/copilot_mcp_realestate_1.png`
+（Copilot Studio 右側：台北市中和區各樓層實價登錄成交行情表格）
+
+說明文字：
+> 行員問：「查台北市中和區近期實價登錄行情」
+> → Agent 呼叫 Twinkle Hub MCP
+> → 回傳各樓層真實成交均價
+
+---
+
+**中欄｜工具載入確認**
+
+📸 `docs/screenshots/copilot_mcp_realestate_2.png`
+（Copilot Studio 左側工具清單：opendata-query_rows / opendata-get_dataset / twtools-* 等已載入）
+
+說明文字：
+> 個金助理自動載入
+> opendata-* 開放資料工具
+> twtools-* 台灣專用工具
+
+---
+
+**右欄｜公司登記查詢 Demo**
+
+📸 `docs/screenshots/copilot_mcp_company.png`
+（twtools-lookup_company_by_tax_id 結果：合作金庫商業銀行行銷推廣股份有限公司，核准設立正常營業）
+
+說明文字：
+> 行員問：「查統編 70799128 的公司狀態」
+> → 回傳：公司名稱 / 登記狀態
+> 　 負責人 / 資本額 / 主管機關
+
+---
+
+**底部 Callout**（藍框）：
+> 不是未來展望——**今天就能 Demo**
+> Copilot Studio 原生支援 MCP，設定一次，AI 永久可查
+
+---
+
+### S10c｜Co-Pilot 鑑估訓練自相同資料——MCP 已接軌
+
+**標題**：Co-Pilot 鑑估訓練自相同資料——MCP 已接軌，接軌路徑最短
 
 **版面**：左右對比 50/50 + 底部截圖橫跨全寬
 
 ---
 
-**左側｜今天 Co-Pilot 已做到**
+**左側｜Co-Pilot 今天已做到**
 
 ```
 訓練資料
@@ -672,20 +724,21 @@ SHAP 因子可解釋
 行員直接引用核貸
 ```
 
-**右側｜未來 MCP 接軌**
+**右側｜MCP 今天已串接 ✅**
 
 ```
 Twinkle Hub MCP Server
 ↓ 不動產與地政 Domain
 ↓ 600 萬筆相同資料來源
 
-行員自然語言查詢：
+個金助理今天就能問：
 「信義區近一年實價中位數
  與單坪最高價？」
 
 ↓
-AI 直接從真實資料回答
+從真實資料即時回答
 不幻覺、不靠記憶
+✅ 已實裝（Copilot Studio MCP）
 ```
 
 ---
@@ -697,8 +750,8 @@ AI 直接從真實資料回答
 ---
 
 **底部 Callout**（綠框）：
-> Co-Pilot XGBoost 今天訓練自相同資料集
-> 未來升級為即時 MCP 查詢，**架構無縫銜接，接軌路徑最短**
+> Co-Pilot XGBoost 訓練自相同資料集
+> Copilot Studio 已透過 MCP 接上 Twinkle Hub——架構無縫銜接
 > OGDL-Taiwan-1.0 開放授權，合法合規
 
 ---
