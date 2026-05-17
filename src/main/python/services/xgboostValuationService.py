@@ -28,12 +28,26 @@ ENCODERS_PATH = Path("models/xgboost_encoders.pkl")
 FEATURE_COLS = ["district", "building_type", "area_ping", "property_age",
                 "floor", "total_floors", "has_parking", "rooms", "year", "quarter"]
 
-_model    = None
-_encoders = None
+FEATURE_LABELS = {
+    "district":      "行政區",
+    "building_type": "建物類型",
+    "area_ping":     "坪數",
+    "property_age":  "屋齡",
+    "floor":         "樓層",
+    "total_floors":  "總樓層數",
+    "has_parking":   "車位",
+    "rooms":         "房間數",
+    "year":          "成交年份",
+    "quarter":       "季節",
+}
+
+_model     = None
+_encoders  = None
+_explainer = None
 
 
 def _load():
-    global _model, _encoders
+    global _model, _encoders, _explainer
     if _model is None:
         import joblib
         import xgboost as xgb
@@ -44,6 +58,11 @@ def _load():
         _model = xgb.XGBRegressor()
         _model.load_model(str(MODEL_PATH))
         _encoders = joblib.load(ENCODERS_PATH)
+        try:
+            import shap
+            _explainer = shap.TreeExplainer(_model)
+        except ImportError:
+            _explainer = None
 
 
 def _encode(col: str, value: str) -> int:
@@ -56,6 +75,56 @@ def _encode(col: str, value: str) -> int:
     except ValueError:
         # 未見過的類別：回傳最常見類別的 index（0）
         return 0
+
+
+def _shap_factors_live(row) -> list[dict]:
+    """XGBoost 模式：用 SHAP TreeExplainer 計算前三大貢獻因子。"""
+    if _explainer is None:
+        return []
+    try:
+        import shap
+        shap_vals = _explainer.shap_values(row)
+        vals = shap_vals[0] if isinstance(shap_vals, list) else shap_vals[0]
+        total = float(np.sum(np.abs(vals))) or 1.0
+        ranked = sorted(enumerate(vals), key=lambda x: abs(x[1]), reverse=True)[:3]
+        result = []
+        for idx, val in ranked:
+            feat  = FEATURE_COLS[idx]
+            ratio = round(float(val) / total, 4)
+            result.append({
+                "label":        FEATURE_LABELS.get(feat, feat),
+                "contribution": ratio,
+                "direction":    "拉高" if val > 0 else "拉低",
+            })
+        return result
+    except Exception:
+        return []
+
+
+def _shap_factors_demo(property_age: int, floor: int, district: str) -> list[dict]:
+    """Demo 模式：規則近似 SHAP，回傳前三大影響因子。"""
+    factors = []
+
+    age_contrib = round(-min(property_age * 0.004, 0.30), 4)
+    factors.append({"label": "屋齡", "contribution": age_contrib,
+                    "direction": "拉低" if age_contrib < 0 else "拉高"})
+
+    flr_contrib = round((floor - 5) * 0.012, 4)
+    factors.append({"label": "樓層", "contribution": flr_contrib,
+                    "direction": "拉高" if flr_contrib > 0 else "拉低"})
+
+    high_price = {"信義區", "大安區", "中正區", "中山區", "松山區"}
+    low_price  = {"文山區", "萬華區", "北投區"}
+    if district in high_price:
+        dist_contrib = 0.20
+    elif district in low_price:
+        dist_contrib = -0.10
+    else:
+        dist_contrib = 0.05
+    factors.append({"label": "行政區", "contribution": dist_contrib,
+                    "direction": "拉高" if dist_contrib > 0 else "拉低"})
+
+    return sorted(factors, key=lambda x: abs(x["contribution"]), reverse=True)
 
 
 def _demo_price_per_ping(
@@ -133,10 +202,14 @@ def valuate_xgboost(
 
         log_pred       = float(_model.predict(row)[0])
         price_per_ping = float(np.expm1(log_pred))
+
+        # ── SHAP 解釋（若可用）──────────────────────────────────
+        shap_factors = _shap_factors_live(row)
     else:
         # ── Demo 模式：行政區查表 ────────────────────────────────
         price_per_ping = _demo_price_per_ping(district, building_type, property_age, floor)
         model_tag      = "demo"
+        shap_factors   = _shap_factors_demo(property_age, floor, district)
 
     estimated_value = price_per_ping * area_ping
 
@@ -157,10 +230,11 @@ def valuate_xgboost(
             "p50": round(ci.p50),
             "p95": round(ci.p95),
         },
-        "ltv_ratio":     round(ltv_ratio, 4),
-        "risk_level":    risk_level,
+        "ltv_ratio":      round(ltv_ratio, 4),
+        "risk_level":     risk_level,
         "price_per_ping": round(price_per_ping),
-        "model":         model_tag,
+        "model":          model_tag,
+        "shap_factors":   shap_factors,
     }
 
 
